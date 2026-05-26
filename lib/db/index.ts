@@ -3,6 +3,7 @@ import "server-only";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
+import * as schema from "./schema";
 
 function getDatabaseUrl(): string {
   const databaseUrl = process.env.DATABASE_URL;
@@ -24,7 +25,7 @@ export function getDb(): DrizzleClient {
   }
 
   const queryClient = postgres(getDatabaseUrl(), { prepare: false });
-  dbInstance = drizzle(queryClient);
+  dbInstance = drizzle(queryClient, { schema });
 
   return dbInstance;
 }
