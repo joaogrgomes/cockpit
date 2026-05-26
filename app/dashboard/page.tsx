@@ -3,6 +3,8 @@ import { TopList } from "@/components/dashboard/TopList";
 import { formatBRL } from "@/lib/calculations";
 import { getDashboardMetrics } from "@/lib/services/dashboard.service";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardPage() {
   const metrics = await getDashboardMetrics();
 
@@ -14,6 +16,14 @@ export default async function DashboardPage() {
         <MetricCard title="Total devido hoje" value={formatBRL(metrics.totalDue)} />
         <MetricCard title="Total original" value={formatBRL(metrics.totalOriginal)} />
         <MetricCard title="Acréscimos acumulados" value={formatBRL(metrics.totalAdditions)} />
+        <MetricCard
+          title="Valor para quitar (propostas ativas)"
+          value={formatBRL(metrics.totalSettlementActiveProposals)}
+        />
+        <MetricCard
+          title="Economia potencial (propostas ativas)"
+          value={formatBRL(metrics.totalPotentialSavings)}
+        />
         <MetricCard title="Dívidas ativas" value={String(metrics.activeDebts)} />
         <MetricCard title="Dívidas em atraso" value={String(metrics.overdueDebts)} />
       </div>

@@ -24,7 +24,7 @@ export function getDb(): DrizzleClient {
     return dbInstance;
   }
 
-  const queryClient = postgres(getDatabaseUrl(), { prepare: false });
+  const queryClient = postgres(getDatabaseUrl(), { prepare: false, max: 1 });
   dbInstance = drizzle(queryClient, { schema });
 
   return dbInstance;

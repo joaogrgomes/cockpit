@@ -1,8 +1,8 @@
 import "server-only";
 
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { debts } from "@/lib/db/schema";
+import { debtProposals, debts } from "@/lib/db/schema";
 import type { Debt, NewDebt } from "@/types";
 
 export type DebtListFilters = {
@@ -11,7 +11,11 @@ export type DebtListFilters = {
   sort?: "current_desc" | "current_asc";
 };
 
-export async function listDebts(filters: DebtListFilters = {}): Promise<Debt[]> {
+export type DebtListItem = Debt & {
+  hasActiveProposal: boolean;
+};
+
+export async function listDebts(filters: DebtListFilters = {}): Promise<DebtListItem[]> {
   const db = getDb();
   const whereConditions = [];
 
@@ -28,7 +32,18 @@ export async function listDebts(filters: DebtListFilters = {}): Promise<Debt[]> 
     filters.sort === "current_asc" ? asc(debts.currentValue) : desc(debts.currentValue);
 
   const query = db
-    .select()
+    .select({
+      ...getTableColumns(debts),
+      hasActiveProposal: sql<boolean>`
+        exists (
+          select 1
+          from ${debtProposals} dp
+          where dp.debt_id = ${debts.id}
+            and dp.status = 'ativa'
+            and (dp.expires_at is null or dp.expires_at >= CURRENT_DATE)
+        )
+      `,
+    })
     .from(debts)
     .orderBy(orderCurrentValue, desc(debts.lastUpdatedAt));
 
@@ -37,7 +52,18 @@ export async function listDebts(filters: DebtListFilters = {}): Promise<Debt[]> 
   }
 
   return db
-    .select()
+    .select({
+      ...getTableColumns(debts),
+      hasActiveProposal: sql<boolean>`
+        exists (
+          select 1
+          from ${debtProposals} dp
+          where dp.debt_id = ${debts.id}
+            and dp.status = 'ativa'
+            and (dp.expires_at is null or dp.expires_at >= CURRENT_DATE)
+        )
+      `,
+    })
     .from(debts)
     .where(whereClause)
     .orderBy(orderCurrentValue, desc(debts.lastUpdatedAt));

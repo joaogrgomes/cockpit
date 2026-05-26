@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { parseBRL } from "@/lib/calculations";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import { createDebt, deleteDebt, updateDebt } from "@/lib/services/debt.service";
-import { DebtSchema } from "@/lib/validations";
+import { createActiveProposal } from "@/lib/services/proposal.service";
+import { DebtProposalSchema, DebtSchema } from "@/lib/validations";
 
 type DebtActionResult = {
   ok: boolean;
@@ -141,6 +142,41 @@ export async function deleteDebtAction(formData: FormData): Promise<DebtActionRe
   }
 
   revalidatePath("/debts");
+
+  return { ok: true };
+}
+
+function parseProposalFormData(formData: FormData) {
+  const debtId = parseOptionalText(formData.get("debtId")) ?? "";
+  const proposedAt = parseOptionalDate(formData.get("proposedAt")) ?? "";
+
+  const payload = {
+    debtId,
+    proposedValue: parseMoneyToCents(formData.get("proposedValue")) ?? 0,
+    proposedAt,
+    expiresAt: parseOptionalDate(formData.get("expiresAt")),
+    origin: parseOptionalText(formData.get("origin")),
+    status: "ativa" as const,
+    notes: parseOptionalText(formData.get("notes")),
+  };
+
+  return DebtProposalSchema.safeParse(payload);
+}
+
+export async function createProposalAction(formData: FormData): Promise<DebtActionResult> {
+  const parsed = parseProposalFormData(formData);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  const result = await createActiveProposal(parsed.data);
+  if (!result.ok) {
+    return { ok: false, error: result.message };
+  }
+
+  revalidatePath("/debts");
+  revalidatePath(`/debts/${parsed.data.debtId}`);
+  revalidatePath("/dashboard");
 
   return { ok: true };
 }

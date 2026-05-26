@@ -3,6 +3,9 @@ import { notFound } from "next/navigation";
 import { DebtForm } from "@/components/debt/DebtForm";
 import { PriorityBadge } from "@/components/debt/PriorityBadge";
 import { StatusBadge } from "@/components/debt/StatusBadge";
+import { ProposalCard } from "@/components/proposal/ProposalCard";
+import { ProposalForm } from "@/components/proposal/ProposalForm";
+import { ProposalHistory } from "@/components/proposal/ProposalHistory";
 import { buttonVariants } from "@/components/ui/button";
 import {
   calcAdditions,
@@ -12,9 +15,14 @@ import {
 } from "@/lib/calculations";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import { getDebtById } from "@/lib/services/debt.service";
+import {
+  getActiveProposalByDebtId,
+  listProposalsByDebtId,
+  mapProposalToViewModel,
+} from "@/lib/services/proposal.service";
 import { cn } from "@/lib/utils";
 import type { DebtStatus } from "@/types";
-import { updateDebtAction } from "../actions";
+import { createProposalAction, updateDebtAction } from "../actions";
 
 type DebtDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -36,7 +44,11 @@ function toStatus(value: string): DebtStatus {
 
 export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
   const { id } = await params;
-  const debt = await getDebtById(id);
+  const [debt, activeProposal, proposalHistory] = await Promise.all([
+    getDebtById(id),
+    getActiveProposalByDebtId(id),
+    listProposalsByDebtId(id),
+  ]);
 
   if (!debt) {
     notFound();
@@ -55,6 +67,12 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
     typeof debt.paidInstallments === "number"
       ? calcRemainingInstallments(debt.totalInstallments, debt.paidInstallments)
       : null;
+  const activeProposalView = activeProposal
+    ? mapProposalToViewModel(activeProposal, debt.currentValue)
+    : null;
+  const proposalHistoryView = proposalHistory.map((proposal) =>
+    mapProposalToViewModel(proposal, debt.currentValue)
+  );
 
   return (
     <section className="space-y-6">
@@ -74,6 +92,7 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
           >
             Voltar
           </Link>
+          <ProposalForm debtId={debt.id} action={createProposalAction} />
           <DebtForm mode="edit" debt={debt} action={updateDebtAction} />
         </div>
       </div>
@@ -161,6 +180,10 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
           </div>
         </div>
       ) : null}
+
+      {activeProposalView ? <ProposalCard proposal={activeProposalView} /> : null}
+
+      <ProposalHistory proposals={proposalHistoryView} />
 
       {debt.notes ? (
         <div className="rounded-lg border p-4">

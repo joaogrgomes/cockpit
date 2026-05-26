@@ -22,6 +22,7 @@ import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import type { Debt, DebtStatus } from "@/types";
 import { DebtForm } from "./DebtForm";
 import { PriorityBadge } from "./PriorityBadge";
+import { ProposalBadge } from "./ProposalBadge";
 import { StatusBadge } from "./StatusBadge";
 
 type DebtActionResult = {
@@ -30,7 +31,7 @@ type DebtActionResult = {
 };
 
 type DebtRowProps = {
-  debt: Debt;
+  debt: Debt & { hasActiveProposal: boolean };
   updateAction: (formData: FormData) => Promise<DebtActionResult>;
   deleteAction: (formData: FormData) => Promise<DebtActionResult>;
 };
@@ -76,7 +77,10 @@ export function DebtRow({ debt, updateAction, deleteAction }: DebtRowProps) {
       <TableCell>{debt.creditor}</TableCell>
       <TableCell>{debt.type}</TableCell>
       <TableCell>
-        <StatusBadge status={toDebtStatus(debt.status)} />
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={toDebtStatus(debt.status)} />
+          {debt.hasActiveProposal ? <ProposalBadge /> : null}
+        </div>
       </TableCell>
       <TableCell>{formatBRL(debt.currentValue)}</TableCell>
       <TableCell>
