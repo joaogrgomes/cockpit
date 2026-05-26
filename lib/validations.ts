@@ -1,5 +1,11 @@
 import { z } from "zod";
-import { DEBT_STATUS_VALUES, PROPOSAL_STATUS_VALUES } from "@/lib/db/schema";
+import {
+  DEBT_STATUS_VALUES,
+  EXPENSE_CATEGORY_VALUES,
+  EXPENSE_TYPE_VALUES,
+  PAYMENT_METHOD_VALUES,
+  PROPOSAL_STATUS_VALUES,
+} from "@/lib/db/schema";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -95,3 +101,15 @@ export const DebtValueUpdateSchema = z
       });
     }
   });
+
+export const MonthlyExpenseSchema = z.object({
+  name: z.string().min(2),
+  category: z.enum(EXPENSE_CATEGORY_VALUES),
+  amount: z.number().int().positive(),
+  expenseType: z.enum(EXPENSE_TYPE_VALUES),
+  paymentMethod: z.enum(PAYMENT_METHOD_VALUES).nullish(),
+  dueDay: z.number().int().min(1).max(31).nullish(),
+  dueLabel: z.string().trim().min(1).nullish(),
+  notes: z.string().trim().min(1).nullish(),
+  isActive: z.boolean().default(true),
+});

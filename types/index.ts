@@ -1,8 +1,12 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   DEBT_STATUS_VALUES,
+  EXPENSE_CATEGORY_VALUES,
+  EXPENSE_TYPE_VALUES,
+  PAYMENT_METHOD_VALUES,
   PROPOSAL_STATUS_VALUES,
   debts,
+  monthlyExpenses,
   debtProposals,
   debtValueUpdates,
 } from "@/lib/db/schema";
@@ -16,5 +20,11 @@ export type NewDebtProposal = InferInsertModel<typeof debtProposals>;
 export type DebtValueUpdate = InferSelectModel<typeof debtValueUpdates>;
 export type NewDebtValueUpdate = InferInsertModel<typeof debtValueUpdates>;
 
+export type MonthlyExpense = InferSelectModel<typeof monthlyExpenses>;
+export type NewMonthlyExpense = InferInsertModel<typeof monthlyExpenses>;
+
 export type DebtStatus = (typeof DEBT_STATUS_VALUES)[number];
 export type DebtProposalStatus = (typeof PROPOSAL_STATUS_VALUES)[number];
+export type ExpenseCategory = (typeof EXPENSE_CATEGORY_VALUES)[number];
+export type ExpenseType = (typeof EXPENSE_TYPE_VALUES)[number];
+export type PaymentMethod = (typeof PAYMENT_METHOD_VALUES)[number];

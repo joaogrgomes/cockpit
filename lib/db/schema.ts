@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   check,
   date,
   index,
@@ -25,6 +26,36 @@ export const PROPOSAL_STATUS_VALUES = [
   "recusada",
   "aceita",
   "substituida",
+] as const;
+
+export const EXPENSE_CATEGORY_VALUES = [
+  "moradia",
+  "dividas",
+  "transporte",
+  "alimentacao",
+  "reserva",
+  "doacoes",
+  "lazer",
+  "educacao",
+  "saude",
+  "compras",
+  "servicos",
+  "assinaturas",
+  "familia",
+  "impostos",
+  "outros",
+] as const;
+
+export const EXPENSE_TYPE_VALUES = ["fixo", "variavel"] as const;
+
+export const PAYMENT_METHOD_VALUES = [
+  "pix",
+  "boleto",
+  "cartao",
+  "debito_em_conta",
+  "dinheiro",
+  "transferencia",
+  "outro",
 ] as const;
 
 export const debts = pgTable(
@@ -117,5 +148,41 @@ export const debtValueUpdates = pgTable(
   (table) => [
     check("debt_value_updates_recorded_value_positive", sql`${table.recordedValue} > 0`),
     index("idx_debt_value_updates_debt_date").on(table.debtId, table.recordedAt),
+  ]
+);
+
+export const monthlyExpenses = pgTable(
+  "monthly_expenses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    category: text("category").notNull(),
+    amount: integer("amount").notNull(),
+    expenseType: text("expense_type").notNull(),
+    paymentMethod: text("payment_method"),
+    dueDay: integer("due_day"),
+    dueLabel: text("due_label"),
+    notes: text("notes"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("monthly_expenses_amount_positive", sql`${table.amount} > 0`),
+    check("monthly_expenses_due_day_valid", sql`${table.dueDay} IS NULL OR (${table.dueDay} BETWEEN 1 AND 31)`),
+    check(
+      "monthly_expenses_type_valid",
+      sql`${table.expenseType} IN ('fixo','variavel')`
+    ),
+    check(
+      "monthly_expenses_category_valid",
+      sql`${table.category} IN ('moradia','dividas','transporte','alimentacao','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
+    ),
+    check(
+      "monthly_expenses_payment_method_valid",
+      sql`${table.paymentMethod} IS NULL OR ${table.paymentMethod} IN ('pix','boleto','cartao','debito_em_conta','dinheiro','transferencia','outro')`
+    ),
+    index("idx_monthly_expenses_active_due_day").on(table.isActive, table.dueDay),
+    index("idx_monthly_expenses_category_type").on(table.category, table.expenseType),
   ]
 );

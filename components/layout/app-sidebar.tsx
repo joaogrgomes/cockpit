@@ -2,7 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GaugeIcon, HandCoinsIcon, ListChecksIcon } from "lucide-react";
+import {
+  GaugeIcon,
+  HandCoinsIcon,
+  ListChecksIcon,
+  WalletCardsIcon,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -17,6 +22,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: GaugeIcon },
   { href: "/debts", label: "Dívidas", icon: HandCoinsIcon },
   { href: "/decision", label: "Decisão", icon: ListChecksIcon },
+  { href: "/expenses", label: "Gastos", icon: WalletCardsIcon },
 ];
 
 export function AppSidebar() {
@@ -26,7 +32,9 @@ export function AppSidebar() {
     <Sidebar variant="inset">
       <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
         <p className="text-sm font-semibold tracking-wide text-sidebar-foreground">Cockpit</p>
-        <p className="text-xs text-sidebar-foreground/65">Controle e decisão sobre dívidas</p>
+        <p className="text-xs text-sidebar-foreground/65">
+          Controle de dívidas e gastos
+        </p>
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-3">

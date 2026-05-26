@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { DebtProposalSchema, DebtSchema, DebtValueUpdateSchema } from "@/lib/validations";
+import {
+  DebtProposalSchema,
+  DebtSchema,
+  DebtValueUpdateSchema,
+  MonthlyExpenseSchema,
+} from "@/lib/validations";
 
 describe("DebtSchema", () => {
   it("aceita dívida com campos obrigatórios", () => {
@@ -159,5 +164,73 @@ describe("DebtValueUpdateSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+});
+
+describe("MonthlyExpenseSchema", () => {
+  it("aceita gasto válido com campos obrigatórios", () => {
+    const result = MonthlyExpenseSchema.safeParse({
+      name: "Aluguel",
+      category: "moradia",
+      amount: 250000,
+      expenseType: "fixo",
+      isActive: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita amount <= 0", () => {
+    const result = MonthlyExpenseSchema.safeParse({
+      name: "Luz",
+      category: "servicos",
+      amount: 0,
+      expenseType: "variavel",
+      isActive: true,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita categoria inválida", () => {
+    const result = MonthlyExpenseSchema.safeParse({
+      name: "Teste",
+      category: "categoria_invalida",
+      amount: 1000,
+      expenseType: "fixo",
+      isActive: true,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita dueDay e paymentMethod nulos", () => {
+    const result = MonthlyExpenseSchema.safeParse({
+      name: "Academia",
+      category: "saude",
+      amount: 18000,
+      expenseType: "fixo",
+      dueDay: null,
+      paymentMethod: null,
+      isActive: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita limpar campos opcionais com null em update", () => {
+    const result = MonthlyExpenseSchema.safeParse({
+      name: "Internet",
+      category: "servicos",
+      amount: 12000,
+      expenseType: "fixo",
+      dueDay: null,
+      paymentMethod: null,
+      dueLabel: null,
+      notes: null,
+      isActive: false,
+    });
+
+    expect(result.success).toBe(true);
   });
 });

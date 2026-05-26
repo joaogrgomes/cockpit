@@ -8,6 +8,13 @@
       "when": 1779764133574,
       "tag": "0000_happy_madame_masque",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1779835876570,
+      "tag": "0001_rapid_puma",
+      "breakpoints": true
     }
   ]
 }
