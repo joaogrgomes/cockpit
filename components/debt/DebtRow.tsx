@@ -17,7 +17,7 @@ import {
 import { Button, buttonVariants } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { formatBRL } from "@/lib/calculations";
+import { calcAdditions, calcGrowthPct, formatBRL } from "@/lib/calculations";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import type { Debt, DebtStatus } from "@/types";
 import { DebtForm } from "./DebtForm";
@@ -59,6 +59,16 @@ export function DebtRow({ debt, updateAction, deleteAction }: DebtRowProps) {
   const [isDeleting, startDelete] = useTransition();
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const router = useRouter();
+  const additions =
+    typeof debt.originalValue === "number"
+      ? calcAdditions(debt.currentValue, debt.originalValue)
+      : null;
+  const growthPct =
+    typeof debt.originalValue === "number"
+      ? calcGrowthPct(debt.currentValue, debt.originalValue)
+      : null;
+  const growthLabel =
+    typeof growthPct === "number" ? `${growthPct >= 0 ? "+" : ""}${growthPct.toFixed(1)}%` : null;
 
   return (
     <TableRow>
@@ -69,6 +79,12 @@ export function DebtRow({ debt, updateAction, deleteAction }: DebtRowProps) {
         <StatusBadge status={toDebtStatus(debt.status)} />
       </TableCell>
       <TableCell>{formatBRL(debt.currentValue)}</TableCell>
+      <TableCell>
+        {typeof additions === "number" ? (
+          <span>{`${additions >= 0 ? "+" : ""}${formatBRL(additions)}`}</span>
+        ) : null}
+      </TableCell>
+      <TableCell>{growthLabel}</TableCell>
       <TableCell>
         <PriorityBadge priority={debt.priority} />
       </TableCell>

@@ -3,10 +3,16 @@ import { notFound } from "next/navigation";
 import { DebtForm } from "@/components/debt/DebtForm";
 import { PriorityBadge } from "@/components/debt/PriorityBadge";
 import { StatusBadge } from "@/components/debt/StatusBadge";
-import { Button } from "@/components/ui/button";
-import { formatBRL } from "@/lib/calculations";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  calcAdditions,
+  calcGrowthPct,
+  calcRemainingInstallments,
+  formatBRL,
+} from "@/lib/calculations";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import { getDebtById } from "@/lib/services/debt.service";
+import { cn } from "@/lib/utils";
 import type { DebtStatus } from "@/types";
 import { updateDebtAction } from "../actions";
 
@@ -36,6 +42,20 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
     notFound();
   }
 
+  const additions =
+    typeof debt.originalValue === "number"
+      ? calcAdditions(debt.currentValue, debt.originalValue)
+      : null;
+  const growthPct =
+    typeof debt.originalValue === "number"
+      ? calcGrowthPct(debt.currentValue, debt.originalValue)
+      : null;
+  const remainingInstallments =
+    typeof debt.totalInstallments === "number" &&
+    typeof debt.paidInstallments === "number"
+      ? calcRemainingInstallments(debt.totalInstallments, debt.paidInstallments)
+      : null;
+
   return (
     <section className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -48,9 +68,12 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" render={<Link href="/debts" />}>
+          <Link
+            href="/debts"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "no-underline")}
+          >
             Voltar
-          </Button>
+          </Link>
           <DebtForm mode="edit" debt={debt} action={updateDebtAction} />
         </div>
       </div>
@@ -101,6 +124,43 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
           </div>
         ) : null}
       </div>
+
+      {typeof debt.originalValue === "number" || remainingInstallments !== null ? (
+        <div className="rounded-lg border p-4">
+          <h2 className="mb-3 text-base font-semibold">Cálculos automáticos</h2>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {typeof debt.originalValue === "number" ? (
+              <>
+                <div>
+                  <p className="text-sm text-muted-foreground">Original → atual</p>
+                  <p className="font-medium">
+                    {formatBRL(debt.originalValue)} → {formatBRL(debt.currentValue)}
+                  </p>
+                </div>
+                {typeof additions === "number" ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Acréscimos</p>
+                    <p className="font-medium">{`${additions >= 0 ? "+" : ""}${formatBRL(additions)}`}</p>
+                  </div>
+                ) : null}
+                {typeof growthPct === "number" ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Crescimento</p>
+                    <p className="font-medium">{`${growthPct >= 0 ? "+" : ""}${growthPct.toFixed(1)}%`}</p>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
+
+            {remainingInstallments !== null ? (
+              <div>
+                <p className="text-sm text-muted-foreground">Parcelas restantes</p>
+                <p className="font-medium">{remainingInstallments}</p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {debt.notes ? (
         <div className="rounded-lg border p-4">

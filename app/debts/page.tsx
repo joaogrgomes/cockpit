@@ -127,6 +127,8 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
             <TableHead>Tipo</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Valor atual</TableHead>
+            <TableHead>Acréscimos</TableHead>
+            <TableHead>Crescimento</TableHead>
             <TableHead>Prioridade</TableHead>
             <TableHead>Última atualização</TableHead>
             <TableHead>Ações</TableHead>
@@ -135,7 +137,7 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
         <TableBody>
           {debts.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center text-muted-foreground">
+              <TableCell colSpan={10} className="text-center text-muted-foreground">
                 Nenhuma dívida encontrada.
               </TableCell>
             </TableRow>
