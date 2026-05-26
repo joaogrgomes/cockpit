@@ -92,16 +92,19 @@ export function DecisionCard({ debt }: DecisionCardProps) {
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="grid gap-2">
           {debt.labels.map((label) => (
-            <Badge
-              key={`${debt.id}-${label.key}`}
-              variant={labelVariant(label.key)}
-              className="h-6 rounded-md px-2.5 text-[11px] font-semibold"
-            >
-              {label.title}
-              {label.detail ? ` • ${label.detail}` : ""}
-            </Badge>
+            <div key={`${debt.id}-${label.key}`} className="flex flex-col gap-1">
+              <div>
+                <Badge
+                  variant={labelVariant(label.key)}
+                  className="h-6 rounded-md px-2.5 text-[11px] font-semibold"
+                >
+                  {label.title}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">{label.reason}</p>
+            </div>
           ))}
         </div>
       </CardContent>

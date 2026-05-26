@@ -13,7 +13,7 @@ export type DecisionLabelKey =
 export type DecisionLabel = {
   key: DecisionLabelKey;
   title: string;
-  detail?: string;
+  reason: string;
 };
 
 export type DecisionBaseDebt = {
@@ -54,6 +54,26 @@ function calculateDaysUntil(from: Date, target: string | Date): number {
   const toDate = target instanceof Date ? target : new Date(target);
   const diffMs = startOfDay(toDate).getTime() - startOfDay(from).getTime();
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
+}
+
+function getRiskReason(priority: string | null, perceivedRisk: string | null): string {
+  if (priority === "critica") {
+    return "Prioridade crítica";
+  }
+
+  if (priority === "alta") {
+    return "Prioridade alta";
+  }
+
+  if (perceivedRisk === "juridico") {
+    return "Risco jurídico informado";
+  }
+
+  if (perceivedRisk) {
+    return `Risco percebido: ${perceivedRisk}`;
+  }
+
+  return "Maior combinação de prioridade e risco percebido";
 }
 
 export function buildDecisionItems(
@@ -113,6 +133,7 @@ export function buildDecisionItems(
       debt.labels.push({
         key: "melhor_oportunidade_quitacao",
         title: "Melhor oportunidade de quitação",
+        reason: "Maior desconto percentual entre as propostas ativas",
       });
     }
 
@@ -120,6 +141,7 @@ export function buildDecisionItems(
       debt.labels.push({
         key: "mais_barata_para_resolver",
         title: "Mais barata para resolver",
+        reason: "Menor valor de quitação entre as propostas ativas",
       });
     }
 
@@ -127,6 +149,7 @@ export function buildDecisionItems(
       debt.labels.push({
         key: "maior_risco",
         title: "Maior risco",
+        reason: getRiskReason(debt.priority, debt.perceivedRisk),
       });
     }
 
@@ -134,6 +157,10 @@ export function buildDecisionItems(
       debt.labels.push({
         key: "mais_cara_em_crescimento",
         title: "Mais cara em crescimento",
+        reason:
+          typeof debt.growthPct === "number"
+            ? `Cresceu ${debt.growthPct.toFixed(1)}% desde o valor original`
+            : "Maior crescimento percentual entre as dívidas com valor original",
       });
     }
 
@@ -145,7 +172,7 @@ export function buildDecisionItems(
       debt.labels.push({
         key: "proposta_vencendo",
         title: "Proposta vencendo",
-        detail: `Vence em ${debt.daysUntilProposalExpiry} dia(s)`,
+        reason: `Vence em ${debt.daysUntilProposalExpiry} dia(s)`,
       });
     }
 
@@ -153,7 +180,7 @@ export function buildDecisionItems(
       debt.labels.push({
         key: "precisa_atualizar_valor",
         title: "Precisa atualizar valor",
-        detail: `Última atualização há ${debt.daysSinceLastUpdate} dias`,
+        reason: `Última atualização há ${debt.daysSinceLastUpdate} dias`,
       });
     }
 
@@ -161,6 +188,7 @@ export function buildDecisionItems(
       debt.labels.push({
         key: "aguardando_negociacao",
         title: "Aguardando negociação",
+        reason: "Status atual: em negociação",
       });
     }
   }

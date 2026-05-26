@@ -85,14 +85,29 @@ describe("buildDecisionItems", () => {
     expect(labelsA).toContain("mais_cara_em_crescimento");
     expect(labelsA).toContain("proposta_vencendo");
     expect(labelsA).toContain("precisa_atualizar_valor");
+    expect(
+      debtA?.labels.find((label) => label.key === "melhor_oportunidade_quitacao")?.reason
+    ).toBe("Maior desconto percentual entre as propostas ativas");
+    expect(debtA?.labels.find((label) => label.key === "proposta_vencendo")?.reason).toContain(
+      "Vence em"
+    );
 
     const labelsB = debtB?.labels.map((label) => label.key) ?? [];
     expect(labelsB).toContain("mais_barata_para_resolver");
     expect(labelsB).toContain("maior_risco");
     expect(labelsB).toContain("aguardando_negociacao");
+    expect(debtB?.labels.find((label) => label.key === "maior_risco")?.reason).toBe(
+      "Prioridade crítica"
+    );
+    expect(
+      debtB?.labels.find((label) => label.key === "aguardando_negociacao")?.reason
+    ).toBe("Status atual: em negociação");
 
     const labelsC = debtC?.labels.map((label) => label.key) ?? [];
     expect(labelsC).toContain("precisa_atualizar_valor");
+    expect(
+      debtC?.labels.find((label) => label.key === "precisa_atualizar_valor")?.reason
+    ).toContain("Última atualização há");
 
     expect(debtA?.daysSinceLastUpdate).toBeGreaterThan(30);
     expect(debtA?.daysUntilProposalExpiry).toBeGreaterThanOrEqual(4);
