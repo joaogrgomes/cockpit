@@ -44,6 +44,14 @@ function parseOptionalText(value: FormDataEntryValue | null): string | undefined
   return trimmed === "" ? undefined : trimmed;
 }
 
+function parseOptionalTextOrNullForUpdate(
+  value: FormDataEntryValue | null
+): string | null | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed === "" ? null : trimmed;
+}
+
 function parseMoneyToCents(value: FormDataEntryValue | null): number | undefined {
   if (typeof value !== "string") return undefined;
 
@@ -69,8 +77,12 @@ function parseTags(value: FormDataEntryValue | null): string[] | undefined {
   return tags.length > 0 ? tags : undefined;
 }
 
-function parseDebtFormData(formData: FormData) {
+function parseDebtFormData(formData: FormData, mode: "create" | "update") {
   const status = parseOptionalText(formData.get("status"));
+  const perceivedRisk =
+    mode === "update"
+      ? parseOptionalTextOrNullForUpdate(formData.get("perceivedRisk"))
+      : parseOptionalText(formData.get("perceivedRisk"));
 
   const payload = {
     name: parseOptionalText(formData.get("name")) ?? "",
@@ -88,7 +100,7 @@ function parseDebtFormData(formData: FormData) {
     paidInstallments: parseOptionalInteger(formData.get("paidInstallments")),
     overdueSince: parseOptionalDate(formData.get("overdueSince")),
     priority: parseOptionalText(formData.get("priority")),
-    perceivedRisk: parseOptionalText(formData.get("perceivedRisk")),
+    perceivedRisk,
     notes: parseOptionalText(formData.get("notes")),
     tags: parseTags(formData.get("tags")),
   };
@@ -97,7 +109,7 @@ function parseDebtFormData(formData: FormData) {
 }
 
 export async function createDebtAction(formData: FormData): Promise<DebtActionResult> {
-  const parsed = parseDebtFormData(formData);
+  const parsed = parseDebtFormData(formData, "create");
 
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
@@ -116,7 +128,7 @@ export async function updateDebtAction(formData: FormData): Promise<DebtActionRe
     return { ok: false, error: "ID da dívida é obrigatório" };
   }
 
-  const parsed = parseDebtFormData(formData);
+  const parsed = parseDebtFormData(formData, "update");
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
   }

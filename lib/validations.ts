@@ -4,6 +4,15 @@ import { DEBT_STATUS_VALUES, PROPOSAL_STATUS_VALUES } from "@/lib/db/schema";
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 const optionalPositiveInt = z.number().int().positive().optional();
+const PERCEIVED_RISK_VALUES = [
+  "baixo",
+  "medio",
+  "alto",
+  "juridico",
+  "consignado",
+  "negativacao",
+  "nao_sei",
+] as const;
 
 function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
@@ -24,7 +33,7 @@ export const DebtSchema = z
     paidInstallments: z.number().int().min(0).optional(),
     overdueSince: z.string().regex(dateRegex).optional(),
     priority: z.string().optional(),
-    perceivedRisk: z.string().optional(),
+    perceivedRisk: z.enum(PERCEIVED_RISK_VALUES).nullish(),
     notes: z.string().optional(),
     tags: z.array(z.string()).optional(),
   })

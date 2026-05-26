@@ -51,6 +51,42 @@ describe("DebtSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("aceita perceivedRisk=nao_sei e null", () => {
+    const withNaoSei = DebtSchema.safeParse({
+      name: "Cartão",
+      creditor: "Banco",
+      type: "cartao_credito",
+      status: "em_aberto",
+      currentValue: 1000,
+      perceivedRisk: "nao_sei",
+    });
+
+    const withNull = DebtSchema.safeParse({
+      name: "Cartão",
+      creditor: "Banco",
+      type: "cartao_credito",
+      status: "em_aberto",
+      currentValue: 1000,
+      perceivedRisk: null,
+    });
+
+    expect(withNaoSei.success).toBe(true);
+    expect(withNull.success).toBe(true);
+  });
+
+  it("rejeita perceivedRisk inválido", () => {
+    const result = DebtSchema.safeParse({
+      name: "Cartão",
+      creditor: "Banco",
+      type: "cartao_credito",
+      status: "em_aberto",
+      currentValue: 1000,
+      perceivedRisk: "invalido",
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("DebtProposalSchema", () => {
