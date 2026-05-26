@@ -14,8 +14,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { formatBRL } from "@/lib/calculations";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import type { Debt, DebtStatus } from "@/types";
@@ -74,13 +75,15 @@ export function DebtRow({ debt, updateAction, deleteAction }: DebtRowProps) {
       <TableCell>{formatDateTime(debt.lastUpdatedAt)}</TableCell>
       <TableCell>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            render={<Link href={`/debts/${debt.id}`} />}
+          <Link
+            href={`/debts/${debt.id}`}
+            className={cn(
+              buttonVariants({ variant: "ghost", size: "sm" }),
+              "no-underline"
+            )}
           >
             Ver detalhe
-          </Button>
+          </Link>
 
           <DebtForm mode="edit" debt={debt} action={updateAction} />
 
