@@ -6,6 +6,7 @@ import { StatusBadge } from "@/components/debt/StatusBadge";
 import { ProposalCard } from "@/components/proposal/ProposalCard";
 import { ProposalForm } from "@/components/proposal/ProposalForm";
 import { ProposalHistory } from "@/components/proposal/ProposalHistory";
+import { ValueChart } from "@/components/value-update/ValueChart";
 import { ValueHistory } from "@/components/value-update/ValueHistory";
 import { ValueUpdateForm } from "@/components/value-update/ValueUpdateForm";
 import { buttonVariants } from "@/components/ui/button";
@@ -197,6 +198,7 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
       {activeProposalView ? <ProposalCard proposal={activeProposalView} /> : null}
 
       <ProposalHistory proposals={proposalHistoryView} />
+      <ValueChart updates={valueUpdates} />
       <ValueHistory updates={valueHistoryView} />
 
       {debt.notes ? (
