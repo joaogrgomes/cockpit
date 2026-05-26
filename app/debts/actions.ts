@@ -5,7 +5,12 @@ import { parseBRL } from "@/lib/calculations";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import { createDebt, deleteDebt, updateDebt } from "@/lib/services/debt.service";
 import { createActiveProposal } from "@/lib/services/proposal.service";
-import { DebtProposalSchema, DebtSchema } from "@/lib/validations";
+import { createDebtValueUpdate } from "@/lib/services/value-update.service";
+import {
+  DebtProposalSchema,
+  DebtSchema,
+  DebtValueUpdateSchema,
+} from "@/lib/validations";
 
 type DebtActionResult = {
   ok: boolean;
@@ -170,6 +175,41 @@ export async function createProposalAction(formData: FormData): Promise<DebtActi
   }
 
   const result = await createActiveProposal(parsed.data);
+  if (!result.ok) {
+    return { ok: false, error: result.message };
+  }
+
+  revalidatePath("/debts");
+  revalidatePath(`/debts/${parsed.data.debtId}`);
+  revalidatePath("/dashboard");
+
+  return { ok: true };
+}
+
+function parseValueUpdateFormData(formData: FormData) {
+  const debtId = parseOptionalText(formData.get("debtId")) ?? "";
+  const recordedAt = parseOptionalDate(formData.get("recordedAt")) ?? "";
+
+  const payload = {
+    debtId,
+    recordedValue: parseMoneyToCents(formData.get("recordedValue")) ?? 0,
+    recordedAt,
+    source: parseOptionalText(formData.get("source")),
+    notes: parseOptionalText(formData.get("notes")),
+  };
+
+  return DebtValueUpdateSchema.safeParse(payload);
+}
+
+export async function createValueUpdateAction(
+  formData: FormData
+): Promise<DebtActionResult> {
+  const parsed = parseValueUpdateFormData(formData);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  const result = await createDebtValueUpdate(parsed.data);
   if (!result.ok) {
     return { ok: false, error: result.message };
   }

@@ -6,6 +6,8 @@ import { StatusBadge } from "@/components/debt/StatusBadge";
 import { ProposalCard } from "@/components/proposal/ProposalCard";
 import { ProposalForm } from "@/components/proposal/ProposalForm";
 import { ProposalHistory } from "@/components/proposal/ProposalHistory";
+import { ValueHistory } from "@/components/value-update/ValueHistory";
+import { ValueUpdateForm } from "@/components/value-update/ValueUpdateForm";
 import { buttonVariants } from "@/components/ui/button";
 import {
   calcAdditions,
@@ -20,9 +22,17 @@ import {
   listProposalsByDebtId,
   mapProposalToViewModel,
 } from "@/lib/services/proposal.service";
+import {
+  listValueUpdatesByDebtId,
+  mapValueUpdatesToHistory,
+} from "@/lib/services/value-update.service";
 import { cn } from "@/lib/utils";
 import type { DebtStatus } from "@/types";
-import { createProposalAction, updateDebtAction } from "../actions";
+import {
+  createProposalAction,
+  createValueUpdateAction,
+  updateDebtAction,
+} from "../actions";
 
 type DebtDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -44,10 +54,11 @@ function toStatus(value: string): DebtStatus {
 
 export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
   const { id } = await params;
-  const [debt, activeProposal, proposalHistory] = await Promise.all([
+  const [debt, activeProposal, proposalHistory, valueUpdates] = await Promise.all([
     getDebtById(id),
     getActiveProposalByDebtId(id),
     listProposalsByDebtId(id),
+    listValueUpdatesByDebtId(id),
   ]);
 
   if (!debt) {
@@ -73,6 +84,7 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
   const proposalHistoryView = proposalHistory.map((proposal) =>
     mapProposalToViewModel(proposal, debt.currentValue)
   );
+  const valueHistoryView = mapValueUpdatesToHistory(valueUpdates);
 
   return (
     <section className="space-y-6">
@@ -92,6 +104,7 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
           >
             Voltar
           </Link>
+          <ValueUpdateForm debtId={debt.id} action={createValueUpdateAction} />
           <ProposalForm debtId={debt.id} action={createProposalAction} />
           <DebtForm mode="edit" debt={debt} action={updateDebtAction} />
         </div>
@@ -184,6 +197,7 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
       {activeProposalView ? <ProposalCard proposal={activeProposalView} /> : null}
 
       <ProposalHistory proposals={proposalHistoryView} />
+      <ValueHistory updates={valueHistoryView} />
 
       {debt.notes ? (
         <div className="rounded-lg border p-4">

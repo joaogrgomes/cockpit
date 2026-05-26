@@ -110,4 +110,18 @@ describe("DebtValueUpdateSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("rejeita recordedAt no futuro", () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowIso = tomorrow.toISOString().slice(0, 10);
+
+    const result = DebtValueUpdateSchema.safeParse({
+      debtId: "550e8400-e29b-41d4-a716-446655440000",
+      recordedValue: 12345,
+      recordedAt: tomorrowIso,
+    });
+
+    expect(result.success).toBe(false);
+  });
 });

@@ -5,6 +5,10 @@ const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 
 const optionalPositiveInt = z.number().int().positive().optional();
 
+function todayIsoDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export const DebtSchema = z
   .object({
     name: z.string().min(2),
@@ -65,10 +69,20 @@ export const DebtProposalSchema = z
     }
   });
 
-export const DebtValueUpdateSchema = z.object({
-  debtId: z.string().uuid(),
-  recordedValue: z.number().int().positive(),
-  recordedAt: z.string().regex(dateRegex),
-  source: z.string().optional(),
-  notes: z.string().optional(),
-});
+export const DebtValueUpdateSchema = z
+  .object({
+    debtId: z.string().uuid(),
+    recordedValue: z.number().int().positive(),
+    recordedAt: z.string().regex(dateRegex),
+    source: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.recordedAt > todayIsoDate()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "recordedAt não pode ser uma data futura",
+        path: ["recordedAt"],
+      });
+    }
+  });
