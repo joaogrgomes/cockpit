@@ -39,10 +39,10 @@ export function DecisionCard({ debt }: DecisionCardProps) {
   const discountValue = activeProposal ? debt.currentValue - activeProposal.proposedValue : null;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
+    <Card className="border-border/80 shadow-sm">
+      <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 border-b border-border/60 pb-3">
         <div className="space-y-1">
-          <CardTitle className="text-lg">{debt.name}</CardTitle>
+          <CardTitle className="text-lg tracking-tight">{debt.name}</CardTitle>
           <p className="text-sm text-muted-foreground">{debt.creditor}</p>
         </div>
 
@@ -54,12 +54,14 @@ export function DecisionCard({ debt }: DecisionCardProps) {
         </Link>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-4 pt-4">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={toDebtStatus(debt.status)} />
           <PriorityBadge priority={debt.priority} />
           {debt.perceivedRisk ? (
-            <Badge variant="outline">Risco: {debt.perceivedRisk}</Badge>
+            <Badge variant="outline" className="h-6 rounded-md px-2.5 text-[11px] font-semibold">
+              Risco: {debt.perceivedRisk}
+            </Badge>
           ) : null}
         </div>
 
@@ -69,7 +71,8 @@ export function DecisionCard({ debt }: DecisionCardProps) {
           </p>
           {typeof debt.growthPct === "number" ? (
             <p>
-              <span className="text-muted-foreground">Crescimento:</span> {debt.growthPct.toFixed(1)}%
+              <span className="text-muted-foreground">Crescimento:</span>{" "}
+              {debt.growthPct.toFixed(1)}%
             </p>
           ) : null}
           {activeProposal ? (
@@ -91,7 +94,11 @@ export function DecisionCard({ debt }: DecisionCardProps) {
 
         <div className="flex flex-wrap gap-2">
           {debt.labels.map((label) => (
-            <Badge key={`${debt.id}-${label.key}`} variant={labelVariant(label.key)}>
+            <Badge
+              key={`${debt.id}-${label.key}`}
+              variant={labelVariant(label.key)}
+              className="h-6 rounded-md px-2.5 text-[11px] font-semibold"
+            >
               {label.title}
               {label.detail ? ` • ${label.detail}` : ""}
             </Badge>

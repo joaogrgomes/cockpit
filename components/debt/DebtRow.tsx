@@ -16,9 +16,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 import { calcAdditions, calcGrowthPct, formatBRL } from "@/lib/calculations";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
+import { cn } from "@/lib/utils";
 import type { Debt, DebtStatus } from "@/types";
 import { DebtForm } from "./DebtForm";
 import { PriorityBadge } from "./PriorityBadge";
@@ -72,35 +72,32 @@ export function DebtRow({ debt, updateAction, deleteAction }: DebtRowProps) {
     typeof growthPct === "number" ? `${growthPct >= 0 ? "+" : ""}${growthPct.toFixed(1)}%` : null;
 
   return (
-    <TableRow>
-      <TableCell className="font-medium">{debt.name}</TableCell>
-      <TableCell>{debt.creditor}</TableCell>
-      <TableCell>{debt.type}</TableCell>
-      <TableCell>
+    <TableRow className="border-border/70 hover:bg-muted/35">
+      <TableCell className="py-3 font-medium text-foreground">{debt.name}</TableCell>
+      <TableCell className="py-3 text-muted-foreground">{debt.creditor}</TableCell>
+      <TableCell className="py-3 text-muted-foreground">{debt.type}</TableCell>
+      <TableCell className="py-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={toDebtStatus(debt.status)} />
           {debt.hasActiveProposal ? <ProposalBadge /> : null}
         </div>
       </TableCell>
-      <TableCell>{formatBRL(debt.currentValue)}</TableCell>
-      <TableCell>
+      <TableCell className="py-3 font-medium">{formatBRL(debt.currentValue)}</TableCell>
+      <TableCell className="py-3">
         {typeof additions === "number" ? (
-          <span>{`${additions >= 0 ? "+" : ""}${formatBRL(additions)}`}</span>
+          <span className="text-sm">{`${additions >= 0 ? "+" : ""}${formatBRL(additions)}`}</span>
         ) : null}
       </TableCell>
-      <TableCell>{growthLabel}</TableCell>
-      <TableCell>
+      <TableCell className="py-3 text-sm">{growthLabel}</TableCell>
+      <TableCell className="py-3">
         <PriorityBadge priority={debt.priority} />
       </TableCell>
-      <TableCell>{formatDateTime(debt.lastUpdatedAt)}</TableCell>
-      <TableCell>
+      <TableCell className="py-3 text-xs text-muted-foreground">{formatDateTime(debt.lastUpdatedAt)}</TableCell>
+      <TableCell className="py-3">
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href={`/debts/${debt.id}`}
-            className={cn(
-              buttonVariants({ variant: "ghost", size: "sm" }),
-              "no-underline"
-            )}
+            className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "no-underline")}
           >
             Ver detalhe
           </Link>

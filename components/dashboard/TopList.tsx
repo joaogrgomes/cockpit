@@ -18,11 +18,11 @@ type TopListProps = {
 
 export function TopList({ title, emptyMessage, items }: TopListProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
+    <Card className="border-border/80 shadow-sm">
+      <CardHeader className="border-b border-border/60 pb-3">
+        <CardTitle className="text-base font-semibold tracking-tight">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         {items.length === 0 ? (
           <p className="text-sm text-muted-foreground">{emptyMessage}</p>
         ) : (
@@ -30,11 +30,11 @@ export function TopList({ title, emptyMessage, items }: TopListProps) {
             {items.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center justify-between gap-3 rounded-md border p-2"
+                className="flex items-center justify-between gap-3 rounded-lg border border-border/70 bg-muted/25 px-3 py-2.5"
               >
                 <div>
                   {item.href ? (
-                    <Link href={item.href} className="font-medium hover:underline">
+                    <Link href={item.href} className="font-medium text-foreground hover:underline">
                       {item.title}
                     </Link>
                   ) : (
@@ -47,7 +47,7 @@ export function TopList({ title, emptyMessage, items }: TopListProps) {
                     <p className="text-xs text-muted-foreground">{item.meta}</p>
                   ) : null}
                 </div>
-                <p className="text-right font-semibold">{item.value}</p>
+                <p className="text-right text-sm font-semibold text-foreground">{item.value}</p>
               </li>
             ))}
           </ul>

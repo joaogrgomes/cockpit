@@ -1,5 +1,6 @@
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { TopList } from "@/components/dashboard/TopList";
+import { PageHeader } from "@/components/layout/page-header";
 import { formatBRL } from "@/lib/calculations";
 import { getDashboardMetrics } from "@/lib/services/dashboard.service";
 
@@ -31,15 +32,13 @@ export default async function DashboardPage() {
     : "Sem proposta ativa com validade futura.";
 
   return (
-    <section className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Visão consolidada das dívidas ativas, propostas e crescimento.
-        </p>
-      </div>
+    <section className="space-y-8">
+      <PageHeader
+        title="Dashboard"
+        description="Visão consolidada das dívidas ativas, propostas e crescimento." 
+      />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <MetricCard title="Total devido hoje" value={formatBRL(metrics.totalDue)} />
         <MetricCard title="Total original" value={formatBRL(metrics.totalOriginal)} />
         <MetricCard title="Acréscimos acumulados" value={formatBRL(metrics.totalAdditions)} />
@@ -53,10 +52,7 @@ export default async function DashboardPage() {
           title="Valor para quitar (propostas ativas)"
           value={formatBRL(metrics.totalSettlementActiveProposals)}
         />
-        <MetricCard
-          title="Economia potencial"
-          value={formatBRL(metrics.totalPotentialSavings)}
-        />
+        <MetricCard title="Economia potencial" value={formatBRL(metrics.totalPotentialSavings)} />
         <MetricCard
           title="Próxima proposta vencendo"
           value={nextExpiringValue}
@@ -64,7 +60,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 xl:grid-cols-2">
         <TopList
           title="Maiores dívidas (Top 3)"
           emptyMessage="Nenhuma dívida ativa cadastrada."

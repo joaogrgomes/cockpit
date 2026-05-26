@@ -31,17 +31,17 @@ function getDifferenceLabel(difference: number | null) {
 
 export function ValueHistory({ updates }: ValueHistoryProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Histórico de valores</CardTitle>
+    <Card className="border-border/80 shadow-sm">
+      <CardHeader className="border-b border-border/60 pb-3">
+        <CardTitle className="text-base">Histórico de valores</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4">
         {updates.length === 0 ? (
           <p className="text-sm text-muted-foreground">Nenhuma atualização registrada.</p>
         ) : (
           <ul className="space-y-3">
             {updates.map((update) => (
-              <li key={update.id} className="rounded-lg border p-3">
+              <li key={update.id} className="rounded-lg border border-border/70 bg-muted/25 p-3">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold">{formatBRL(update.recordedValue)}</p>
                   <p className="text-xs text-muted-foreground">
@@ -55,7 +55,7 @@ export function ValueHistory({ updates }: ValueHistoryProps) {
 
                 {update.source ? <p className="mt-2 text-sm">Origem: {update.source}</p> : null}
                 {update.notes ? (
-                  <p className="mt-1 whitespace-pre-wrap text-sm">{update.notes}</p>
+                  <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">{update.notes}</p>
                 ) : null}
               </li>
             ))}

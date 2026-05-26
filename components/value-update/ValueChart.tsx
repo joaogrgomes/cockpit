@@ -40,11 +40,11 @@ function toChartPoints(updates: DebtValueUpdate[]): ChartPoint[] {
 export function ValueChart({ updates }: ValueChartProps) {
   if (updates.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Evolução do valor</CardTitle>
+      <Card className="border-border/80 shadow-sm">
+        <CardHeader className="border-b border-border/60 pb-3">
+          <CardTitle className="text-base">Evolução do valor</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           <p className="text-sm text-muted-foreground">
             Sem histórico suficiente para exibir o gráfico.
           </p>
@@ -57,13 +57,14 @@ export function ValueChart({ updates }: ValueChartProps) {
     const single = updates[0];
 
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Evolução do valor</CardTitle>
+      <Card className="border-border/80 shadow-sm">
+        <CardHeader className="border-b border-border/60 pb-3">
+          <CardTitle className="text-base">Evolução do valor</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-2 pt-4">
           <p className="text-sm text-muted-foreground">
-            Apenas um registro disponível. Adicione novas atualizações para ver a linha de evolução.
+            Apenas um registro disponível. Adicione novas atualizações para ver a linha de
+            evolução.
           </p>
           <p className="text-sm">
             Último valor: <span className="font-medium">{formatBRL(single.recordedValue)}</span>
@@ -77,17 +78,23 @@ export function ValueChart({ updates }: ValueChartProps) {
   const data = toChartPoints(updates);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Evolução do valor</CardTitle>
+    <Card className="border-border/80 shadow-sm">
+      <CardHeader className="border-b border-border/60 pb-3">
+        <CardTitle className="text-base">Evolução do valor</CardTitle>
       </CardHeader>
-      <CardContent>
-        <div className="h-72 w-full">
+      <CardContent className="pt-4">
+        <div className="h-72 w-full rounded-lg bg-muted/20 p-2">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data} margin={{ top: 12, right: 16, left: 4, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="dateLabel" tick={{ fontSize: 12 }} />
-              <YAxis tickFormatter={(value) => formatBRL(Number(value))} tick={{ fontSize: 12 }} />
+            <LineChart data={data} margin={{ top: 10, right: 16, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="dateLabel" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+              <YAxis
+                tickFormatter={(value) => formatBRL(Number(value))}
+                tick={{ fontSize: 12 }}
+                tickLine={false}
+                axisLine={false}
+                width={84}
+              />
               <Tooltip
                 formatter={(value) => formatBRL(Number(value))}
                 labelFormatter={(label) => `Data: ${label}`}
@@ -96,7 +103,7 @@ export function ValueChart({ updates }: ValueChartProps) {
                 type="monotone"
                 dataKey="recordedValue"
                 stroke="hsl(var(--primary))"
-                strokeWidth={2}
+                strokeWidth={2.5}
                 dot={{ r: 3 }}
                 activeDot={{ r: 5 }}
               />

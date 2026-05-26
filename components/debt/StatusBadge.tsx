@@ -20,5 +20,9 @@ export function StatusBadge({ status }: { status: DebtStatus }) {
           ? "outline"
           : "default";
 
-  return <Badge variant={variant}>{STATUS_LABEL[status]}</Badge>;
+  return (
+    <Badge variant={variant} className="h-6 rounded-md px-2.5 text-[11px] font-semibold tracking-wide">
+      {STATUS_LABEL[status]}
+    </Badge>
+  );
 }

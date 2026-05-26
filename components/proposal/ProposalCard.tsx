@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
 import type { ProposalViewModel } from "@/lib/services/proposal.service";
 
@@ -21,19 +21,17 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
       : null;
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-start justify-between">
-        <div>
-          <CardTitle>Proposta ativa</CardTitle>
-        </div>
+    <Card className="border-border/80 shadow-sm">
+      <CardHeader className="flex flex-row items-start justify-between border-b border-border/60 pb-3">
+        <CardTitle className="text-base">Proposta ativa</CardTitle>
         {proposal.isExpiringSoon ? (
-          <Badge variant="destructive">
+          <Badge variant="destructive" className="h-6 rounded-md px-2.5 text-[11px] font-semibold">
             Vence em {proposal.daysUntilExpiry} dia{proposal.daysUntilExpiry === 1 ? "" : "s"}
           </Badge>
         ) : null}
       </CardHeader>
 
-      <CardContent className="grid gap-3 sm:grid-cols-2">
+      <CardContent className="grid gap-3 pt-4 sm:grid-cols-2">
         <div>
           <p className="text-sm text-muted-foreground">Valor proposto</p>
           <p className="font-semibold">{formatBRL(proposal.proposedValue)}</p>
@@ -65,7 +63,7 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
         {proposal.notes ? (
           <div className="sm:col-span-2">
             <p className="text-sm text-muted-foreground">Observações</p>
-            <p className="whitespace-pre-wrap">{proposal.notes}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed">{proposal.notes}</p>
           </div>
         ) : null}
       </CardContent>

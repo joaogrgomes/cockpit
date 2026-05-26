@@ -9,7 +9,7 @@ const PRIORITY_LABEL: Record<string, string> = {
 
 export function PriorityBadge({ priority }: { priority?: string | null }) {
   if (!priority) {
-    return <span className="text-sm text-muted-foreground">-</span>;
+    return <span className="text-xs text-muted-foreground">Sem prioridade</span>;
   }
 
   const variant =
@@ -21,5 +21,9 @@ export function PriorityBadge({ priority }: { priority?: string | null }) {
           ? "secondary"
           : "outline";
 
-  return <Badge variant={variant}>{PRIORITY_LABEL[priority] ?? priority}</Badge>;
+  return (
+    <Badge variant={variant} className="h-6 rounded-md px-2.5 text-[11px] font-semibold tracking-wide">
+      {PRIORITY_LABEL[priority] ?? priority}
+    </Badge>
+  );
 }
