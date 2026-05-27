@@ -94,7 +94,7 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Projeção mensal ({projection.year})</CardTitle>
           <CardDescription>
-            Entradas usam realizado quando disponível; gastos fixos usam realizado quando disponível; variáveis usam planejamento.
+            Projetado considera o orçamento variável inteiro. Parcial considera apenas o variável já realizado até agora.
           </CardDescription>
         </CardHeader>
         <CardContent className="px-0">

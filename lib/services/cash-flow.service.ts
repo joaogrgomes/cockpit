@@ -111,7 +111,8 @@ export async function getCashFlowProjection(
   const settings = await getCashFlowSettings();
   const yearFilter = `${year}-%`;
 
-  const [activeIncomes, activeExpenses, incomeRows, fixedExpenseRows] = await Promise.all([
+  const [activeIncomes, activeExpenses, incomeRows, fixedExpenseRows, variableExpenseRows] =
+    await Promise.all([
     db
       .select({ amount: monthlyIncomes.amount })
       .from(monthlyIncomes)
@@ -128,24 +129,41 @@ export async function getCashFlowProjection(
       .from(monthlyIncomeEntries)
       .where(like(monthlyIncomeEntries.periodMonth, yearFilter))
       .groupBy(monthlyIncomeEntries.periodMonth),
-    db
-      .select({
-        periodMonth: monthlyExpenseEntries.periodMonth,
-        totalAmount: sql<number>`coalesce(sum(${monthlyExpenseEntries.amount}), 0)`,
-      })
-      .from(monthlyExpenseEntries)
-      .innerJoin(
-        monthlyExpenses,
-        eq(monthlyExpenseEntries.monthlyExpenseId, monthlyExpenses.id)
-      )
-      .where(
-        and(
-          like(monthlyExpenseEntries.periodMonth, yearFilter),
-          eq(monthlyExpenses.expenseType, "fixo")
+      db
+        .select({
+          periodMonth: monthlyExpenseEntries.periodMonth,
+          totalAmount: sql<number>`coalesce(sum(${monthlyExpenseEntries.amount}), 0)`,
+        })
+        .from(monthlyExpenseEntries)
+        .innerJoin(
+          monthlyExpenses,
+          eq(monthlyExpenseEntries.monthlyExpenseId, monthlyExpenses.id)
         )
-      )
-      .groupBy(monthlyExpenseEntries.periodMonth),
-  ]);
+        .where(
+          and(
+            like(monthlyExpenseEntries.periodMonth, yearFilter),
+            eq(monthlyExpenses.expenseType, "fixo")
+          )
+        )
+        .groupBy(monthlyExpenseEntries.periodMonth),
+      db
+        .select({
+          periodMonth: monthlyExpenseEntries.periodMonth,
+          totalAmount: sql<number>`coalesce(sum(${monthlyExpenseEntries.amount}), 0)`,
+        })
+        .from(monthlyExpenseEntries)
+        .innerJoin(
+          monthlyExpenses,
+          eq(monthlyExpenseEntries.monthlyExpenseId, monthlyExpenses.id)
+        )
+        .where(
+          and(
+            like(monthlyExpenseEntries.periodMonth, yearFilter),
+            eq(monthlyExpenses.expenseType, "variavel")
+          )
+        )
+        .groupBy(monthlyExpenseEntries.periodMonth),
+    ]);
 
   const plannedIncomesTotal = activeIncomes.reduce((acc, row) => acc + row.amount, 0);
 
@@ -168,6 +186,10 @@ export async function getCashFlowProjection(
     fixedExpenseRows.map((row) => [row.periodMonth, toNumber(row.totalAmount)])
   );
 
+  const actualVariableExpensesByMonth = Object.fromEntries(
+    variableExpenseRows.map((row) => [row.periodMonth, toNumber(row.totalAmount)])
+  );
+
   const projection = calculateCashFlowProjection({
     year,
     startMonth: settings.startMonth,
@@ -177,6 +199,7 @@ export async function getCashFlowProjection(
     plannedFixedExpensesTotal,
     actualFixedExpensesByMonth,
     plannedVariableExpensesTotal,
+    actualVariableExpensesByMonth,
   });
 
   return {

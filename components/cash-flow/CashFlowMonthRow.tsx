@@ -35,25 +35,61 @@ export function CashFlowMonthRow({ month }: CashFlowMonthRowProps) {
     );
   }
 
-  const resultClassName = month.monthlyResult < 0 ? "text-destructive" : "text-emerald-700 dark:text-emerald-300";
-  const closingClassName = month.closingBalance < 0 ? "text-destructive" : "text-foreground";
+  const projectedResultClassName =
+    month.monthlyResult < 0 ? "text-destructive" : "text-emerald-700 dark:text-emerald-300";
+  const partialResultClassName =
+    month.partialMonthlyResult < 0
+      ? "text-destructive"
+      : "text-emerald-700 dark:text-emerald-300";
+  const projectedClosingClassName =
+    month.closingBalance < 0 ? "text-destructive" : "text-foreground";
+  const partialClosingClassName =
+    month.partialClosingBalance < 0 ? "text-destructive" : "text-foreground";
+  const remainingVariableClassName =
+    month.remainingVariableBudget < 0
+      ? "text-destructive"
+      : "text-emerald-700 dark:text-emerald-300";
 
   return (
     <TableRow className={month.closingBalance < 0 ? "border-border/70 bg-destructive/5" : "border-border/70 hover:bg-muted/25"}>
       <TableCell className="font-medium">{month.monthLabel}</TableCell>
       <TableCell>{formatBRL(month.openingBalance)}</TableCell>
-      <TableCell>{formatBRL(month.incomeUsed)}</TableCell>
       <TableCell>
-        <SourceBadge source={month.incomeSource} />
+        <div className="space-y-1">
+          <p>{formatBRL(month.incomeUsed)}</p>
+          <SourceBadge source={month.incomeSource} />
+        </div>
       </TableCell>
-      <TableCell>{formatBRL(month.fixedExpensesUsed)}</TableCell>
       <TableCell>
-        <SourceBadge source={month.fixedExpenseSource} />
+        <div className="space-y-1">
+          <p>{formatBRL(month.fixedExpensesUsed)}</p>
+          <SourceBadge source={month.fixedExpenseSource} />
+        </div>
       </TableCell>
-      <TableCell>{formatBRL(month.variableExpensesUsed)}</TableCell>
-      <TableCell>{formatBRL(month.totalExpenses)}</TableCell>
-      <TableCell className={`font-medium ${resultClassName}`}>{formatBRL(month.monthlyResult)}</TableCell>
-      <TableCell className={`font-semibold ${closingClassName}`}>{formatBRL(month.closingBalance)}</TableCell>
+      <TableCell>{formatBRL(month.plannedVariableExpenses)}</TableCell>
+      <TableCell>{formatBRL(month.actualVariableExpenses)}</TableCell>
+      <TableCell>
+        <div className="space-y-1">
+          <p className={`font-medium ${remainingVariableClassName}`}>
+            {formatBRL(month.remainingVariableBudget)}
+          </p>
+          {month.variableBudgetStatus === "estourado" ? (
+            <Badge variant="destructive">Estourado</Badge>
+          ) : null}
+        </div>
+      </TableCell>
+      <TableCell className={`font-medium ${projectedResultClassName}`}>
+        {formatBRL(month.monthlyResult)}
+      </TableCell>
+      <TableCell className={`font-medium ${partialResultClassName}`}>
+        {formatBRL(month.partialMonthlyResult)}
+      </TableCell>
+      <TableCell className={`font-semibold ${projectedClosingClassName}`}>
+        {formatBRL(month.closingBalance)}
+      </TableCell>
+      <TableCell className={`font-medium ${partialClosingClassName}`}>
+        {formatBRL(month.partialClosingBalance)}
+      </TableCell>
     </TableRow>
   );
 }
