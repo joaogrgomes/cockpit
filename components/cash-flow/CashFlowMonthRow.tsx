@@ -28,7 +28,7 @@ export function CashFlowMonthRow({ month }: CashFlowMonthRowProps) {
     return (
       <TableRow className="border-border/70 bg-muted/20">
         <TableCell className="font-medium">{month.monthLabel}</TableCell>
-        <TableCell colSpan={10} className="text-sm text-muted-foreground">
+        <TableCell colSpan={11} className="text-sm text-muted-foreground">
           Antes do início da projeção
         </TableCell>
       </TableRow>
@@ -53,7 +53,16 @@ export function CashFlowMonthRow({ month }: CashFlowMonthRowProps) {
   return (
     <TableRow className={month.closingBalance < 0 ? "border-border/70 bg-destructive/5" : "border-border/70 hover:bg-muted/25"}>
       <TableCell className="font-medium">{month.monthLabel}</TableCell>
-      <TableCell>{formatBRL(month.openingBalance)}</TableCell>
+      <TableCell>
+        <div className="space-y-1">
+          <p>{formatBRL(month.openingBalance)}</p>
+          {month.partialOpeningBalance !== month.openingBalance ? (
+            <p className="text-xs text-muted-foreground">
+              Parcial: {formatBRL(month.partialOpeningBalance)}
+            </p>
+          ) : null}
+        </div>
+      </TableCell>
       <TableCell>
         <div className="space-y-1">
           <p>{formatBRL(month.incomeUsed)}</p>
@@ -88,7 +97,12 @@ export function CashFlowMonthRow({ month }: CashFlowMonthRowProps) {
         {formatBRL(month.closingBalance)}
       </TableCell>
       <TableCell className={`font-medium ${partialClosingClassName}`}>
-        {formatBRL(month.partialClosingBalance)}
+        <div className="space-y-1">
+          <p>{formatBRL(month.partialClosingBalance)}</p>
+          {!month.hasActualVariableExpenses ? (
+            <p className="text-xs text-muted-foreground">Sem variável realizado no mês</p>
+          ) : null}
+        </div>
       </TableCell>
     </TableRow>
   );

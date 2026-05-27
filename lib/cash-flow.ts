@@ -5,6 +5,7 @@ export type CashFlowMonth = {
   monthLabel: string;
   isBeforeStart: boolean;
   openingBalance: number;
+  partialOpeningBalance: number;
   plannedIncome: number;
   actualIncome: number;
   incomeUsed: number;
@@ -104,6 +105,7 @@ export function calculateCashFlowProjection(
 
   let hasStarted = false;
   let currentOpeningBalance = input.initialBalance;
+  let currentPartialOpeningBalance = input.initialBalance;
 
   const months: CashFlowMonth[] = monthsOfYear.map((periodMonth) => {
     const isBeforeStart = isMonthBefore(periodMonth, normalizedStartMonth);
@@ -114,6 +116,7 @@ export function calculateCashFlowProjection(
         monthLabel: getMonthLabel(periodMonth),
         isBeforeStart: true,
         openingBalance: 0,
+        partialOpeningBalance: 0,
         plannedIncome: input.plannedIncomesTotal,
         actualIncome: input.actualIncomesByMonth[periodMonth] ?? 0,
         incomeUsed: 0,
@@ -139,6 +142,7 @@ export function calculateCashFlowProjection(
 
     if (!hasStarted) {
       currentOpeningBalance = input.initialBalance;
+      currentPartialOpeningBalance = input.initialBalance;
       hasStarted = true;
     }
 
@@ -173,14 +177,15 @@ export function calculateCashFlowProjection(
       ? incomeUsed - partialTotalExpenses
       : monthlyResult;
     const partialClosingBalance = hasActualVariableExpenses
-      ? currentOpeningBalance + partialMonthlyResult
-      : closingBalance;
+      ? currentPartialOpeningBalance + partialMonthlyResult
+      : currentPartialOpeningBalance + partialMonthlyResult;
 
     const row: CashFlowMonth = {
       periodMonth,
       monthLabel: getMonthLabel(periodMonth),
       isBeforeStart: false,
       openingBalance: currentOpeningBalance,
+      partialOpeningBalance: currentPartialOpeningBalance,
       plannedIncome,
       actualIncome,
       incomeUsed,
@@ -204,6 +209,7 @@ export function calculateCashFlowProjection(
     };
 
     currentOpeningBalance = closingBalance;
+    currentPartialOpeningBalance = partialClosingBalance;
 
     return row;
   });

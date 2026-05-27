@@ -53,11 +53,15 @@ describe("calculateCashFlowProjection", () => {
     const feb = result.months[1];
 
     expect(jan.openingBalance).toBe(100000);
+    expect(jan.partialOpeningBalance).toBe(100000);
     expect(jan.monthlyResult).toBe(200000);
     expect(jan.closingBalance).toBe(300000);
+    expect(jan.partialClosingBalance).toBe(300000);
 
     expect(feb.openingBalance).toBe(300000);
+    expect(feb.partialOpeningBalance).toBe(300000);
     expect(feb.closingBalance).toBe(500000);
+    expect(feb.partialClosingBalance).toBe(500000);
   });
 
   it("usa realizado de entrada quando existe", () => {
@@ -192,7 +196,9 @@ describe("calculateCashFlowProjection", () => {
     expect(feb.hasActualVariableExpenses).toBe(false);
     expect(feb.partialTotalExpenses).toBe(feb.totalExpenses);
     expect(feb.partialMonthlyResult).toBe(feb.monthlyResult);
-    expect(feb.partialClosingBalance).toBe(feb.closingBalance);
+    expect(feb.partialMonthlyResult).toBe(200000);
+    expect(feb.partialOpeningBalance).toBe(result.months[0].partialClosingBalance);
+    expect(feb.partialClosingBalance).toBe(result.months[0].partialClosingBalance + 200000);
   });
 
   it("closingBalance projetado continua sendo base do mês seguinte", () => {
@@ -208,7 +214,44 @@ describe("calculateCashFlowProjection", () => {
     const feb = result.months[1];
 
     expect(feb.openingBalance).toBe(jan.closingBalance);
-    expect(feb.openingBalance).not.toBe(jan.partialClosingBalance);
+    expect(feb.partialOpeningBalance).toBe(jan.partialClosingBalance);
+    expect(feb.openingBalance).not.toBe(feb.partialOpeningBalance);
+  });
+
+  it("reproduz cenário real de maio/junho com encadeamento parcial correto", () => {
+    const result = calculateCashFlowProjection({
+      year: 2026,
+      startMonth: "2026-05",
+      initialBalance: 0,
+      plannedIncomesTotal: 1_000_000,
+      actualIncomesByMonth: {},
+      plannedFixedExpensesTotal: 400_000,
+      actualFixedExpensesByMonth: {},
+      plannedVariableExpensesTotal: 470_000,
+      actualVariableExpensesByMonth: {
+        "2026-05": 300_000,
+      },
+    });
+
+    const may = result.months.find((month) => month.periodMonth === "2026-05");
+    const june = result.months.find((month) => month.periodMonth === "2026-06");
+
+    expect(may).toBeDefined();
+    expect(june).toBeDefined();
+
+    if (!may || !june) return;
+
+    expect(may.monthlyResult).toBe(130_000);
+    expect(may.partialMonthlyResult).toBe(300_000);
+    expect(may.closingBalance).toBe(130_000);
+    expect(may.partialClosingBalance).toBe(300_000);
+
+    expect(june.openingBalance).toBe(130_000);
+    expect(june.partialOpeningBalance).toBe(300_000);
+    expect(june.monthlyResult).toBe(130_000);
+    expect(june.partialMonthlyResult).toBe(130_000);
+    expect(june.closingBalance).toBe(260_000);
+    expect(june.partialClosingBalance).toBe(430_000);
   });
 
   it("helper não quebra meses sem realizado", () => {

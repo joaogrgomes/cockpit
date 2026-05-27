@@ -35,7 +35,7 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
   const projection = await getCashFlowProjection(selectedYear);
 
   return (
-    <section className="space-y-6">
+    <section className="w-full max-w-none space-y-6">
       <PageHeader
         title="Fluxo de caixa"
         description="Projete seu saldo mês a mês combinando entradas, gastos e valores realizados."
@@ -97,10 +97,8 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
             Projetado considera o orçamento variável inteiro. Parcial considera apenas o variável já realizado até agora.
           </CardDescription>
         </CardHeader>
-        <CardContent className="px-0">
-          <div className="overflow-x-auto px-4">
-            <CashFlowTable months={projection.months} />
-          </div>
+        <CardContent className="w-full px-4 sm:px-6">
+          <CashFlowTable months={projection.months} />
         </CardContent>
       </Card>
     </section>
