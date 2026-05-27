@@ -8,6 +8,7 @@ import {
 } from "@/lib/db/schema";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const periodMonthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 const optionalPositiveInt = z.number().int().positive().optional();
 const PERCEIVED_RISK_VALUES = [
@@ -113,3 +114,22 @@ export const MonthlyExpenseSchema = z.object({
   notes: z.string().trim().min(1).nullish(),
   isActive: z.boolean().default(true),
 });
+
+export const MonthlyExpenseEntrySchema = z
+  .object({
+    monthlyExpenseId: z.string().uuid(),
+    periodMonth: z.string().regex(periodMonthRegex),
+    amount: z.number().int().positive(),
+    paidAt: z.string().regex(dateRegex),
+    paymentMethod: z.enum(PAYMENT_METHOD_VALUES).nullish(),
+    notes: z.string().trim().min(1).nullish(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.paidAt > todayIsoDate()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "paidAt não pode ser uma data futura",
+        path: ["paidAt"],
+      });
+    }
+  });

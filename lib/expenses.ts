@@ -10,6 +10,7 @@ export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   dividas: "Dívidas",
   transporte: "Transporte",
   alimentacao: "Alimentação",
+  esportes: "Esportes",
   reserva: "Reserva",
   doacoes: "Doações",
   lazer: "Lazer",

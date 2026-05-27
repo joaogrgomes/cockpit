@@ -1,0 +1,2 @@
+ALTER TABLE "monthly_expenses" DROP CONSTRAINT "monthly_expenses_category_valid";--> statement-breakpoint
+ALTER TABLE "monthly_expenses" ADD CONSTRAINT "monthly_expenses_category_valid" CHECK ("monthly_expenses"."category" IN ('moradia','dividas','transporte','alimentacao','esportes','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros'));

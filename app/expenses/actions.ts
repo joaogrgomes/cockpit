@@ -15,6 +15,11 @@ type ExpenseActionResult = {
   error?: string;
 };
 
+function revalidateExpensePages() {
+  revalidatePath("/expenses");
+  revalidatePath("/expenses/tracking");
+}
+
 function parseOptionalText(value: FormDataEntryValue | null): string | undefined {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
@@ -79,7 +84,7 @@ export async function createMonthlyExpenseAction(
   }
 
   await createMonthlyExpense(parsed.data);
-  revalidatePath("/expenses");
+  revalidateExpensePages();
 
   return { ok: true };
 }
@@ -102,7 +107,7 @@ export async function updateMonthlyExpenseAction(
     return { ok: false, error: "Gasto não encontrado" };
   }
 
-  revalidatePath("/expenses");
+  revalidateExpensePages();
   return { ok: true };
 }
 
@@ -119,7 +124,7 @@ export async function deleteMonthlyExpenseAction(
     return { ok: false, error: "Gasto não encontrado" };
   }
 
-  revalidatePath("/expenses");
+  revalidateExpensePages();
   return { ok: true };
 }
 
@@ -136,6 +141,6 @@ export async function toggleMonthlyExpenseActiveAction(
     return { ok: false, error: "Gasto não encontrado" };
   }
 
-  revalidatePath("/expenses");
+  revalidateExpensePages();
   return { ok: true };
 }

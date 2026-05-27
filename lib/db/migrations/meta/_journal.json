@@ -15,6 +15,20 @@
       "when": 1779835876570,
       "tag": "0001_rapid_puma",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1779848301603,
+      "tag": "0002_ancient_thaddeus_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779883470104,
+      "tag": "0003_magenta_hardball",
+      "breakpoints": true
     }
   ]
 }

@@ -6,6 +6,7 @@ import {
   PAYMENT_METHOD_VALUES,
   PROPOSAL_STATUS_VALUES,
   debts,
+  monthlyExpenseEntries,
   monthlyExpenses,
   debtProposals,
   debtValueUpdates,
@@ -22,6 +23,8 @@ export type NewDebtValueUpdate = InferInsertModel<typeof debtValueUpdates>;
 
 export type MonthlyExpense = InferSelectModel<typeof monthlyExpenses>;
 export type NewMonthlyExpense = InferInsertModel<typeof monthlyExpenses>;
+export type MonthlyExpenseEntry = InferSelectModel<typeof monthlyExpenseEntries>;
+export type NewMonthlyExpenseEntry = InferInsertModel<typeof monthlyExpenseEntries>;
 
 export type DebtStatus = (typeof DEBT_STATUS_VALUES)[number];
 export type DebtProposalStatus = (typeof PROPOSAL_STATUS_VALUES)[number];

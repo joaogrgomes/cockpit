@@ -3,6 +3,7 @@ import {
   DebtProposalSchema,
   DebtSchema,
   DebtValueUpdateSchema,
+  MonthlyExpenseEntrySchema,
   MonthlyExpenseSchema,
 } from "@/lib/validations";
 
@@ -207,7 +208,7 @@ describe("MonthlyExpenseSchema", () => {
   it("aceita dueDay e paymentMethod nulos", () => {
     const result = MonthlyExpenseSchema.safeParse({
       name: "Academia",
-      category: "saude",
+      category: "esportes",
       amount: 18000,
       expenseType: "fixo",
       dueDay: null,
@@ -229,6 +230,95 @@ describe("MonthlyExpenseSchema", () => {
       dueLabel: null,
       notes: null,
       isActive: false,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita categoria esportes", () => {
+    const result = MonthlyExpenseSchema.safeParse({
+      name: "Jiu-jitsu",
+      category: "esportes",
+      amount: 22000,
+      expenseType: "fixo",
+      isActive: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("MonthlyExpenseEntrySchema", () => {
+  it("aceita lançamento válido", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 12000,
+      paidAt: "2026-05-20",
+      paymentMethod: "pix",
+      notes: "Pagamento integral",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita amount <= 0", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 0,
+      paidAt: "2026-05-20",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita periodMonth inválido", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026/05",
+      amount: 1000,
+      paidAt: "2026-05-20",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita paymentMethod null", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 5000,
+      paidAt: "2026-05-20",
+      paymentMethod: null,
+      notes: "Sem método definido",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita paymentMethod inválido", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 5000,
+      paidAt: "2026-05-20",
+      paymentMethod: "credito_auto",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita notes null", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 5000,
+      paidAt: "2026-05-20",
+      paymentMethod: "boleto",
+      notes: null,
     });
 
     expect(result.success).toBe(true);

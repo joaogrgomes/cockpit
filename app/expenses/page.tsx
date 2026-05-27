@@ -80,8 +80,8 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
   return (
     <section className="space-y-6">
       <PageHeader
-        title="Gastos mensais"
-        description="Controle seus compromissos mensais e entenda quanto sua vida custa por mês."
+        title="Planejamento"
+        description="Cadastre seus gastos previstos e recorrentes para entender quanto sua vida custa por mês."
         actions={<MonthlyExpenseForm mode="create" action={createMonthlyExpenseAction} />}
       />
 

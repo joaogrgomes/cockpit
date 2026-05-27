@@ -33,6 +33,7 @@ export const EXPENSE_CATEGORY_VALUES = [
   "dividas",
   "transporte",
   "alimentacao",
+  "esportes",
   "reserva",
   "doacoes",
   "lazer",
@@ -176,7 +177,7 @@ export const monthlyExpenses = pgTable(
     ),
     check(
       "monthly_expenses_category_valid",
-      sql`${table.category} IN ('moradia','dividas','transporte','alimentacao','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
+      sql`${table.category} IN ('moradia','dividas','transporte','alimentacao','esportes','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
     ),
     check(
       "monthly_expenses_payment_method_valid",
@@ -184,5 +185,39 @@ export const monthlyExpenses = pgTable(
     ),
     index("idx_monthly_expenses_active_due_day").on(table.isActive, table.dueDay),
     index("idx_monthly_expenses_category_type").on(table.category, table.expenseType),
+  ]
+);
+
+export const monthlyExpenseEntries = pgTable(
+  "monthly_expense_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    monthlyExpenseId: uuid("monthly_expense_id")
+      .notNull()
+      .references(() => monthlyExpenses.id, { onDelete: "cascade" }),
+    periodMonth: text("period_month").notNull(),
+    amount: integer("amount").notNull(),
+    paidAt: date("paid_at").notNull(),
+    paymentMethod: text("payment_method"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("monthly_expense_entries_amount_positive", sql`${table.amount} > 0`),
+    check(
+      "monthly_expense_entries_period_month_valid",
+      sql`${table.periodMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
+    ),
+    check(
+      "monthly_expense_entries_payment_method_valid",
+      sql`${table.paymentMethod} IS NULL OR ${table.paymentMethod} IN ('pix','boleto','cartao','debito_em_conta','dinheiro','transferencia','outro')`
+    ),
+    index("idx_monthly_expense_entries_period_month").on(table.periodMonth),
+    index("idx_monthly_expense_entries_expense_period").on(
+      table.monthlyExpenseId,
+      table.periodMonth
+    ),
+    index("idx_monthly_expense_entries_paid_at").on(table.paidAt),
   ]
 );
