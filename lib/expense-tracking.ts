@@ -4,16 +4,25 @@ export type ExpenseTrackingStatus =
   | "concluido"
   | "estourado";
 
+export type ExpenseTrackingDisplayStatus =
+  | "pendente"
+  | "parcial"
+  | "concluido"
+  | "estourado"
+  | "pago";
+
 export type ExpenseTrackingEntryLike = {
   amount: number;
 };
 
 export type ExpenseTrackingItemLike = {
+  expenseType: string;
   category: string;
   plannedAmount: number;
   actualAmount: number;
   remainingAmount: number;
   status: ExpenseTrackingStatus;
+  isOverdue?: boolean;
 };
 
 export type ExpenseTrackingSummary = {
@@ -25,6 +34,7 @@ export type ExpenseTrackingSummary = {
   partialCount: number;
   completedCount: number;
   overBudgetCount: number;
+  overdueCount: number;
 };
 
 export type ExpenseTrackingCategorySummaryItem = {
@@ -35,6 +45,14 @@ export type ExpenseTrackingCategorySummaryItem = {
 };
 
 const PERIOD_MONTH_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
+
+function startOfDay(value: Date): Date {
+  return new Date(value.getFullYear(), value.getMonth(), value.getDate());
+}
+
+function getLastDayOfMonth(year: number, monthIndexZeroBased: number): number {
+  return new Date(year, monthIndexZeroBased + 1, 0).getDate();
+}
 
 export function getCurrentPeriodMonth(referenceDate: Date = new Date()): string {
   const year = referenceDate.getFullYear();
@@ -80,6 +98,99 @@ export function calcTrackingStatus(
   return "estourado";
 }
 
+export function calcTrackingStatusByExpenseType(
+  expenseType: string,
+  plannedAmount: number,
+  actualAmount: number
+): ExpenseTrackingStatus {
+  if (expenseType === "fixo") {
+    if (actualAmount === 0) {
+      return "pendente";
+    }
+
+    if (actualAmount > plannedAmount) {
+      return "estourado";
+    }
+
+    return "concluido";
+  }
+
+  return calcTrackingStatus(plannedAmount, actualAmount);
+}
+
+export function getTrackingDisplayStatus(
+  expenseType: string,
+  status: ExpenseTrackingStatus
+): ExpenseTrackingDisplayStatus {
+  if (expenseType === "fixo") {
+    if (status === "concluido") return "pago";
+    if (status === "estourado") return "estourado";
+    return "pendente";
+  }
+
+  return status;
+}
+
+export function getDueDateFromPeriodMonth(
+  periodMonth: string,
+  dueDay: number
+): Date | null {
+  if (!isValidPeriodMonth(periodMonth)) return null;
+  if (!Number.isInteger(dueDay) || dueDay < 1) return null;
+
+  const [yearText, monthText] = periodMonth.split("-");
+  const year = Number.parseInt(yearText, 10);
+  const month = Number.parseInt(monthText, 10);
+  if (Number.isNaN(year) || Number.isNaN(month)) return null;
+
+  const monthIndex = month - 1;
+  const maxDay = getLastDayOfMonth(year, monthIndex);
+  const clampedDay = Math.min(dueDay, maxDay);
+  return new Date(year, monthIndex, clampedDay);
+}
+
+export function isFixedExpenseOverdue(params: {
+  expenseType: string;
+  dueDay: number | null;
+  actualAmount: number;
+  periodMonth: string;
+  referenceDate?: Date;
+}): boolean {
+  const { expenseType, dueDay, actualAmount, periodMonth, referenceDate = new Date() } = params;
+
+  if (expenseType !== "fixo") return false;
+  if (typeof dueDay !== "number") return false;
+  if (actualAmount > 0) return false;
+
+  const dueDate = getDueDateFromPeriodMonth(periodMonth, dueDay);
+  if (!dueDate) return false;
+
+  return startOfDay(referenceDate).getTime() > startOfDay(dueDate).getTime();
+}
+
+export function getOverdueReason(dueDay: number | null): string | null {
+  if (typeof dueDay !== "number") return null;
+  return `Venceu no dia ${dueDay}`;
+}
+
+export function splitItemsByExpenseType<T extends { expenseType: string }>(items: T[]) {
+  const fixedItems: T[] = [];
+  const variableItems: T[] = [];
+
+  for (const item of items) {
+    if (item.expenseType === "fixo") {
+      fixedItems.push(item);
+      continue;
+    }
+
+    if (item.expenseType === "variavel") {
+      variableItems.push(item);
+    }
+  }
+
+  return { fixedItems, variableItems };
+}
+
 export function buildTrackingSummary(items: ExpenseTrackingItemLike[]): ExpenseTrackingSummary {
   let totalPlanned = 0;
   let totalActual = 0;
@@ -89,6 +200,7 @@ export function buildTrackingSummary(items: ExpenseTrackingItemLike[]): ExpenseT
   let partialCount = 0;
   let completedCount = 0;
   let overBudgetCount = 0;
+  let overdueCount = 0;
 
   for (const item of items) {
     totalPlanned += item.plannedAmount;
@@ -105,6 +217,10 @@ export function buildTrackingSummary(items: ExpenseTrackingItemLike[]): ExpenseT
       overBudgetCount += 1;
       totalOverBudget += Math.abs(item.remainingAmount);
     }
+
+    if (item.isOverdue) {
+      overdueCount += 1;
+    }
   }
 
   return {
@@ -116,6 +232,7 @@ export function buildTrackingSummary(items: ExpenseTrackingItemLike[]): ExpenseT
     partialCount,
     completedCount,
     overBudgetCount,
+    overdueCount,
   };
 }
 

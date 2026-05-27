@@ -17,6 +17,7 @@ type ExpenseEntryActionResult = {
 type ExpenseTrackingTableProps = {
   periodMonth: string;
   items: ExpenseTrackingItemView[];
+  emptyMessage?: string;
   createAction: (formData: FormData) => Promise<ExpenseEntryActionResult>;
   deleteAction: (formData: FormData) => Promise<ExpenseEntryActionResult>;
 };
@@ -24,6 +25,7 @@ type ExpenseTrackingTableProps = {
 export function ExpenseTrackingTable({
   periodMonth,
   items,
+  emptyMessage = "Nenhum gasto ativo encontrado para acompanhamento.",
   createAction,
   deleteAction,
 }: ExpenseTrackingTableProps) {
@@ -46,7 +48,7 @@ export function ExpenseTrackingTable({
         {items.length === 0 ? (
           <TableRow>
             <TableCell colSpan={9} className="py-8 text-center text-muted-foreground">
-              Nenhum gasto ativo encontrado para acompanhamento.
+              {emptyMessage}
             </TableCell>
           </TableRow>
         ) : (

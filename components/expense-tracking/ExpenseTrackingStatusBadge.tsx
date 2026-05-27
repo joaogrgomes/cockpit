@@ -1,19 +1,20 @@
 import { Badge } from "@/components/ui/badge";
-import type { ExpenseTrackingStatus } from "@/lib/expense-tracking";
+import type { ExpenseTrackingDisplayStatus } from "@/lib/expense-tracking";
 
 type ExpenseTrackingStatusBadgeProps = {
-  status: ExpenseTrackingStatus;
+  status: ExpenseTrackingDisplayStatus;
 };
 
-const STATUS_LABELS: Record<ExpenseTrackingStatus, string> = {
+const STATUS_LABELS: Record<ExpenseTrackingDisplayStatus, string> = {
   pendente: "Pendente",
   parcial: "Parcial",
   concluido: "Concluído",
   estourado: "Estourado",
+  pago: "Pago",
 };
 
 export function ExpenseTrackingStatusBadge({ status }: ExpenseTrackingStatusBadgeProps) {
-  if (status === "concluido") {
+  if (status === "concluido" || status === "pago") {
     return (
       <Badge className="bg-emerald-100 text-emerald-900 dark:bg-emerald-900/30 dark:text-emerald-200">
         {STATUS_LABELS[status]}

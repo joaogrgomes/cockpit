@@ -3,9 +3,9 @@ import { ExpenseTrackingSummaryByCategory } from "@/components/expense-tracking/
 import { ExpenseTrackingTable } from "@/components/expense-tracking/ExpenseTrackingTable";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
-import { normalizePeriodMonth } from "@/lib/expense-tracking";
+import { normalizePeriodMonth, type ExpenseTrackingSummary } from "@/lib/expense-tracking";
 import { getExpenseTrackingByPeriod } from "@/lib/services/monthly-expense-entry.service";
 import {
   createMonthlyExpenseEntryAction,
@@ -18,6 +18,61 @@ type ExpenseTrackingPageProps = {
   searchParams?: Promise<{ month?: string }>;
 };
 
+function SummaryGrid({
+  summary,
+  mode = "general",
+}: {
+  summary: ExpenseTrackingSummary;
+  mode?: "general" | "fixed" | "variable";
+}) {
+  const pendingDescription =
+    mode === "fixed"
+      ? `Pagos: ${summary.completedCount}`
+      : `Parcial: ${summary.partialCount} • Concluído: ${summary.completedCount}`;
+
+  const baseCards = [
+    <MetricCard
+      key="planned"
+      title="Planejado"
+      value={formatBRL(summary.totalPlanned)}
+    />,
+    <MetricCard
+      key="actual"
+      title="Realizado"
+      value={formatBRL(summary.totalActual)}
+    />,
+    <MetricCard
+      key="remaining"
+      title="Restante"
+      value={formatBRL(summary.totalRemaining)}
+    />,
+    <MetricCard
+      key="over"
+      title="Estourado"
+      value={formatBRL(summary.totalOverBudget)}
+      description={`${summary.overBudgetCount} item(ns) estourado(s)`}
+    />,
+    <MetricCard
+      key="pending"
+      title="Pendentes"
+      value={String(summary.pendingCount)}
+      description={pendingDescription}
+    />,
+  ];
+
+  if (mode === "fixed") {
+    baseCards.push(
+      <MetricCard
+        key="overdue"
+        title="Atrasados"
+        value={String(summary.overdueCount)}
+      />
+    );
+  }
+
+  return <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">{baseCards}</div>;
+}
+
 export default async function ExpenseTrackingPage({
   searchParams,
 }: ExpenseTrackingPageProps) {
@@ -28,7 +83,7 @@ export default async function ExpenseTrackingPage({
   return (
     <section className="space-y-6">
       <PageHeader
-        title="Mês atual"
+        title="Acompanhamento"
         description="Acompanhe o que já foi pago ou gasto no mês selecionado."
       />
 
@@ -57,40 +112,50 @@ export default async function ExpenseTrackingPage({
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <MetricCard
-          title="Planejado no mês"
-          value={formatBRL(tracking.summary.totalPlanned)}
-        />
-        <MetricCard
-          title="Realizado até agora"
-          value={formatBRL(tracking.summary.totalActual)}
-        />
-        <MetricCard
-          title="Restante"
-          value={formatBRL(tracking.summary.totalRemaining)}
-        />
-        <MetricCard
-          title="Estourado"
-          value={formatBRL(tracking.summary.totalOverBudget)}
-          description={`${tracking.summary.overBudgetCount} item(ns) estourado(s)`}
-        />
-        <MetricCard
-          title="Pendentes"
-          value={String(tracking.summary.pendingCount)}
-          description={`Parcial: ${tracking.summary.partialCount} • Concluído: ${tracking.summary.completedCount}`}
-        />
-      </div>
+      <Card className="border-border/80 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Consolidado total</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SummaryGrid summary={tracking.summary} />
+        </CardContent>
+      </Card>
 
       <Card className="border-border/80 shadow-sm">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base">Acompanhamento do mês</CardTitle>
+          <CardTitle className="text-base">Gastos fixos</CardTitle>
+          <CardDescription>
+            Contas e compromissos previstos para o mês.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="px-0">
-          <div className="overflow-x-auto px-4">
+        <CardContent className="space-y-4">
+          <SummaryGrid summary={tracking.fixedSummary} mode="fixed" />
+          <div className="overflow-x-auto">
             <ExpenseTrackingTable
               periodMonth={tracking.periodMonth}
-              items={tracking.items}
+              items={tracking.fixedItems}
+              emptyMessage="Nenhum gasto fixo ativo para este mês."
+              createAction={createMonthlyExpenseEntryAction}
+              deleteAction={deleteMonthlyExpenseEntryAction}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/80 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Gastos variáveis</CardTitle>
+          <CardDescription>
+            Limites e consumos acompanhados ao longo do mês.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <SummaryGrid summary={tracking.variableSummary} mode="variable" />
+          <div className="overflow-x-auto">
+            <ExpenseTrackingTable
+              periodMonth={tracking.periodMonth}
+              items={tracking.variableItems}
+              emptyMessage="Nenhum gasto variável ativo para este mês."
               createAction={createMonthlyExpenseEntryAction}
               deleteAction={deleteMonthlyExpenseEntryAction}
             />

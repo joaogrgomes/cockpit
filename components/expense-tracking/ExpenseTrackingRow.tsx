@@ -2,6 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
@@ -73,7 +74,14 @@ export function ExpenseTrackingRow({
           {formatBRL(item.remainingAmount)}
         </TableCell>
         <TableCell className="py-3">
-          <ExpenseTrackingStatusBadge status={item.status} />
+          <div className="flex flex-wrap items-center gap-2">
+            <ExpenseTrackingStatusBadge status={item.displayStatus} />
+            {item.isOverdue ? (
+              <Badge variant="destructive" title={item.overdueReason ?? undefined}>
+                Atrasado
+              </Badge>
+            ) : null}
+          </div>
         </TableCell>
         <TableCell className="py-3">
           <div className="flex flex-wrap gap-2">
@@ -83,34 +91,36 @@ export function ExpenseTrackingRow({
               action={createAction}
             />
 
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              disabled={isPendingQuick}
-              onClick={() => {
-                setQuickError(null);
-                startQuick(async () => {
-                  const formData = new FormData();
-                  formData.set("monthlyExpenseId", item.monthlyExpenseId);
-                  formData.set("periodMonth", periodMonth);
-                  formData.set("amount", String(item.plannedAmount));
-                  formData.set("paidAt", todayIsoDate());
-                  formData.set("paymentMethod", "");
-                  formData.set("notes", "");
+            {item.expenseType === "fixo" ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                disabled={isPendingQuick}
+                onClick={() => {
+                  setQuickError(null);
+                  startQuick(async () => {
+                    const formData = new FormData();
+                    formData.set("monthlyExpenseId", item.monthlyExpenseId);
+                    formData.set("periodMonth", periodMonth);
+                    formData.set("amount", String(item.plannedAmount));
+                    formData.set("paidAt", todayIsoDate());
+                    formData.set("paymentMethod", "");
+                    formData.set("notes", "");
 
-                  const result = await createAction(formData);
-                  if (!result.ok) {
-                    setQuickError(result.error ?? "Não foi possível registrar valor previsto.");
-                    return;
-                  }
+                    const result = await createAction(formData);
+                    if (!result.ok) {
+                      setQuickError(result.error ?? "Não foi possível registrar valor previsto.");
+                      return;
+                    }
 
-                  router.refresh();
-                });
-              }}
-            >
-              {isPendingQuick ? "Salvando..." : "Registrar valor previsto"}
-            </Button>
+                    router.refresh();
+                  });
+                }}
+              >
+                {isPendingQuick ? "Salvando..." : "Registrar valor previsto"}
+              </Button>
+            ) : null}
 
             <Button
               type="button"

@@ -6,9 +6,14 @@ import { monthlyExpenseEntries, monthlyExpenses } from "@/lib/db/schema";
 import {
   buildTrackingSummary,
   buildTrackingSummaryByCategory,
-  calcTrackingStatus,
+  calcTrackingStatusByExpenseType,
+  getOverdueReason,
+  getTrackingDisplayStatus,
+  isFixedExpenseOverdue,
+  splitItemsByExpenseType,
   sumEntryAmounts,
   type ExpenseTrackingCategorySummaryItem,
+  type ExpenseTrackingDisplayStatus,
   type ExpenseTrackingStatus,
   type ExpenseTrackingSummary,
 } from "@/lib/expense-tracking";
@@ -37,13 +42,20 @@ export type ExpenseTrackingItemView = {
   actualAmount: number;
   remainingAmount: number;
   status: ExpenseTrackingStatus;
+  displayStatus: ExpenseTrackingDisplayStatus;
+  isOverdue: boolean;
+  overdueReason: string | null;
   entries: ExpenseTrackingEntryView[];
 };
 
 export type ExpenseTrackingByPeriod = {
   periodMonth: string;
   summary: ExpenseTrackingSummary;
+  fixedSummary: ExpenseTrackingSummary;
+  variableSummary: ExpenseTrackingSummary;
   items: ExpenseTrackingItemView[];
+  fixedItems: ExpenseTrackingItemView[];
+  variableItems: ExpenseTrackingItemView[];
   summaryByCategory: ExpenseTrackingCategorySummaryItem[];
 };
 
@@ -151,7 +163,17 @@ export async function getExpenseTrackingByPeriod(
     const actualAmount = sumEntryAmounts(entries);
     const plannedAmount = expense.amount;
     const remainingAmount = plannedAmount - actualAmount;
-    const status = calcTrackingStatus(plannedAmount, actualAmount);
+    const status = calcTrackingStatusByExpenseType(
+      expense.expenseType,
+      plannedAmount,
+      actualAmount
+    );
+    const isOverdue = isFixedExpenseOverdue({
+      expenseType: expense.expenseType,
+      dueDay: expense.dueDay,
+      actualAmount,
+      periodMonth,
+    });
 
     return {
       monthlyExpenseId: expense.id,
@@ -163,17 +185,28 @@ export async function getExpenseTrackingByPeriod(
       actualAmount,
       remainingAmount,
       status,
+      displayStatus: getTrackingDisplayStatus(expense.expenseType, status),
+      isOverdue,
+      overdueReason: isOverdue ? getOverdueReason(expense.dueDay) : null,
       entries,
     };
   });
 
+  const { fixedItems, variableItems } = splitItemsByExpenseType(items);
+
   const summary = buildTrackingSummary(items);
+  const fixedSummary = buildTrackingSummary(fixedItems);
+  const variableSummary = buildTrackingSummary(variableItems);
   const summaryByCategory = buildTrackingSummaryByCategory(items);
 
   return {
     periodMonth,
     summary,
+    fixedSummary,
+    variableSummary,
     items,
+    fixedItems,
+    variableItems,
     summaryByCategory,
   };
 }
