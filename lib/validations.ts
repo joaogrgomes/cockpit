@@ -3,6 +3,8 @@ import {
   DEBT_STATUS_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
+  INCOME_CATEGORY_VALUES,
+  INCOME_PAYMENT_METHOD_VALUES,
   PAYMENT_METHOD_VALUES,
   PROPOSAL_STATUS_VALUES,
 } from "@/lib/db/schema";
@@ -130,6 +132,35 @@ export const MonthlyExpenseEntrySchema = z
         code: "custom",
         message: "paidAt não pode ser uma data futura",
         path: ["paidAt"],
+      });
+    }
+  });
+
+export const MonthlyIncomeSchema = z.object({
+  name: z.string().min(2),
+  category: z.enum(INCOME_CATEGORY_VALUES),
+  amount: z.number().int().positive(),
+  expectedDay: z.number().int().min(1).max(31).nullish(),
+  paymentMethod: z.enum(INCOME_PAYMENT_METHOD_VALUES).nullish(),
+  notes: z.string().trim().min(1).nullish(),
+  isActive: z.boolean().default(true),
+});
+
+export const MonthlyIncomeEntrySchema = z
+  .object({
+    monthlyIncomeId: z.string().uuid(),
+    periodMonth: z.string().regex(periodMonthRegex),
+    amount: z.number().int().positive(),
+    receivedAt: z.string().regex(dateRegex),
+    paymentMethod: z.enum(INCOME_PAYMENT_METHOD_VALUES).nullish(),
+    notes: z.string().trim().min(1).nullish(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.receivedAt > todayIsoDate()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "receivedAt não pode ser uma data futura",
+        path: ["receivedAt"],
       });
     }
   });

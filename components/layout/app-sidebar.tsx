@@ -6,6 +6,7 @@ import type { ComponentType } from "react";
 import {
   GaugeIcon,
   HandCoinsIcon,
+  LandmarkIcon,
   ListChecksIcon,
   WalletCardsIcon,
 } from "lucide-react";
@@ -25,6 +26,11 @@ import {
 const EXPENSE_NAV_ITEMS = [
   { href: "/expenses", label: "Planejamento", icon: WalletCardsIcon, exact: true },
   { href: "/expenses/tracking", label: "Acompanhamento", icon: WalletCardsIcon },
+];
+
+const INCOME_NAV_ITEMS = [
+  { href: "/incomes", label: "Planejamento", icon: LandmarkIcon, exact: true },
+  { href: "/incomes/tracking", label: "Acompanhamento", icon: LandmarkIcon },
 ];
 
 const DEBT_NAV_ITEMS = [
@@ -81,11 +87,12 @@ export function AppSidebar() {
       <SidebarHeader className="border-b border-sidebar-border px-3 py-4">
         <p className="text-sm font-semibold tracking-wide text-sidebar-foreground">Cockpit</p>
         <p className="text-xs text-sidebar-foreground/65">
-          Controle de dívidas e gastos
+          Controle de dívidas, gastos e entradas
         </p>
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-3">
+        {renderGroup("Entradas", INCOME_NAV_ITEMS)}
         {renderGroup("Gastos", EXPENSE_NAV_ITEMS)}
         {renderGroup("Dívidas", DEBT_NAV_ITEMS)}
       </SidebarContent>

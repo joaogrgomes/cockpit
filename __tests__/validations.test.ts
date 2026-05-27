@@ -3,6 +3,8 @@ import {
   DebtProposalSchema,
   DebtSchema,
   DebtValueUpdateSchema,
+  MonthlyIncomeEntrySchema,
+  MonthlyIncomeSchema,
   MonthlyExpenseEntrySchema,
   MonthlyExpenseSchema,
 } from "@/lib/validations";
@@ -322,5 +324,158 @@ describe("MonthlyExpenseEntrySchema", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+});
+
+describe("MonthlyIncomeSchema", () => {
+  it("aceita entrada planejada válida", () => {
+    const result = MonthlyIncomeSchema.safeParse({
+      name: "Salário CLT",
+      category: "salario",
+      amount: 650000,
+      isActive: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita amount <= 0", () => {
+    const result = MonthlyIncomeSchema.safeParse({
+      name: "Freela",
+      category: "freela",
+      amount: 0,
+      isActive: true,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita categoria inválida", () => {
+    const result = MonthlyIncomeSchema.safeParse({
+      name: "Entrada X",
+      category: "categoria_invalida",
+      amount: 10000,
+      isActive: true,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita expectedDay null", () => {
+    const result = MonthlyIncomeSchema.safeParse({
+      name: "Rendimento",
+      category: "rendimento",
+      amount: 30000,
+      expectedDay: null,
+      paymentMethod: null,
+      isActive: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita paymentMethod null", () => {
+    const result = MonthlyIncomeSchema.safeParse({
+      name: "Reembolso",
+      category: "reembolso",
+      amount: 10000,
+      paymentMethod: null,
+      isActive: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("MonthlyIncomeEntrySchema", () => {
+  it("aceita entry válida", () => {
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 120000,
+      receivedAt: "2026-05-10",
+      paymentMethod: "pix",
+      notes: "Recebimento parcial",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita periodMonth inválido", () => {
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026/05",
+      amount: 120000,
+      receivedAt: "2026-05-10",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita amount <= 0", () => {
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 0,
+      receivedAt: "2026-05-10",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita paymentMethod inválido", () => {
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 120000,
+      receivedAt: "2026-05-10",
+      paymentMethod: "boleto",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita notes null", () => {
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 120000,
+      receivedAt: "2026-05-10",
+      paymentMethod: "transferencia",
+      notes: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita paymentMethod null", () => {
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 120000,
+      receivedAt: "2026-05-10",
+      paymentMethod: null,
+      notes: "Sem método definido",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita receivedAt no futuro", () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowIso = tomorrow.toISOString().slice(0, 10);
+
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: "550e8400-e29b-41d4-a716-446655440000",
+      periodMonth: "2026-05",
+      amount: 120000,
+      receivedAt: tomorrowIso,
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
   });
 });

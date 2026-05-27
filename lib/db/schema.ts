@@ -59,6 +59,25 @@ export const PAYMENT_METHOD_VALUES = [
   "outro",
 ] as const;
 
+export const INCOME_CATEGORY_VALUES = [
+  "salario",
+  "freela",
+  "reembolso",
+  "beneficio",
+  "venda",
+  "rendimento",
+  "presente",
+  "outros",
+] as const;
+
+export const INCOME_PAYMENT_METHOD_VALUES = [
+  "pix",
+  "transferencia",
+  "deposito",
+  "dinheiro",
+  "outro",
+] as const;
+
 export const debts = pgTable(
   "debts",
   {
@@ -219,5 +238,72 @@ export const monthlyExpenseEntries = pgTable(
       table.periodMonth
     ),
     index("idx_monthly_expense_entries_paid_at").on(table.paidAt),
+  ]
+);
+
+export const monthlyIncomes = pgTable(
+  "monthly_incomes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    category: text("category").notNull(),
+    amount: integer("amount").notNull(),
+    expectedDay: integer("expected_day"),
+    paymentMethod: text("payment_method"),
+    notes: text("notes"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("monthly_incomes_amount_positive", sql`${table.amount} > 0`),
+    check(
+      "monthly_incomes_expected_day_valid",
+      sql`${table.expectedDay} IS NULL OR (${table.expectedDay} BETWEEN 1 AND 31)`
+    ),
+    check(
+      "monthly_incomes_category_valid",
+      sql`${table.category} IN ('salario','freela','reembolso','beneficio','venda','rendimento','presente','outros')`
+    ),
+    check(
+      "monthly_incomes_payment_method_valid",
+      sql`${table.paymentMethod} IS NULL OR ${table.paymentMethod} IN ('pix','transferencia','deposito','dinheiro','outro')`
+    ),
+    index("idx_monthly_incomes_active_expected_day").on(table.isActive, table.expectedDay),
+    index("idx_monthly_incomes_category").on(table.category),
+  ]
+);
+
+export const monthlyIncomeEntries = pgTable(
+  "monthly_income_entries",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    monthlyIncomeId: uuid("monthly_income_id")
+      .notNull()
+      .references(() => monthlyIncomes.id, { onDelete: "cascade" }),
+    periodMonth: text("period_month").notNull(),
+    amount: integer("amount").notNull(),
+    receivedAt: date("received_at").notNull(),
+    paymentMethod: text("payment_method"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("monthly_income_entries_amount_positive", sql`${table.amount} > 0`),
+    check(
+      "monthly_income_entries_period_month_valid",
+      sql`${table.periodMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
+    ),
+    check(
+      "monthly_income_entries_payment_method_valid",
+      sql`${table.paymentMethod} IS NULL OR ${table.paymentMethod} IN ('pix','transferencia','deposito','dinheiro','outro')`
+    ),
+    index("idx_monthly_income_entries_period_month").on(table.periodMonth),
+    index("idx_monthly_income_entries_income_period").on(
+      table.monthlyIncomeId,
+      table.periodMonth
+    ),
+    index("idx_monthly_income_entries_received_at").on(table.receivedAt),
   ]
 );

@@ -1,0 +1,998 @@
+{
+  "id": "833f5c8f-56de-4005-af53-6b87a17bf947",
+  "prevId": "4fcb6218-b395-4afd-8a9c-e3abfd379644",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.debt_proposals": {
+      "name": "debt_proposals",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "debt_id": {
+          "name": "debt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposed_value": {
+          "name": "proposed_value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proposed_at": {
+          "name": "proposed_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "origin": {
+          "name": "origin",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ativa'"
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_debt_proposals_debt_status": {
+          "name": "idx_debt_proposals_debt_status",
+          "columns": [
+            {
+              "expression": "debt_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "debt_proposals_debt_id_debts_id_fk": {
+          "name": "debt_proposals_debt_id_debts_id_fk",
+          "tableFrom": "debt_proposals",
+          "tableTo": "debts",
+          "columnsFrom": [
+            "debt_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "debt_proposals_proposed_value_positive": {
+          "name": "debt_proposals_proposed_value_positive",
+          "value": "\"debt_proposals\".\"proposed_value\" > 0"
+        },
+        "debt_proposals_expiry_valid": {
+          "name": "debt_proposals_expiry_valid",
+          "value": "\"debt_proposals\".\"expires_at\" IS NULL OR \"debt_proposals\".\"expires_at\" >= \"debt_proposals\".\"proposed_at\""
+        },
+        "debt_proposals_status_valid": {
+          "name": "debt_proposals_status_valid",
+          "value": "\"debt_proposals\".\"status\" IN ('ativa','expirada','recusada','aceita','substituida')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.debt_value_updates": {
+      "name": "debt_value_updates",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "debt_id": {
+          "name": "debt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_value": {
+          "name": "recorded_value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_debt_value_updates_debt_date": {
+          "name": "idx_debt_value_updates_debt_date",
+          "columns": [
+            {
+              "expression": "debt_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "recorded_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "debt_value_updates_debt_id_debts_id_fk": {
+          "name": "debt_value_updates_debt_id_debts_id_fk",
+          "tableFrom": "debt_value_updates",
+          "tableTo": "debts",
+          "columnsFrom": [
+            "debt_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "debt_value_updates_recorded_value_positive": {
+          "name": "debt_value_updates_recorded_value_positive",
+          "value": "\"debt_value_updates\".\"recorded_value\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.debts": {
+      "name": "debts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "creditor": {
+          "name": "creditor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'em_aberto'"
+        },
+        "current_value": {
+          "name": "current_value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "original_value": {
+          "name": "original_value",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "monthly_payment": {
+          "name": "monthly_payment",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "due_day": {
+          "name": "due_day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "due_date": {
+          "name": "due_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "total_installments": {
+          "name": "total_installments",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "paid_installments": {
+          "name": "paid_installments",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "overdue_since": {
+          "name": "overdue_since",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "priority": {
+          "name": "priority",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "perceived_risk": {
+          "name": "perceived_risk",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tags": {
+          "name": "tags",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "last_updated_at": {
+          "name": "last_updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_debts_status": {
+          "name": "idx_debts_status",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "debts_current_value_positive": {
+          "name": "debts_current_value_positive",
+          "value": "\"debts\".\"current_value\" > 0"
+        },
+        "debts_original_value_positive": {
+          "name": "debts_original_value_positive",
+          "value": "\"debts\".\"original_value\" IS NULL OR \"debts\".\"original_value\" > 0"
+        },
+        "debts_monthly_payment_positive": {
+          "name": "debts_monthly_payment_positive",
+          "value": "\"debts\".\"monthly_payment\" IS NULL OR \"debts\".\"monthly_payment\" > 0"
+        },
+        "debts_due_day_valid": {
+          "name": "debts_due_day_valid",
+          "value": "\"debts\".\"due_day\" IS NULL OR (\"debts\".\"due_day\" BETWEEN 1 AND 31)"
+        },
+        "debts_total_installments_positive": {
+          "name": "debts_total_installments_positive",
+          "value": "\"debts\".\"total_installments\" IS NULL OR \"debts\".\"total_installments\" > 0"
+        },
+        "debts_paid_installments_non_negative": {
+          "name": "debts_paid_installments_non_negative",
+          "value": "\"debts\".\"paid_installments\" IS NULL OR \"debts\".\"paid_installments\" >= 0"
+        },
+        "debts_paid_installments_valid": {
+          "name": "debts_paid_installments_valid",
+          "value": "\"debts\".\"paid_installments\" IS NULL OR \"debts\".\"total_installments\" IS NULL OR \"debts\".\"paid_installments\" <= \"debts\".\"total_installments\""
+        },
+        "debts_status_valid": {
+          "name": "debts_status_valid",
+          "value": "\"debts\".\"status\" IN ('em_aberto','em_atraso','em_negociacao','parcelada','quitada','suspensa')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.monthly_expense_entries": {
+      "name": "monthly_expense_entries",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "monthly_expense_id": {
+          "name": "monthly_expense_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_month": {
+          "name": "period_month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payment_method": {
+          "name": "payment_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_monthly_expense_entries_period_month": {
+          "name": "idx_monthly_expense_entries_period_month",
+          "columns": [
+            {
+              "expression": "period_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_monthly_expense_entries_expense_period": {
+          "name": "idx_monthly_expense_entries_expense_period",
+          "columns": [
+            {
+              "expression": "monthly_expense_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_monthly_expense_entries_paid_at": {
+          "name": "idx_monthly_expense_entries_paid_at",
+          "columns": [
+            {
+              "expression": "paid_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monthly_expense_entries_monthly_expense_id_monthly_expenses_id_fk": {
+          "name": "monthly_expense_entries_monthly_expense_id_monthly_expenses_id_fk",
+          "tableFrom": "monthly_expense_entries",
+          "tableTo": "monthly_expenses",
+          "columnsFrom": [
+            "monthly_expense_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "monthly_expense_entries_amount_positive": {
+          "name": "monthly_expense_entries_amount_positive",
+          "value": "\"monthly_expense_entries\".\"amount\" > 0"
+        },
+        "monthly_expense_entries_period_month_valid": {
+          "name": "monthly_expense_entries_period_month_valid",
+          "value": "\"monthly_expense_entries\".\"period_month\" ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'"
+        },
+        "monthly_expense_entries_payment_method_valid": {
+          "name": "monthly_expense_entries_payment_method_valid",
+          "value": "\"monthly_expense_entries\".\"payment_method\" IS NULL OR \"monthly_expense_entries\".\"payment_method\" IN ('pix','boleto','cartao','debito_em_conta','dinheiro','transferencia','outro')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.monthly_expenses": {
+      "name": "monthly_expenses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expense_type": {
+          "name": "expense_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payment_method": {
+          "name": "payment_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "due_day": {
+          "name": "due_day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "due_label": {
+          "name": "due_label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_monthly_expenses_active_due_day": {
+          "name": "idx_monthly_expenses_active_due_day",
+          "columns": [
+            {
+              "expression": "is_active",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "due_day",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_monthly_expenses_category_type": {
+          "name": "idx_monthly_expenses_category_type",
+          "columns": [
+            {
+              "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "expense_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "monthly_expenses_amount_positive": {
+          "name": "monthly_expenses_amount_positive",
+          "value": "\"monthly_expenses\".\"amount\" > 0"
+        },
+        "monthly_expenses_due_day_valid": {
+          "name": "monthly_expenses_due_day_valid",
+          "value": "\"monthly_expenses\".\"due_day\" IS NULL OR (\"monthly_expenses\".\"due_day\" BETWEEN 1 AND 31)"
+        },
+        "monthly_expenses_type_valid": {
+          "name": "monthly_expenses_type_valid",
+          "value": "\"monthly_expenses\".\"expense_type\" IN ('fixo','variavel')"
+        },
+        "monthly_expenses_category_valid": {
+          "name": "monthly_expenses_category_valid",
+          "value": "\"monthly_expenses\".\"category\" IN ('moradia','dividas','transporte','alimentacao','esportes','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')"
+        },
+        "monthly_expenses_payment_method_valid": {
+          "name": "monthly_expenses_payment_method_valid",
+          "value": "\"monthly_expenses\".\"payment_method\" IS NULL OR \"monthly_expenses\".\"payment_method\" IN ('pix','boleto','cartao','debito_em_conta','dinheiro','transferencia','outro')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.monthly_income_entries": {
+      "name": "monthly_income_entries",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "monthly_income_id": {
+          "name": "monthly_income_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "period_month": {
+          "name": "period_month",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payment_method": {
+          "name": "payment_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_monthly_income_entries_period_month": {
+          "name": "idx_monthly_income_entries_period_month",
+          "columns": [
+            {
+              "expression": "period_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_monthly_income_entries_income_period": {
+          "name": "idx_monthly_income_entries_income_period",
+          "columns": [
+            {
+              "expression": "monthly_income_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "period_month",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_monthly_income_entries_received_at": {
+          "name": "idx_monthly_income_entries_received_at",
+          "columns": [
+            {
+              "expression": "received_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "monthly_income_entries_monthly_income_id_monthly_incomes_id_fk": {
+          "name": "monthly_income_entries_monthly_income_id_monthly_incomes_id_fk",
+          "tableFrom": "monthly_income_entries",
+          "tableTo": "monthly_incomes",
+          "columnsFrom": [
+            "monthly_income_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "monthly_income_entries_amount_positive": {
+          "name": "monthly_income_entries_amount_positive",
+          "value": "\"monthly_income_entries\".\"amount\" > 0"
+        },
+        "monthly_income_entries_period_month_valid": {
+          "name": "monthly_income_entries_period_month_valid",
+          "value": "\"monthly_income_entries\".\"period_month\" ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'"
+        },
+        "monthly_income_entries_payment_method_valid": {
+          "name": "monthly_income_entries_payment_method_valid",
+          "value": "\"monthly_income_entries\".\"payment_method\" IS NULL OR \"monthly_income_entries\".\"payment_method\" IN ('pix','transferencia','deposito','dinheiro','outro')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.monthly_incomes": {
+      "name": "monthly_incomes",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "category": {
+          "name": "category",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount": {
+          "name": "amount",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expected_day": {
+          "name": "expected_day",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_method": {
+          "name": "payment_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_active": {
+          "name": "is_active",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "idx_monthly_incomes_active_expected_day": {
+          "name": "idx_monthly_incomes_active_expected_day",
+          "columns": [
+            {
+              "expression": "is_active",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "expected_day",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "idx_monthly_incomes_category": {
+          "name": "idx_monthly_incomes_category",
+          "columns": [
+            {
+              "expression": "category",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "monthly_incomes_amount_positive": {
+          "name": "monthly_incomes_amount_positive",
+          "value": "\"monthly_incomes\".\"amount\" > 0"
+        },
+        "monthly_incomes_expected_day_valid": {
+          "name": "monthly_incomes_expected_day_valid",
+          "value": "\"monthly_incomes\".\"expected_day\" IS NULL OR (\"monthly_incomes\".\"expected_day\" BETWEEN 1 AND 31)"
+        },
+        "monthly_incomes_category_valid": {
+          "name": "monthly_incomes_category_valid",
+          "value": "\"monthly_incomes\".\"category\" IN ('salario','freela','reembolso','beneficio','venda','rendimento','presente','outros')"
+        },
+        "monthly_incomes_payment_method_valid": {
+          "name": "monthly_incomes_payment_method_valid",
+          "value": "\"monthly_incomes\".\"payment_method\" IS NULL OR \"monthly_incomes\".\"payment_method\" IN ('pix','transferencia','deposito','dinheiro','outro')"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
