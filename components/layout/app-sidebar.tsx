@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
 import {
+  BarChart3Icon,
   GaugeIcon,
   HandCoinsIcon,
   LandmarkIcon,
@@ -37,6 +38,10 @@ const DEBT_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: GaugeIcon, exact: true },
   { href: "/debts", label: "Lista de dívidas", icon: HandCoinsIcon },
   { href: "/decision", label: "Decisão", icon: ListChecksIcon },
+];
+
+const CASH_FLOW_NAV_ITEMS = [
+  { href: "/cash-flow", label: "Fluxo de caixa", icon: BarChart3Icon, exact: true },
 ];
 
 export function AppSidebar() {
@@ -94,6 +99,7 @@ export function AppSidebar() {
       <SidebarContent className="px-2 py-3">
         {renderGroup("Entradas", INCOME_NAV_ITEMS)}
         {renderGroup("Gastos", EXPENSE_NAV_ITEMS)}
+        {renderGroup("Fluxo", CASH_FLOW_NAV_ITEMS)}
         {renderGroup("Dívidas", DEBT_NAV_ITEMS)}
       </SidebarContent>
 

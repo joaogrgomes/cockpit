@@ -164,3 +164,8 @@ export const MonthlyIncomeEntrySchema = z
       });
     }
   });
+
+export const CashFlowSettingsSchema = z.object({
+  startMonth: z.string().regex(periodMonthRegex),
+  initialBalance: z.number().int(),
+});

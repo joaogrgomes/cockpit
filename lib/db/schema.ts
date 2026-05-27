@@ -307,3 +307,20 @@ export const monthlyIncomeEntries = pgTable(
     index("idx_monthly_income_entries_received_at").on(table.receivedAt),
   ]
 );
+
+export const cashFlowSettings = pgTable(
+  "cash_flow_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    startMonth: text("start_month").notNull(),
+    initialBalance: integer("initial_balance").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "cash_flow_settings_start_month_valid",
+      sql`${table.startMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
+    ),
+  ]
+);

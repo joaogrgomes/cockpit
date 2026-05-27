@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CashFlowSettingsSchema,
   DebtProposalSchema,
   DebtSchema,
   DebtValueUpdateSchema,
@@ -474,6 +475,44 @@ describe("MonthlyIncomeEntrySchema", () => {
       amount: 120000,
       receivedAt: tomorrowIso,
       paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("CashFlowSettingsSchema", () => {
+  it("aceita saldo inicial positivo", () => {
+    const result = CashFlowSettingsSchema.safeParse({
+      startMonth: "2026-05",
+      initialBalance: 100000,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita saldo inicial zero", () => {
+    const result = CashFlowSettingsSchema.safeParse({
+      startMonth: "2026-05",
+      initialBalance: 0,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita saldo inicial negativo", () => {
+    const result = CashFlowSettingsSchema.safeParse({
+      startMonth: "2026-05",
+      initialBalance: -250000,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita startMonth inválido", () => {
+    const result = CashFlowSettingsSchema.safeParse({
+      startMonth: "2026/05",
+      initialBalance: 0,
     });
 
     expect(result.success).toBe(false);
