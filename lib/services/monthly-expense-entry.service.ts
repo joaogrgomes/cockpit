@@ -21,7 +21,15 @@ import type { MonthlyExpenseEntry, NewMonthlyExpenseEntry } from "@/types";
 
 export type MonthlyExpenseEntryCreateInput = Pick<
   NewMonthlyExpenseEntry,
-  "monthlyExpenseId" | "periodMonth" | "amount" | "paidAt" | "paymentMethod" | "notes"
+  | "monthlyExpenseId"
+  | "name"
+  | "category"
+  | "expenseType"
+  | "periodMonth"
+  | "amount"
+  | "paidAt"
+  | "paymentMethod"
+  | "notes"
 >;
 
 export type ExpenseTrackingEntryView = {
@@ -48,6 +56,17 @@ export type ExpenseTrackingItemView = {
   entries: ExpenseTrackingEntryView[];
 };
 
+export type ExpenseTrackingOneTimeEntryView = {
+  id: string;
+  name: string;
+  category: string;
+  expenseType: string;
+  amount: number;
+  paidAt: string;
+  paymentMethod: string | null;
+  notes: string | null;
+};
+
 export type ExpenseTrackingByPeriod = {
   periodMonth: string;
   summary: ExpenseTrackingSummary;
@@ -56,6 +75,7 @@ export type ExpenseTrackingByPeriod = {
   items: ExpenseTrackingItemView[];
   fixedItems: ExpenseTrackingItemView[];
   variableItems: ExpenseTrackingItemView[];
+  oneTimeEntries: ExpenseTrackingOneTimeEntryView[];
   summaryByCategory: ExpenseTrackingCategorySummaryItem[];
 };
 
@@ -104,7 +124,10 @@ export async function createMonthlyExpenseEntry(
   const result = await db
     .insert(monthlyExpenseEntries)
     .values({
-      monthlyExpenseId: input.monthlyExpenseId,
+      monthlyExpenseId: input.monthlyExpenseId ?? null,
+      name: input.name ?? null,
+      category: input.category ?? null,
+      expenseType: input.expenseType ?? null,
       periodMonth: input.periodMonth,
       amount: input.amount,
       paidAt: input.paidAt,
@@ -145,17 +168,34 @@ export async function getExpenseTrackingByPeriod(
   ]);
 
   const entriesByExpenseId = new Map<string, ExpenseTrackingEntryView[]>();
+  const oneTimeEntries: ExpenseTrackingOneTimeEntryView[] = [];
 
   for (const entry of periodEntries) {
-    const list = entriesByExpenseId.get(entry.monthlyExpenseId) ?? [];
-    list.push({
+    const normalizedEntry = {
       id: entry.id,
       amount: entry.amount,
       paidAt: toDateString(entry.paidAt),
       paymentMethod: entry.paymentMethod,
       notes: entry.notes,
+    };
+
+    if (entry.monthlyExpenseId) {
+      const list = entriesByExpenseId.get(entry.monthlyExpenseId) ?? [];
+      list.push(normalizedEntry);
+      entriesByExpenseId.set(entry.monthlyExpenseId, list);
+      continue;
+    }
+
+    if (!entry.name || !entry.category || !entry.expenseType) {
+      continue;
+    }
+
+    oneTimeEntries.push({
+      ...normalizedEntry,
+      name: entry.name,
+      category: entry.category,
+      expenseType: entry.expenseType,
     });
-    entriesByExpenseId.set(entry.monthlyExpenseId, list);
   }
 
   const items: ExpenseTrackingItemView[] = activeExpenses.map((expense) => {
@@ -193,11 +233,53 @@ export async function getExpenseTrackingByPeriod(
   });
 
   const { fixedItems, variableItems } = splitItemsByExpenseType(items);
+  const fixedOneTimeActual = sumEntryAmounts(
+    oneTimeEntries.filter((entry) => entry.expenseType === "fixo")
+  );
+  const variableOneTimeActual = sumEntryAmounts(
+    oneTimeEntries.filter((entry) => entry.expenseType === "variavel")
+  );
+  const oneTimeActual = fixedOneTimeActual + variableOneTimeActual;
 
-  const summary = buildTrackingSummary(items);
-  const fixedSummary = buildTrackingSummary(fixedItems);
-  const variableSummary = buildTrackingSummary(variableItems);
-  const summaryByCategory = buildTrackingSummaryByCategory(items);
+  const baseSummary = buildTrackingSummary(items);
+  const baseFixedSummary = buildTrackingSummary(fixedItems);
+  const baseVariableSummary = buildTrackingSummary(variableItems);
+
+  const summary: ExpenseTrackingSummary = {
+    ...baseSummary,
+    totalActual: baseSummary.totalActual + oneTimeActual,
+    totalRemaining: baseSummary.totalRemaining - oneTimeActual,
+  };
+  const fixedSummary: ExpenseTrackingSummary = {
+    ...baseFixedSummary,
+    totalActual: baseFixedSummary.totalActual + fixedOneTimeActual,
+    totalRemaining: baseFixedSummary.totalRemaining - fixedOneTimeActual,
+  };
+  const variableSummary: ExpenseTrackingSummary = {
+    ...baseVariableSummary,
+    totalActual: baseVariableSummary.totalActual + variableOneTimeActual,
+    totalRemaining: baseVariableSummary.totalRemaining - variableOneTimeActual,
+  };
+
+  const summaryByCategoryMap = new Map<string, ExpenseTrackingCategorySummaryItem>(
+    buildTrackingSummaryByCategory(items).map((row) => [row.category, { ...row }])
+  );
+  for (const oneTime of oneTimeEntries) {
+    const row = summaryByCategoryMap.get(oneTime.category) ?? {
+      category: oneTime.category,
+      plannedAmount: 0,
+      actualAmount: 0,
+      remainingAmount: 0,
+    };
+    row.actualAmount += oneTime.amount;
+    row.remainingAmount = row.plannedAmount - row.actualAmount;
+    summaryByCategoryMap.set(oneTime.category, row);
+  }
+  const summaryByCategory = [...summaryByCategoryMap.values()].sort((a, b) => {
+    const aWeight = a.plannedAmount + a.actualAmount;
+    const bWeight = b.plannedAmount + b.actualAmount;
+    return bWeight - aWeight;
+  });
 
   return {
     periodMonth,
@@ -207,6 +289,7 @@ export async function getExpenseTrackingByPeriod(
     items,
     fixedItems,
     variableItems,
+    oneTimeEntries,
     summaryByCategory,
   };
 }

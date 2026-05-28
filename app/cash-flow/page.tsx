@@ -99,6 +99,7 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
           <CardTitle className="text-base">Projeção mensal ({projection.year})</CardTitle>
           <CardDescription>
             Projetado considera o orçamento variável inteiro. Entradas futuras previstas somam no mês esperado.
+            Gastos futuros previstos também somam no mês esperado.
             Parcial considera apenas o variável já realizado até agora.
             Meses fechados usam valores realizados como verdade final.
           </CardDescription>

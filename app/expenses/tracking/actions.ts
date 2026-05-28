@@ -40,7 +40,10 @@ function parseMoneyToCents(value: FormDataEntryValue | null): number | undefined
 
 function parseEntryFormData(formData: FormData) {
   const payload = {
-    monthlyExpenseId: parseOptionalText(formData.get("monthlyExpenseId")) ?? "",
+    monthlyExpenseId: parseOptionalText(formData.get("monthlyExpenseId")) ?? null,
+    name: parseOptionalTextOrNull(formData.get("name")),
+    category: parseOptionalTextOrNull(formData.get("category")),
+    expenseType: parseOptionalTextOrNull(formData.get("expenseType")),
     periodMonth: parseOptionalText(formData.get("periodMonth")) ?? "",
     amount: parseMoneyToCents(formData.get("amount")) ?? 0,
     paidAt: parseOptionalText(formData.get("paidAt")) ?? "",
@@ -54,6 +57,8 @@ function parseEntryFormData(formData: FormData) {
 function revalidateExpensePages() {
   revalidatePath("/expenses");
   revalidatePath("/expenses/tracking");
+  revalidatePath("/cash-flow");
+  revalidatePath("/expenses/future");
 }
 
 export async function createMonthlyExpenseEntryAction(
@@ -65,6 +70,29 @@ export async function createMonthlyExpenseEntryAction(
   }
 
   await createMonthlyExpenseEntry(parsed.data);
+  revalidateExpensePages();
+
+  return { ok: true };
+}
+
+export async function createOneTimeExpenseEntryAction(
+  formData: FormData
+): Promise<ExpenseEntryActionResult> {
+  const mutableFormData = new FormData();
+  for (const [key, value] of formData.entries()) {
+    mutableFormData.set(key, value);
+  }
+  mutableFormData.set("monthlyExpenseId", "");
+
+  const parsed = parseEntryFormData(mutableFormData);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  await createMonthlyExpenseEntry({
+    ...parsed.data,
+    monthlyExpenseId: null,
+  });
   revalidateExpensePages();
 
   return { ok: true };

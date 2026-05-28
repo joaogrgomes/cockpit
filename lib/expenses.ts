@@ -1,9 +1,15 @@
 import {
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
+  FUTURE_EXPENSE_STATUS_VALUES,
   PAYMENT_METHOD_VALUES,
 } from "@/lib/db/schema";
-import type { ExpenseCategory, ExpenseType, PaymentMethod } from "@/types";
+import type {
+  ExpenseCategory,
+  ExpenseType,
+  FutureExpenseStatus,
+  PaymentMethod,
+} from "@/types";
 
 export const EXPENSE_CATEGORY_LABELS: Record<ExpenseCategory, string> = {
   moradia: "Moradia",
@@ -39,7 +45,18 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   outro: "Outro",
 };
 
-export { EXPENSE_CATEGORY_VALUES, EXPENSE_TYPE_VALUES, PAYMENT_METHOD_VALUES };
+export const FUTURE_EXPENSE_STATUS_LABELS: Record<FutureExpenseStatus, string> = {
+  previsto: "Previsto",
+  realizado: "Realizado",
+  cancelado: "Cancelado",
+};
+
+export {
+  EXPENSE_CATEGORY_VALUES,
+  EXPENSE_TYPE_VALUES,
+  FUTURE_EXPENSE_STATUS_VALUES,
+  PAYMENT_METHOD_VALUES,
+};
 
 export function getExpenseCategoryLabel(value: string): string {
   return EXPENSE_CATEGORY_LABELS[value as ExpenseCategory] ?? value;
@@ -52,4 +69,8 @@ export function getExpenseTypeLabel(value: string): string {
 export function getPaymentMethodLabel(value: string | null): string {
   if (!value) return "-";
   return PAYMENT_METHOD_LABELS[value as PaymentMethod] ?? value;
+}
+
+export function getFutureExpenseStatusLabel(value: string): string {
+  return FUTURE_EXPENSE_STATUS_LABELS[value as FutureExpenseStatus] ?? value;
 }

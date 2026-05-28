@@ -16,9 +16,11 @@ export type CashFlowMonth = {
   incomeSource: CashFlowSource;
   plannedFixedExpenses: number;
   actualFixedExpenses: number;
+  futureExpectedFixedExpenses: number;
   fixedExpensesUsed: number;
   fixedExpenseSource: CashFlowSource;
   plannedVariableExpenses: number;
+  futureExpectedVariableExpenses: number;
   variableExpensesUsed: number;
   actualVariableExpenses: number;
   remainingVariableBudget: number;
@@ -52,8 +54,10 @@ export type CashFlowProjectionInput = {
   closedMonths: Set<string> | string[];
   plannedFixedExpensesTotal: number;
   actualFixedExpensesByMonth: Record<string, number>;
+  futureExpectedFixedExpensesByMonth: Record<string, number>;
   plannedVariableExpensesTotal: number;
   actualVariableExpensesByMonth: Record<string, number>;
+  futureExpectedVariableExpensesByMonth: Record<string, number>;
 };
 
 export type CashFlowProjection = {
@@ -150,9 +154,13 @@ export function calculateCashFlowProjection(
         incomeSource: "planejado",
         plannedFixedExpenses: input.plannedFixedExpensesTotal,
         actualFixedExpenses: input.actualFixedExpensesByMonth[periodMonth] ?? 0,
+        futureExpectedFixedExpenses:
+          input.futureExpectedFixedExpensesByMonth[periodMonth] ?? 0,
         fixedExpensesUsed: 0,
         fixedExpenseSource: "planejado",
         plannedVariableExpenses: input.plannedVariableExpensesTotal,
+        futureExpectedVariableExpenses:
+          input.futureExpectedVariableExpensesByMonth[periodMonth] ?? 0,
         variableExpensesUsed: 0,
         actualVariableExpenses: 0,
         remainingVariableBudget: 0,
@@ -197,20 +205,27 @@ export function calculateCashFlowProjection(
 
     const plannedFixedExpenses = input.plannedFixedExpensesTotal;
     const actualFixedExpenses = input.actualFixedExpensesByMonth[periodMonth] ?? 0;
+    const futureExpectedFixedExpenses = isClosed
+      ? 0
+      : input.futureExpectedFixedExpensesByMonth[periodMonth] ?? 0;
     const fixedExpenseSource: CashFlowSource = isClosed
       ? "realizado"
       : actualFixedExpenses > 0
       ? "realizado"
       : "planejado";
-    const fixedExpensesUsed = isClosed
+    const baseFixedExpensesUsed = isClosed
       ? actualFixedExpenses
       : fixedExpenseSource === "realizado"
       ? actualFixedExpenses
       : plannedFixedExpenses;
+    const fixedExpensesUsed = baseFixedExpensesUsed + futureExpectedFixedExpenses;
 
+    const futureExpectedVariableExpenses = isClosed
+      ? 0
+      : input.futureExpectedVariableExpensesByMonth[periodMonth] ?? 0;
     const variableExpensesUsed = isClosed
       ? input.actualVariableExpensesByMonth[periodMonth] ?? 0
-      : input.plannedVariableExpensesTotal;
+      : input.plannedVariableExpensesTotal + futureExpectedVariableExpenses;
     const actualVariableExpenses = input.actualVariableExpensesByMonth[periodMonth] ?? 0;
     const remainingVariableBudget =
       input.plannedVariableExpensesTotal - actualVariableExpenses;
@@ -225,7 +240,7 @@ export function calculateCashFlowProjection(
     const partialTotalExpenses = isClosed
       ? totalExpenses
       : hasActualVariableExpenses
-      ? fixedExpensesUsed + actualVariableExpenses
+      ? fixedExpensesUsed + actualVariableExpenses + futureExpectedVariableExpenses
       : totalExpenses;
     const partialMonthlyResult = isClosed
       ? monthlyResult
@@ -253,9 +268,11 @@ export function calculateCashFlowProjection(
       incomeSource,
       plannedFixedExpenses,
       actualFixedExpenses,
+      futureExpectedFixedExpenses,
       fixedExpensesUsed,
       fixedExpenseSource,
       plannedVariableExpenses: input.plannedVariableExpensesTotal,
+      futureExpectedVariableExpenses,
       variableExpensesUsed,
       actualVariableExpenses,
       remainingVariableBudget,

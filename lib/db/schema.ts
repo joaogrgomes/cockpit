@@ -84,6 +84,12 @@ export const FUTURE_INCOME_STATUS_VALUES = [
   "cancelada",
 ] as const;
 
+export const FUTURE_EXPENSE_STATUS_VALUES = [
+  "previsto",
+  "realizado",
+  "cancelado",
+] as const;
+
 export const MONTHLY_CLOSING_STATUS_VALUES = ["closed"] as const;
 
 export const debts = pgTable(
@@ -219,9 +225,12 @@ export const monthlyExpenseEntries = pgTable(
   "monthly_expense_entries",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    monthlyExpenseId: uuid("monthly_expense_id")
-      .notNull()
-      .references(() => monthlyExpenses.id, { onDelete: "cascade" }),
+    monthlyExpenseId: uuid("monthly_expense_id").references(() => monthlyExpenses.id, {
+      onDelete: "cascade",
+    }),
+    name: text("name"),
+    category: text("category"),
+    expenseType: text("expense_type"),
     periodMonth: text("period_month").notNull(),
     amount: integer("amount").notNull(),
     paidAt: date("paid_at").notNull(),
@@ -240,12 +249,61 @@ export const monthlyExpenseEntries = pgTable(
       "monthly_expense_entries_payment_method_valid",
       sql`${table.paymentMethod} IS NULL OR ${table.paymentMethod} IN ('pix','boleto','cartao','debito_em_conta','dinheiro','transferencia','outro')`
     ),
+    check(
+      "monthly_expense_entries_category_valid",
+      sql`${table.category} IS NULL OR ${table.category} IN ('moradia','dividas','transporte','alimentacao','esportes','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
+    ),
+    check(
+      "monthly_expense_entries_type_valid",
+      sql`${table.expenseType} IS NULL OR ${table.expenseType} IN ('fixo','variavel')`
+    ),
+    check(
+      "monthly_expense_entries_requires_fields_when_unlinked",
+      sql`${table.monthlyExpenseId} IS NOT NULL OR (${table.name} IS NOT NULL AND ${table.category} IS NOT NULL AND ${table.expenseType} IS NOT NULL)`
+    ),
     index("idx_monthly_expense_entries_period_month").on(table.periodMonth),
     index("idx_monthly_expense_entries_expense_period").on(
       table.monthlyExpenseId,
       table.periodMonth
     ),
     index("idx_monthly_expense_entries_paid_at").on(table.paidAt),
+  ]
+);
+
+export const futureExpensePayables = pgTable(
+  "future_expense_payables",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    category: text("category").notNull(),
+    expenseType: text("expense_type").notNull(),
+    expectedAmount: integer("expected_amount").notNull(),
+    expectedDate: date("expected_date").notNull(),
+    status: text("status").notNull().default("previsto"),
+    realizedEntryId: uuid("realized_entry_id").references(() => monthlyExpenseEntries.id, {
+      onDelete: "set null",
+    }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("future_expense_payables_expected_amount_positive", sql`${table.expectedAmount} > 0`),
+    check(
+      "future_expense_payables_status_valid",
+      sql`${table.status} IN ('previsto','realizado','cancelado')`
+    ),
+    check(
+      "future_expense_payables_category_valid",
+      sql`${table.category} IN ('moradia','dividas','transporte','alimentacao','esportes','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
+    ),
+    check(
+      "future_expense_payables_type_valid",
+      sql`${table.expenseType} IN ('fixo','variavel')`
+    ),
+    index("idx_future_expense_payables_status_date").on(table.status, table.expectedDate),
+    index("idx_future_expense_payables_expected_date").on(table.expectedDate),
+    index("idx_future_expense_payables_category").on(table.category),
   ]
 );
 

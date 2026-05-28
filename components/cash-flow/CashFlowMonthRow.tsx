@@ -116,9 +116,23 @@ export function CashFlowMonthRow({
         <div className="space-y-1">
           <p>{formatBRL(month.fixedExpensesUsed)}</p>
           <SourceBadge source={month.fixedExpenseSource} />
+          {month.futureExpectedFixedExpenses > 0 && !month.isClosed ? (
+            <p className="text-xs text-muted-foreground">
+              Futuras: {formatBRL(month.futureExpectedFixedExpenses)}
+            </p>
+          ) : null}
         </div>
       </TableCell>
-      <TableCell>{formatBRL(month.plannedVariableExpenses)}</TableCell>
+      <TableCell>
+        <div className="space-y-1">
+          <p>{formatBRL(month.plannedVariableExpenses)}</p>
+          {month.futureExpectedVariableExpenses > 0 && !month.isClosed ? (
+            <p className="text-xs text-muted-foreground">
+              Futuras: {formatBRL(month.futureExpectedVariableExpenses)}
+            </p>
+          ) : null}
+        </div>
+      </TableCell>
       <TableCell>{formatBRL(month.actualVariableExpenses)}</TableCell>
       <TableCell>
         <div className="space-y-1">

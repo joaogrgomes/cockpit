@@ -50,8 +50,10 @@ describe("calculateCashFlowProjection", () => {
       closedMonths: new Set<string>(),
       plannedFixedExpensesTotal: 200000,
       actualFixedExpensesByMonth: {},
+      futureExpectedFixedExpensesByMonth: {},
       plannedVariableExpensesTotal: 100000,
       actualVariableExpensesByMonth: {},
+      futureExpectedVariableExpensesByMonth: {},
       ...overrides,
     };
   }
@@ -240,10 +242,12 @@ describe("calculateCashFlowProjection", () => {
       closedMonths: new Set<string>(),
       plannedFixedExpensesTotal: 400_000,
       actualFixedExpensesByMonth: {},
+      futureExpectedFixedExpensesByMonth: {},
       plannedVariableExpensesTotal: 470_000,
       actualVariableExpensesByMonth: {
         "2026-05": 300_000,
       },
+      futureExpectedVariableExpensesByMonth: {},
     });
 
     const may = result.months.find((month) => month.periodMonth === "2026-05");
@@ -427,8 +431,10 @@ describe("calculateCashFlowProjection", () => {
         futureExpectedIncomesByMonth: { "2026-01": 70000 },
         plannedFixedExpensesTotal: 200000,
         actualFixedExpensesByMonth: { "2026-01": 150000 },
+        futureExpectedFixedExpensesByMonth: { "2026-01": 90000 },
         plannedVariableExpensesTotal: 100000,
         actualVariableExpensesByMonth: { "2026-01": 50000 },
+        futureExpectedVariableExpensesByMonth: { "2026-01": 40000 },
         closedMonths: new Set(["2026-01"]),
       })
     );
@@ -504,8 +510,10 @@ describe("calculateCashFlowProjection", () => {
         actualOneTimeIncomesByMonth: { "2026-01": 0, "2026-02": 0 },
         plannedFixedExpensesTotal: 200000,
         actualFixedExpensesByMonth: { "2026-01": 100000, "2026-02": 0 },
+        futureExpectedFixedExpensesByMonth: {},
         plannedVariableExpensesTotal: 100000,
         actualVariableExpensesByMonth: { "2026-01": 50000, "2026-02": 0 },
+        futureExpectedVariableExpensesByMonth: {},
         closedMonths: ["2026-01"],
       })
     );
@@ -514,5 +522,60 @@ describe("calculateCashFlowProjection", () => {
     const feb = result.months[1];
     expect(jan.closingBalance).toBe(150000);
     expect(feb.openingBalance).toBe(150000);
+  });
+
+  it("gasto futuro previsto entra no mês correto e soma por fora", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedFixedExpensesTotal: 200000,
+        plannedVariableExpensesTotal: 100000,
+        futureExpectedFixedExpensesByMonth: { "2026-01": 50000 },
+        futureExpectedVariableExpensesByMonth: { "2026-01": 30000 },
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.futureExpectedFixedExpenses).toBe(50000);
+    expect(jan.futureExpectedVariableExpenses).toBe(30000);
+    expect(jan.fixedExpensesUsed).toBe(250000);
+    expect(jan.variableExpensesUsed).toBe(130000);
+  });
+
+  it("gasto futuro realizado não duplica no fluxo quando sai de previsto para realizado", () => {
+    const projected = calculateCashFlowProjection(
+      baseInput({
+        futureExpectedVariableExpensesByMonth: { "2026-01": 70000 },
+        actualVariableExpensesByMonth: { "2026-01": 0 },
+      })
+    );
+
+    const realized = calculateCashFlowProjection(
+      baseInput({
+        futureExpectedVariableExpensesByMonth: { "2026-01": 0 },
+        actualVariableExpensesByMonth: { "2026-01": 70000 },
+      })
+    );
+
+    expect(projected.months[0].variableExpensesUsed).toBe(170000);
+    expect(realized.months[0].variableExpensesUsed).toBe(100000);
+    expect(realized.months[0].actualVariableExpenses).toBe(70000);
+  });
+
+  it("mês fechado ignora gastos futuros previstos", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        actualFixedExpensesByMonth: { "2026-01": 100000 },
+        actualVariableExpensesByMonth: { "2026-01": 20000 },
+        futureExpectedFixedExpensesByMonth: { "2026-01": 50000 },
+        futureExpectedVariableExpensesByMonth: { "2026-01": 30000 },
+        closedMonths: ["2026-01"],
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.fixedExpensesUsed).toBe(100000);
+    expect(jan.variableExpensesUsed).toBe(20000);
+    expect(jan.futureExpectedFixedExpenses).toBe(0);
+    expect(jan.futureExpectedVariableExpenses).toBe(0);
   });
 });

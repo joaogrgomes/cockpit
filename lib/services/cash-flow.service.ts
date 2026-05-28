@@ -5,6 +5,7 @@ import { calculateCashFlowProjection, getCurrentPeriodMonth } from "@/lib/cash-f
 import { getDb } from "@/lib/db";
 import {
   cashFlowSettings,
+  futureExpensePayables,
   futureIncomeReceivables,
   monthlyClosings,
   monthlyExpenseEntries,
@@ -122,6 +123,8 @@ export async function getCashFlowProjection(
     closingRows,
     fixedExpenseRows,
     variableExpenseRows,
+    futureExpectedFixedExpenseRows,
+    futureExpectedVariableExpenseRows,
   ] =
     await Promise.all([
     db
@@ -176,40 +179,64 @@ export async function getCashFlowProjection(
       .select({ periodMonth: monthlyClosings.periodMonth })
       .from(monthlyClosings)
       .where(like(monthlyClosings.periodMonth, yearFilter)),
-      db
-        .select({
-          periodMonth: monthlyExpenseEntries.periodMonth,
-          totalAmount: sql<number>`coalesce(sum(${monthlyExpenseEntries.amount}), 0)`,
-        })
-        .from(monthlyExpenseEntries)
-        .innerJoin(
-          monthlyExpenses,
-          eq(monthlyExpenseEntries.monthlyExpenseId, monthlyExpenses.id)
+    db
+      .select({
+        periodMonth: monthlyExpenseEntries.periodMonth,
+        totalAmount: sql<number>`coalesce(sum(${monthlyExpenseEntries.amount}), 0)`,
+      })
+      .from(monthlyExpenseEntries)
+      .leftJoin(monthlyExpenses, eq(monthlyExpenseEntries.monthlyExpenseId, monthlyExpenses.id))
+      .where(
+        and(
+          like(monthlyExpenseEntries.periodMonth, yearFilter),
+          sql`coalesce(${monthlyExpenses.expenseType}, ${monthlyExpenseEntries.expenseType}) = 'fixo'`
         )
-        .where(
-          and(
-            like(monthlyExpenseEntries.periodMonth, yearFilter),
-            eq(monthlyExpenses.expenseType, "fixo")
-          )
+      )
+      .groupBy(monthlyExpenseEntries.periodMonth),
+    db
+      .select({
+        periodMonth: monthlyExpenseEntries.periodMonth,
+        totalAmount: sql<number>`coalesce(sum(${monthlyExpenseEntries.amount}), 0)`,
+      })
+      .from(monthlyExpenseEntries)
+      .leftJoin(monthlyExpenses, eq(monthlyExpenseEntries.monthlyExpenseId, monthlyExpenses.id))
+      .where(
+        and(
+          like(monthlyExpenseEntries.periodMonth, yearFilter),
+          sql`coalesce(${monthlyExpenses.expenseType}, ${monthlyExpenseEntries.expenseType}) = 'variavel'`
         )
-        .groupBy(monthlyExpenseEntries.periodMonth),
-      db
-        .select({
-          periodMonth: monthlyExpenseEntries.periodMonth,
-          totalAmount: sql<number>`coalesce(sum(${monthlyExpenseEntries.amount}), 0)`,
-        })
-        .from(monthlyExpenseEntries)
-        .innerJoin(
-          monthlyExpenses,
-          eq(monthlyExpenseEntries.monthlyExpenseId, monthlyExpenses.id)
+      )
+      .groupBy(monthlyExpenseEntries.periodMonth),
+    db
+      .select({
+        periodMonth: sql<string>`to_char(${futureExpensePayables.expectedDate}, 'YYYY-MM')`,
+        totalAmount: sql<number>`coalesce(sum(${futureExpensePayables.expectedAmount}), 0)`,
+      })
+      .from(futureExpensePayables)
+      .where(
+        and(
+          eq(futureExpensePayables.status, "previsto"),
+          eq(futureExpensePayables.expenseType, "fixo"),
+          sql`${futureExpensePayables.expectedDate} >= make_date(${year}, 1, 1)`,
+          sql`${futureExpensePayables.expectedDate} <= make_date(${year}, 12, 31)`
         )
-        .where(
-          and(
-            like(monthlyExpenseEntries.periodMonth, yearFilter),
-            eq(monthlyExpenses.expenseType, "variavel")
-          )
+      )
+      .groupBy(sql`to_char(${futureExpensePayables.expectedDate}, 'YYYY-MM')`),
+    db
+      .select({
+        periodMonth: sql<string>`to_char(${futureExpensePayables.expectedDate}, 'YYYY-MM')`,
+        totalAmount: sql<number>`coalesce(sum(${futureExpensePayables.expectedAmount}), 0)`,
+      })
+      .from(futureExpensePayables)
+      .where(
+        and(
+          eq(futureExpensePayables.status, "previsto"),
+          eq(futureExpensePayables.expenseType, "variavel"),
+          sql`${futureExpensePayables.expectedDate} >= make_date(${year}, 1, 1)`,
+          sql`${futureExpensePayables.expectedDate} <= make_date(${year}, 12, 31)`
         )
-        .groupBy(monthlyExpenseEntries.periodMonth),
+      )
+      .groupBy(sql`to_char(${futureExpensePayables.expectedDate}, 'YYYY-MM')`),
     ]);
 
   const plannedIncomesTotal = activeIncomes.reduce((acc, row) => acc + row.amount, 0);
@@ -244,6 +271,12 @@ export async function getCashFlowProjection(
   const actualVariableExpensesByMonth = Object.fromEntries(
     variableExpenseRows.map((row) => [row.periodMonth, toNumber(row.totalAmount)])
   );
+  const futureExpectedFixedExpensesByMonth = Object.fromEntries(
+    futureExpectedFixedExpenseRows.map((row) => [row.periodMonth, toNumber(row.totalAmount)])
+  );
+  const futureExpectedVariableExpensesByMonth = Object.fromEntries(
+    futureExpectedVariableExpenseRows.map((row) => [row.periodMonth, toNumber(row.totalAmount)])
+  );
 
   const projection = calculateCashFlowProjection({
     year,
@@ -256,8 +289,10 @@ export async function getCashFlowProjection(
     closedMonths: new Set(closingRows.map((row) => row.periodMonth)),
     plannedFixedExpensesTotal,
     actualFixedExpensesByMonth,
+    futureExpectedFixedExpensesByMonth,
     plannedVariableExpensesTotal,
     actualVariableExpensesByMonth,
+    futureExpectedVariableExpensesByMonth,
   });
 
   return {

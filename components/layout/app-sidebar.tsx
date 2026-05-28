@@ -27,6 +27,7 @@ import {
 const EXPENSE_NAV_ITEMS = [
   { href: "/expenses", label: "Planejamento", icon: WalletCardsIcon, exact: true },
   { href: "/expenses/tracking", label: "Acompanhamento", icon: WalletCardsIcon },
+  { href: "/expenses/future", label: "Futuras", icon: WalletCardsIcon },
 ];
 
 const INCOME_NAV_ITEMS = [

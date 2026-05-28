@@ -3,6 +3,7 @@ import {
   DEBT_STATUS_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
+  FUTURE_EXPENSE_STATUS_VALUES,
   FUTURE_INCOME_STATUS_VALUES,
   INCOME_CATEGORY_VALUES,
   INCOME_PAYMENT_METHOD_VALUES,
@@ -120,9 +121,66 @@ export const MonthlyExpenseSchema = z.object({
 
 export const MonthlyExpenseEntrySchema = z
   .object({
-    monthlyExpenseId: z.string().uuid(),
+    monthlyExpenseId: z.string().uuid().nullish(),
+    name: z.string().trim().min(2).nullish(),
+    category: z.enum(EXPENSE_CATEGORY_VALUES).nullish(),
+    expenseType: z.enum(EXPENSE_TYPE_VALUES).nullish(),
     periodMonth: z.string().regex(periodMonthRegex),
     amount: z.number().int().positive(),
+    paidAt: z.string().regex(dateRegex),
+    paymentMethod: z.enum(PAYMENT_METHOD_VALUES).nullish(),
+    notes: z.string().trim().min(1).nullish(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.monthlyExpenseId) {
+      if (!data.name) {
+        ctx.addIssue({
+          code: "custom",
+          message: "name é obrigatório para gasto avulso",
+          path: ["name"],
+        });
+      }
+
+      if (!data.category) {
+        ctx.addIssue({
+          code: "custom",
+          message: "category é obrigatório para gasto avulso",
+          path: ["category"],
+        });
+      }
+
+      if (!data.expenseType) {
+        ctx.addIssue({
+          code: "custom",
+          message: "expenseType é obrigatório para gasto avulso",
+          path: ["expenseType"],
+        });
+      }
+    }
+
+    if (data.paidAt > todayIsoDate()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "paidAt não pode ser uma data futura",
+        path: ["paidAt"],
+      });
+    }
+  });
+
+export const FutureExpensePayableSchema = z.object({
+  name: z.string().trim().min(2),
+  category: z.enum(EXPENSE_CATEGORY_VALUES),
+  expenseType: z.enum(EXPENSE_TYPE_VALUES),
+  expectedAmount: z.number().int().positive(),
+  expectedDate: z.string().regex(dateRegex),
+  status: z.enum(FUTURE_EXPENSE_STATUS_VALUES).default("previsto"),
+  notes: z.string().trim().min(1).nullish(),
+});
+
+export const MarkFutureExpenseAsRealizedSchema = z
+  .object({
+    futureExpenseId: z.string().uuid(),
+    realizedAmount: z.number().int().positive(),
     paidAt: z.string().regex(dateRegex),
     paymentMethod: z.enum(PAYMENT_METHOD_VALUES).nullish(),
     notes: z.string().trim().min(1).nullish(),

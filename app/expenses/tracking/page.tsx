@@ -1,6 +1,8 @@
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { ExpenseTrackingSummaryByCategory } from "@/components/expense-tracking/ExpenseTrackingSummaryByCategory";
 import { ExpenseTrackingTable } from "@/components/expense-tracking/ExpenseTrackingTable";
+import { OneTimeExpenseEntriesList } from "@/components/expense-tracking/OneTimeExpenseEntriesList";
+import { OneTimeExpenseEntryForm } from "@/components/expense-tracking/OneTimeExpenseEntryForm";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,6 +11,7 @@ import { normalizePeriodMonth, type ExpenseTrackingSummary } from "@/lib/expense
 import { isMonthClosed } from "@/lib/services/monthly-closing.service";
 import { getExpenseTrackingByPeriod } from "@/lib/services/monthly-expense-entry.service";
 import {
+  createOneTimeExpenseEntryAction,
   createMonthlyExpenseEntryAction,
   deleteMonthlyExpenseEntryAction,
 } from "./actions";
@@ -177,6 +180,27 @@ export default async function ExpenseTrackingPage({
               deleteAction={deleteMonthlyExpenseEntryAction}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/80 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Gastos avulsos</CardTitle>
+              <CardDescription>Saídas únicas registradas no mês selecionado.</CardDescription>
+            </div>
+            <OneTimeExpenseEntryForm
+              periodMonth={tracking.periodMonth}
+              action={createOneTimeExpenseEntryAction}
+            />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <OneTimeExpenseEntriesList
+            entries={tracking.oneTimeEntries}
+            deleteAction={deleteMonthlyExpenseEntryAction}
+          />
         </CardContent>
       </Card>
 

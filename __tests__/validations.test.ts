@@ -4,7 +4,9 @@ import {
   DebtProposalSchema,
   DebtSchema,
   DebtValueUpdateSchema,
+  FutureExpensePayableSchema,
   FutureIncomeReceivableSchema,
+  MarkFutureExpenseAsRealizedSchema,
   MarkFutureIncomeAsReceivedSchema,
   MonthlyClosingSchema,
   MonthlyIncomeEntrySchema,
@@ -255,7 +257,7 @@ describe("MonthlyExpenseSchema", () => {
 });
 
 describe("MonthlyExpenseEntrySchema", () => {
-  it("aceita lançamento válido", () => {
+  it("aceita lançamento vinculado válido", () => {
     const result = MonthlyExpenseEntrySchema.safeParse({
       monthlyExpenseId: "550e8400-e29b-41d4-a716-446655440000",
       periodMonth: "2026-05",
@@ -328,6 +330,118 @@ describe("MonthlyExpenseEntrySchema", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("aceita gasto avulso válido", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: null,
+      name: "Aniversário da Poli",
+      category: "familia",
+      expenseType: "variavel",
+      periodMonth: "2026-05",
+      amount: 150000,
+      paidAt: "2026-05-15",
+      paymentMethod: "pix",
+      notes: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita gasto avulso sem name", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: null,
+      category: "familia",
+      expenseType: "variavel",
+      periodMonth: "2026-05",
+      amount: 150000,
+      paidAt: "2026-05-15",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita gasto avulso sem category", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: null,
+      name: "Presente",
+      expenseType: "variavel",
+      periodMonth: "2026-05",
+      amount: 10000,
+      paidAt: "2026-05-15",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita gasto avulso sem expenseType", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: null,
+      name: "Presente",
+      category: "familia",
+      periodMonth: "2026-05",
+      amount: 10000,
+      paidAt: "2026-05-15",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("FutureExpensePayableSchema", () => {
+  it("aceita gasto futuro válido", () => {
+    const result = FutureExpensePayableSchema.safeParse({
+      name: "Férias",
+      category: "lazer",
+      expenseType: "variavel",
+      expectedAmount: 300000,
+      expectedDate: "2026-08-10",
+      notes: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita expectedAmount <= 0", () => {
+    const result = FutureExpensePayableSchema.safeParse({
+      name: "Férias",
+      category: "lazer",
+      expenseType: "variavel",
+      expectedAmount: 0,
+      expectedDate: "2026-08-10",
+      notes: null,
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("MarkFutureExpenseAsRealizedSchema", () => {
+  it("aceita payload válido", () => {
+    const result = MarkFutureExpenseAsRealizedSchema.safeParse({
+      futureExpenseId: "550e8400-e29b-41d4-a716-446655440000",
+      realizedAmount: 280000,
+      paidAt: "2026-05-12",
+      paymentMethod: "pix",
+      notes: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita realizedAmount <= 0", () => {
+    const result = MarkFutureExpenseAsRealizedSchema.safeParse({
+      futureExpenseId: "550e8400-e29b-41d4-a716-446655440000",
+      realizedAmount: 0,
+      paidAt: "2026-08-12",
+      paymentMethod: null,
+      notes: null,
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 

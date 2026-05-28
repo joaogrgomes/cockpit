@@ -3,6 +3,7 @@ import {
   DEBT_STATUS_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
+  FUTURE_EXPENSE_STATUS_VALUES,
   INCOME_CATEGORY_VALUES,
   FUTURE_INCOME_STATUS_VALUES,
   MONTHLY_CLOSING_STATUS_VALUES,
@@ -17,6 +18,7 @@ import {
   monthlyIncomes,
   monthlyExpenseEntries,
   monthlyExpenses,
+  futureExpensePayables,
   debtProposals,
   debtValueUpdates,
 } from "@/lib/db/schema";
@@ -34,6 +36,8 @@ export type MonthlyExpense = InferSelectModel<typeof monthlyExpenses>;
 export type NewMonthlyExpense = InferInsertModel<typeof monthlyExpenses>;
 export type MonthlyExpenseEntry = InferSelectModel<typeof monthlyExpenseEntries>;
 export type NewMonthlyExpenseEntry = InferInsertModel<typeof monthlyExpenseEntries>;
+export type FutureExpensePayable = InferSelectModel<typeof futureExpensePayables>;
+export type NewFutureExpensePayable = InferInsertModel<typeof futureExpensePayables>;
 export type MonthlyIncome = InferSelectModel<typeof monthlyIncomes>;
 export type NewMonthlyIncome = InferInsertModel<typeof monthlyIncomes>;
 export type MonthlyIncomeEntry = InferSelectModel<typeof monthlyIncomeEntries>;
@@ -50,6 +54,7 @@ export type DebtProposalStatus = (typeof PROPOSAL_STATUS_VALUES)[number];
 export type ExpenseCategory = (typeof EXPENSE_CATEGORY_VALUES)[number];
 export type ExpenseType = (typeof EXPENSE_TYPE_VALUES)[number];
 export type PaymentMethod = (typeof PAYMENT_METHOD_VALUES)[number];
+export type FutureExpenseStatus = (typeof FUTURE_EXPENSE_STATUS_VALUES)[number];
 export type IncomeCategory = (typeof INCOME_CATEGORY_VALUES)[number];
 export type IncomePaymentMethod = (typeof INCOME_PAYMENT_METHOD_VALUES)[number];
 export type FutureIncomeStatus = (typeof FUTURE_INCOME_STATUS_VALUES)[number];
