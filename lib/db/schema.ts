@@ -78,6 +78,14 @@ export const INCOME_PAYMENT_METHOD_VALUES = [
   "outro",
 ] as const;
 
+export const FUTURE_INCOME_STATUS_VALUES = [
+  "prevista",
+  "recebida",
+  "cancelada",
+] as const;
+
+export const MONTHLY_CLOSING_STATUS_VALUES = ["closed"] as const;
+
 export const debts = pgTable(
   "debts",
   {
@@ -278,9 +286,11 @@ export const monthlyIncomeEntries = pgTable(
   "monthly_income_entries",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    monthlyIncomeId: uuid("monthly_income_id")
-      .notNull()
-      .references(() => monthlyIncomes.id, { onDelete: "cascade" }),
+    monthlyIncomeId: uuid("monthly_income_id").references(() => monthlyIncomes.id, {
+      onDelete: "cascade",
+    }),
+    name: text("name"),
+    category: text("category"),
     periodMonth: text("period_month").notNull(),
     amount: integer("amount").notNull(),
     receivedAt: date("received_at").notNull(),
@@ -299,12 +309,72 @@ export const monthlyIncomeEntries = pgTable(
       "monthly_income_entries_payment_method_valid",
       sql`${table.paymentMethod} IS NULL OR ${table.paymentMethod} IN ('pix','transferencia','deposito','dinheiro','outro')`
     ),
+    check(
+      "monthly_income_entries_category_valid",
+      sql`${table.category} IS NULL OR ${table.category} IN ('salario','freela','reembolso','beneficio','venda','rendimento','presente','outros')`
+    ),
+    check(
+      "monthly_income_entries_requires_name_category_when_unlinked",
+      sql`${table.monthlyIncomeId} IS NOT NULL OR (${table.name} IS NOT NULL AND ${table.category} IS NOT NULL)`
+    ),
     index("idx_monthly_income_entries_period_month").on(table.periodMonth),
     index("idx_monthly_income_entries_income_period").on(
       table.monthlyIncomeId,
       table.periodMonth
     ),
     index("idx_monthly_income_entries_received_at").on(table.receivedAt),
+  ]
+);
+
+export const futureIncomeReceivables = pgTable(
+  "future_income_receivables",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    category: text("category").notNull(),
+    expectedAmount: integer("expected_amount").notNull(),
+    expectedDate: date("expected_date").notNull(),
+    status: text("status").notNull().default("prevista"),
+    receivedEntryId: uuid("received_entry_id").references(() => monthlyIncomeEntries.id, {
+      onDelete: "set null",
+    }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("future_income_receivables_expected_amount_positive", sql`${table.expectedAmount} > 0`),
+    check(
+      "future_income_receivables_status_valid",
+      sql`${table.status} IN ('prevista','recebida','cancelada')`
+    ),
+    check(
+      "future_income_receivables_category_valid",
+      sql`${table.category} IN ('salario','freela','reembolso','beneficio','venda','rendimento','presente','outros')`
+    ),
+    index("idx_future_income_receivables_status_date").on(table.status, table.expectedDate),
+    index("idx_future_income_receivables_expected_date").on(table.expectedDate),
+    index("idx_future_income_receivables_category").on(table.category),
+  ]
+);
+
+export const monthlyClosings = pgTable(
+  "monthly_closings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    periodMonth: text("period_month").notNull().unique(),
+    status: text("status").notNull().default("closed"),
+    closedAt: timestamp("closed_at", { withTimezone: true }).notNull().defaultNow(),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "monthly_closings_period_month_valid",
+      sql`${table.periodMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
+    ),
+    check("monthly_closings_status_closed_only", sql`${table.status} = 'closed'`),
   ]
 );
 

@@ -4,12 +4,16 @@ import {
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
   INCOME_CATEGORY_VALUES,
+  FUTURE_INCOME_STATUS_VALUES,
+  MONTHLY_CLOSING_STATUS_VALUES,
   INCOME_PAYMENT_METHOD_VALUES,
   PAYMENT_METHOD_VALUES,
   PROPOSAL_STATUS_VALUES,
   debts,
   cashFlowSettings,
   monthlyIncomeEntries,
+  futureIncomeReceivables,
+  monthlyClosings,
   monthlyIncomes,
   monthlyExpenseEntries,
   monthlyExpenses,
@@ -34,6 +38,10 @@ export type MonthlyIncome = InferSelectModel<typeof monthlyIncomes>;
 export type NewMonthlyIncome = InferInsertModel<typeof monthlyIncomes>;
 export type MonthlyIncomeEntry = InferSelectModel<typeof monthlyIncomeEntries>;
 export type NewMonthlyIncomeEntry = InferInsertModel<typeof monthlyIncomeEntries>;
+export type FutureIncomeReceivable = InferSelectModel<typeof futureIncomeReceivables>;
+export type NewFutureIncomeReceivable = InferInsertModel<typeof futureIncomeReceivables>;
+export type MonthlyClosing = InferSelectModel<typeof monthlyClosings>;
+export type NewMonthlyClosing = InferInsertModel<typeof monthlyClosings>;
 export type CashFlowSettings = InferSelectModel<typeof cashFlowSettings>;
 export type NewCashFlowSettings = InferInsertModel<typeof cashFlowSettings>;
 
@@ -44,3 +52,5 @@ export type ExpenseType = (typeof EXPENSE_TYPE_VALUES)[number];
 export type PaymentMethod = (typeof PAYMENT_METHOD_VALUES)[number];
 export type IncomeCategory = (typeof INCOME_CATEGORY_VALUES)[number];
 export type IncomePaymentMethod = (typeof INCOME_PAYMENT_METHOD_VALUES)[number];
+export type FutureIncomeStatus = (typeof FUTURE_INCOME_STATUS_VALUES)[number];
+export type MonthlyClosingStatus = (typeof MONTHLY_CLOSING_STATUS_VALUES)[number];

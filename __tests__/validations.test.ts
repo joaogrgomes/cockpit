@@ -4,6 +4,9 @@ import {
   DebtProposalSchema,
   DebtSchema,
   DebtValueUpdateSchema,
+  FutureIncomeReceivableSchema,
+  MarkFutureIncomeAsReceivedSchema,
+  MonthlyClosingSchema,
   MonthlyIncomeEntrySchema,
   MonthlyIncomeSchema,
   MonthlyExpenseEntrySchema,
@@ -389,7 +392,7 @@ describe("MonthlyIncomeSchema", () => {
 });
 
 describe("MonthlyIncomeEntrySchema", () => {
-  it("aceita entry válida", () => {
+  it("aceita entry vinculada válida", () => {
     const result = MonthlyIncomeEntrySchema.safeParse({
       monthlyIncomeId: "550e8400-e29b-41d4-a716-446655440000",
       periodMonth: "2026-05",
@@ -400,6 +403,61 @@ describe("MonthlyIncomeEntrySchema", () => {
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("aceita entry avulsa válida", () => {
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: null,
+      name: "Restituição IR",
+      category: "reembolso",
+      periodMonth: "2026-05",
+      amount: 80000,
+      receivedAt: "2026-05-20",
+      paymentMethod: "pix",
+      notes: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita entry avulsa sem name", () => {
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: null,
+      category: "reembolso",
+      periodMonth: "2026-05",
+      amount: 80000,
+      receivedAt: "2026-05-20",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita entry avulsa sem category", () => {
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: null,
+      name: "Restituição IR",
+      periodMonth: "2026-05",
+      amount: 80000,
+      receivedAt: "2026-05-20",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita categoria inválida", () => {
+    const result = MonthlyIncomeEntrySchema.safeParse({
+      monthlyIncomeId: null,
+      name: "Entrada X",
+      category: "categoria_invalida",
+      periodMonth: "2026-05",
+      amount: 50000,
+      receivedAt: "2026-05-20",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
   });
 
   it("rejeita periodMonth inválido", () => {
@@ -513,6 +571,102 @@ describe("CashFlowSettingsSchema", () => {
     const result = CashFlowSettingsSchema.safeParse({
       startMonth: "2026/05",
       initialBalance: 0,
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("FutureIncomeReceivableSchema", () => {
+  it("cria previsão válida", () => {
+    const result = FutureIncomeReceivableSchema.safeParse({
+      name: "PLR 2026",
+      category: "beneficio",
+      expectedAmount: 250000,
+      expectedDate: "2026-09-15",
+      status: "prevista",
+      notes: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita valor zero", () => {
+    const result = FutureIncomeReceivableSchema.safeParse({
+      name: "PLR",
+      category: "beneficio",
+      expectedAmount: 0,
+      expectedDate: "2026-09-15",
+      status: "prevista",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita categoria inválida", () => {
+    const result = FutureIncomeReceivableSchema.safeParse({
+      name: "Entrada X",
+      category: "categoria_invalida",
+      expectedAmount: 100000,
+      expectedDate: "2026-09-15",
+      status: "prevista",
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("aceita notes null", () => {
+    const result = FutureIncomeReceivableSchema.safeParse({
+      name: "Restituição",
+      category: "reembolso",
+      expectedAmount: 100000,
+      expectedDate: "2026-07-01",
+      status: "prevista",
+      notes: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("MarkFutureIncomeAsReceivedSchema", () => {
+  it("valida marcar como recebida", () => {
+    const result = MarkFutureIncomeAsReceivedSchema.safeParse({
+      futureIncomeId: "550e8400-e29b-41d4-a716-446655440000",
+      receivedAmount: 200000,
+      receivedAt: "2026-05-20",
+      paymentMethod: "pix",
+      notes: "Valor final",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita receivedAmount zero", () => {
+    const result = MarkFutureIncomeAsReceivedSchema.safeParse({
+      futureIncomeId: "550e8400-e29b-41d4-a716-446655440000",
+      receivedAmount: 0,
+      receivedAt: "2026-09-20",
+      paymentMethod: null,
+      notes: null,
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("MonthlyClosingSchema", () => {
+  it("aceita periodMonth válido", () => {
+    const result = MonthlyClosingSchema.safeParse({
+      periodMonth: "2026-05",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita periodMonth inválido", () => {
+    const result = MonthlyClosingSchema.safeParse({
+      periodMonth: "2026/05",
     });
 
     expect(result.success).toBe(false);

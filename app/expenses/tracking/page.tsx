@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
 import { normalizePeriodMonth, type ExpenseTrackingSummary } from "@/lib/expense-tracking";
+import { isMonthClosed } from "@/lib/services/monthly-closing.service";
 import { getExpenseTrackingByPeriod } from "@/lib/services/monthly-expense-entry.service";
 import {
   createMonthlyExpenseEntryAction,
@@ -78,7 +79,10 @@ export default async function ExpenseTrackingPage({
 }: ExpenseTrackingPageProps) {
   const params = searchParams ? await searchParams : {};
   const selectedPeriod = normalizePeriodMonth(params.month);
-  const tracking = await getExpenseTrackingByPeriod(selectedPeriod);
+  const [tracking, monthClosed] = await Promise.all([
+    getExpenseTrackingByPeriod(selectedPeriod),
+    isMonthClosed(selectedPeriod),
+  ]);
 
   return (
     <section className="space-y-6">
@@ -111,6 +115,19 @@ export default async function ExpenseTrackingPage({
           </form>
         </CardContent>
       </Card>
+
+      {monthClosed ? (
+        <Card className="border-amber-200 bg-amber-50/70 shadow-sm dark:border-amber-700/60 dark:bg-amber-950/20">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-amber-900 dark:text-amber-100">
+              Mês fechado
+            </CardTitle>
+            <CardDescription className="text-amber-800/90 dark:text-amber-200/80">
+              Este mês está fechado. Se precisar alterar lançamentos, reabra o mês no Fluxo de caixa.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      ) : null}
 
       <Card className="border-border/80 shadow-sm">
         <CardHeader className="pb-3">

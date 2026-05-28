@@ -81,6 +81,7 @@ describe("income tracking aggregations", () => {
 
     expect(summary.totalPlanned).toBe(700000);
     expect(summary.totalReceived).toBe(605000);
+    expect(summary.totalOneTimeReceived).toBe(0);
     expect(summary.totalRemaining).toBe(95000);
     expect(summary.totalAbovePlanned).toBe(15000);
     expect(summary.pendingCount).toBe(1);
@@ -137,6 +138,51 @@ describe("income tracking aggregations", () => {
       receivedAmount: 120000,
       remainingAmount: 30000,
       abovePlannedAmount: 0,
+    });
+  });
+
+  it("inclui entradas avulsas no recebido sem afetar previsto", () => {
+    const summary = buildIncomeTrackingSummary(
+      [
+        {
+          category: "salario",
+          expectedDay: 5,
+          plannedAmount: 500000,
+          actualAmount: 500000,
+          remainingAmount: 0,
+          abovePlannedAmount: 0,
+          status: "recebido",
+        },
+      ],
+      200000
+    );
+
+    expect(summary.totalPlanned).toBe(500000);
+    expect(summary.totalReceived).toBe(700000);
+    expect(summary.totalOneTimeReceived).toBe(200000);
+    expect(summary.totalRemaining).toBe(0);
+  });
+
+  it("resumo por categoria aceita categoria só com entrada avulsa", () => {
+    const byCategory = buildIncomeTrackingSummaryByCategory([
+      {
+        category: "salario",
+        plannedAmount: 500000,
+        actualAmount: 500000,
+      },
+      {
+        category: "reembolso",
+        plannedAmount: 0,
+        actualAmount: 200000,
+      },
+    ]);
+
+    const reembolso = byCategory.find((item) => item.category === "reembolso");
+    expect(reembolso).toMatchObject({
+      plannedAmount: 0,
+      receivedAmount: 200000,
+      remainingAmount: -200000,
+      abovePlannedAmount: 200000,
     });
   });
 });

@@ -3,6 +3,7 @@ import {
   DEBT_STATUS_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
+  FUTURE_INCOME_STATUS_VALUES,
   INCOME_CATEGORY_VALUES,
   INCOME_PAYMENT_METHOD_VALUES,
   PAYMENT_METHOD_VALUES,
@@ -148,9 +149,56 @@ export const MonthlyIncomeSchema = z.object({
 
 export const MonthlyIncomeEntrySchema = z
   .object({
-    monthlyIncomeId: z.string().uuid(),
+    monthlyIncomeId: z.string().uuid().nullish(),
+    name: z.string().trim().min(2).nullish(),
+    category: z.enum(INCOME_CATEGORY_VALUES).nullish(),
     periodMonth: z.string().regex(periodMonthRegex),
     amount: z.number().int().positive(),
+    receivedAt: z.string().regex(dateRegex),
+    paymentMethod: z.enum(INCOME_PAYMENT_METHOD_VALUES).nullish(),
+    notes: z.string().trim().min(1).nullish(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.monthlyIncomeId) {
+      if (!data.name) {
+        ctx.addIssue({
+          code: "custom",
+          message: "name é obrigatório para entrada avulsa",
+          path: ["name"],
+        });
+      }
+
+      if (!data.category) {
+        ctx.addIssue({
+          code: "custom",
+          message: "category é obrigatório para entrada avulsa",
+          path: ["category"],
+        });
+      }
+    }
+
+    if (data.receivedAt > todayIsoDate()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "receivedAt não pode ser uma data futura",
+        path: ["receivedAt"],
+      });
+    }
+  });
+
+export const FutureIncomeReceivableSchema = z.object({
+  name: z.string().trim().min(2),
+  category: z.enum(INCOME_CATEGORY_VALUES),
+  expectedAmount: z.number().int().positive(),
+  expectedDate: z.string().regex(dateRegex),
+  status: z.enum(FUTURE_INCOME_STATUS_VALUES).default("prevista"),
+  notes: z.string().trim().min(1).nullish(),
+});
+
+export const MarkFutureIncomeAsReceivedSchema = z
+  .object({
+    futureIncomeId: z.string().uuid(),
+    receivedAmount: z.number().int().positive(),
     receivedAt: z.string().regex(dateRegex),
     paymentMethod: z.enum(INCOME_PAYMENT_METHOD_VALUES).nullish(),
     notes: z.string().trim().min(1).nullish(),
@@ -168,4 +216,8 @@ export const MonthlyIncomeEntrySchema = z
 export const CashFlowSettingsSchema = z.object({
   startMonth: z.string().regex(periodMonthRegex),
   initialBalance: z.number().int(),
+});
+
+export const MonthlyClosingSchema = z.object({
+  periodMonth: z.string().regex(periodMonthRegex),
 });

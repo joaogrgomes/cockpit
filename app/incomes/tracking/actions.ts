@@ -40,7 +40,9 @@ function parseMoneyToCents(value: FormDataEntryValue | null): number | undefined
 
 function parseEntryFormData(formData: FormData) {
   const payload = {
-    monthlyIncomeId: parseOptionalText(formData.get("monthlyIncomeId")) ?? "",
+    monthlyIncomeId: parseOptionalText(formData.get("monthlyIncomeId")) ?? null,
+    name: parseOptionalTextOrNull(formData.get("name")),
+    category: parseOptionalTextOrNull(formData.get("category")),
     periodMonth: parseOptionalText(formData.get("periodMonth")) ?? "",
     amount: parseMoneyToCents(formData.get("amount")) ?? 0,
     receivedAt: parseOptionalText(formData.get("receivedAt")) ?? "",
@@ -54,6 +56,7 @@ function parseEntryFormData(formData: FormData) {
 function revalidateIncomePages() {
   revalidatePath("/incomes");
   revalidatePath("/incomes/tracking");
+  revalidatePath("/cash-flow");
 }
 
 export async function createMonthlyIncomeEntryAction(
@@ -65,6 +68,23 @@ export async function createMonthlyIncomeEntryAction(
   }
 
   await createMonthlyIncomeEntry(parsed.data);
+  revalidateIncomePages();
+
+  return { ok: true };
+}
+
+export async function createOneTimeIncomeEntryAction(
+  formData: FormData
+): Promise<IncomeEntryActionResult> {
+  const parsed = parseEntryFormData(formData);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  await createMonthlyIncomeEntry({
+    ...parsed.data,
+    monthlyIncomeId: null,
+  });
   revalidateIncomePages();
 
   return { ok: true };

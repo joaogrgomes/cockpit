@@ -8,11 +8,22 @@ import {
 import type { CashFlowMonth } from "@/lib/cash-flow";
 import { CashFlowMonthRow } from "./CashFlowMonthRow";
 
-type CashFlowTableProps = {
-  months: CashFlowMonth[];
+type CashFlowActionResult = {
+  ok: boolean;
+  error?: string;
 };
 
-export function CashFlowTable({ months }: CashFlowTableProps) {
+type CashFlowTableProps = {
+  months: CashFlowMonth[];
+  closeMonthAction: (formData: FormData) => Promise<CashFlowActionResult>;
+  reopenMonthAction: (formData: FormData) => Promise<CashFlowActionResult>;
+};
+
+export function CashFlowTable({
+  months,
+  closeMonthAction,
+  reopenMonthAction,
+}: CashFlowTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -28,11 +39,17 @@ export function CashFlowTable({ months }: CashFlowTableProps) {
           <TableHead>Resultado parcial</TableHead>
           <TableHead>Saldo projetado</TableHead>
           <TableHead>Saldo parcial</TableHead>
+          <TableHead>Ações</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {months.map((month) => (
-          <CashFlowMonthRow key={month.periodMonth} month={month} />
+          <CashFlowMonthRow
+            key={month.periodMonth}
+            month={month}
+            closeMonthAction={closeMonthAction}
+            reopenMonthAction={reopenMonthAction}
+          />
         ))}
       </TableBody>
     </Table>

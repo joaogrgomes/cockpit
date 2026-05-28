@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canClosePeriodMonth,
   calculateCashFlowProjection,
   getYearMonths,
   isMonthBefore,
@@ -28,6 +29,12 @@ describe("cash flow helpers", () => {
     expect(isMonthBefore("2026-05", "2026-05")).toBe(false);
     expect(isMonthBefore("2026-06", "2026-05")).toBe(false);
   });
+
+  it("valida fechamento apenas para mês atual ou passado", () => {
+    expect(canClosePeriodMonth("2026-05", "2026-05")).toBe(true);
+    expect(canClosePeriodMonth("2026-04", "2026-05")).toBe(true);
+    expect(canClosePeriodMonth("2026-06", "2026-05")).toBe(false);
+  });
 });
 
 describe("calculateCashFlowProjection", () => {
@@ -37,7 +44,10 @@ describe("calculateCashFlowProjection", () => {
       startMonth: "2026-01",
       initialBalance: 100000,
       plannedIncomesTotal: 500000,
-      actualIncomesByMonth: {},
+      actualLinkedIncomesByMonth: {},
+      actualOneTimeIncomesByMonth: {},
+      futureExpectedIncomesByMonth: {},
+      closedMonths: new Set<string>(),
       plannedFixedExpensesTotal: 200000,
       actualFixedExpensesByMonth: {},
       plannedVariableExpensesTotal: 100000,
@@ -68,7 +78,7 @@ describe("calculateCashFlowProjection", () => {
     const result = calculateCashFlowProjection(
       baseInput({
         initialBalance: 0,
-        actualIncomesByMonth: { "2026-01": 650000 },
+        actualLinkedIncomesByMonth: { "2026-01": 650000 },
       })
     );
 
@@ -80,7 +90,7 @@ describe("calculateCashFlowProjection", () => {
     const result = calculateCashFlowProjection(
       baseInput({
         initialBalance: 0,
-        actualIncomesByMonth: { "2026-01": 0 },
+        actualLinkedIncomesByMonth: { "2026-01": 0 },
       })
     );
 
@@ -224,7 +234,10 @@ describe("calculateCashFlowProjection", () => {
       startMonth: "2026-05",
       initialBalance: 0,
       plannedIncomesTotal: 1_000_000,
-      actualIncomesByMonth: {},
+      actualLinkedIncomesByMonth: {},
+      actualOneTimeIncomesByMonth: {},
+      futureExpectedIncomesByMonth: {},
+      closedMonths: new Set<string>(),
       plannedFixedExpensesTotal: 400_000,
       actualFixedExpensesByMonth: {},
       plannedVariableExpensesTotal: 470_000,
@@ -260,6 +273,108 @@ describe("calculateCashFlowProjection", () => {
     expect(result.months[0].actualVariableExpenses).toBe(0);
     expect(result.months[0].hasActualVariableExpenses).toBe(false);
     expect(result.months[0].partialMonthlyResult).toBe(result.months[0].monthlyResult);
+  });
+
+  it("entrada avulsa soma por fora sem substituir planejado quando não há vinculada", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedIncomesTotal: 500000,
+        actualLinkedIncomesByMonth: { "2026-01": 0 },
+        actualOneTimeIncomesByMonth: { "2026-01": 50000 },
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.incomeSource).toBe("planejado_avulso");
+    expect(jan.actualLinkedIncome).toBe(0);
+    expect(jan.actualOneTimeIncome).toBe(50000);
+    expect(jan.incomeUsed).toBe(550000);
+  });
+
+  it("entrada vinculada realizada e avulsa somam em incomeUsed", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        actualLinkedIncomesByMonth: { "2026-01": 400000 },
+        actualOneTimeIncomesByMonth: { "2026-01": 100000 },
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.incomeSource).toBe("realizado");
+    expect(jan.actualIncome).toBe(500000);
+    expect(jan.incomeUsed).toBe(500000);
+  });
+
+  it("sem entrada avulsa mantém comportamento anterior", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        actualLinkedIncomesByMonth: { "2026-01": 0 },
+        actualOneTimeIncomesByMonth: { "2026-01": 0 },
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.incomeSource).toBe("planejado");
+    expect(jan.incomeUsed).toBe(500000);
+  });
+
+  it("entrada futura prevista entra no mês e soma por fora do recorrente", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedIncomesTotal: 500000,
+        actualLinkedIncomesByMonth: { "2026-01": 0 },
+        actualOneTimeIncomesByMonth: { "2026-01": 0 },
+        futureExpectedIncomesByMonth: { "2026-01": 70000 },
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.futureExpectedIncomes).toBe(70000);
+    expect(jan.incomeSource).toBe("planejado_avulso");
+    expect(jan.incomeUsed).toBe(570000);
+  });
+
+  it("entrada futura soma junto quando há entrada vinculada realizada", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedIncomesTotal: 500000,
+        actualLinkedIncomesByMonth: { "2026-01": 550000 },
+        actualOneTimeIncomesByMonth: { "2026-01": 30000 },
+        futureExpectedIncomesByMonth: { "2026-01": 20000 },
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.incomeSource).toBe("realizado");
+    expect(jan.incomeUsed).toBe(600000);
+  });
+
+  it("sem entradas futuras mantém comportamento anterior", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        futureExpectedIncomesByMonth: {},
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.futureExpectedIncomes).toBe(0);
+    expect(jan.incomeSource).toBe("planejado");
+    expect(jan.incomeUsed).toBe(500000);
+  });
+
+  it("quando entrada futura já foi recebida, entra como avulsa e não como futura", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        actualLinkedIncomesByMonth: { "2026-01": 0 },
+        actualOneTimeIncomesByMonth: { "2026-01": 90000 },
+        futureExpectedIncomesByMonth: { "2026-01": 0 },
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.actualOneTimeIncome).toBe(90000);
+    expect(jan.futureExpectedIncomes).toBe(0);
+    expect(jan.incomeUsed).toBe(590000);
   });
 
   it("calcula meses negativos", () => {
@@ -300,5 +415,104 @@ describe("calculateCashFlowProjection", () => {
 
     expect(result.summary.totalResult).toBe(2400000);
     expect(result.summary.finalBalance).toBe(2500000);
+  });
+
+  it("mês fechado usa apenas realizado nas entradas e saídas", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        initialBalance: 0,
+        plannedIncomesTotal: 500000,
+        actualLinkedIncomesByMonth: { "2026-01": 300000 },
+        actualOneTimeIncomesByMonth: { "2026-01": 20000 },
+        futureExpectedIncomesByMonth: { "2026-01": 70000 },
+        plannedFixedExpensesTotal: 200000,
+        actualFixedExpensesByMonth: { "2026-01": 150000 },
+        plannedVariableExpensesTotal: 100000,
+        actualVariableExpensesByMonth: { "2026-01": 50000 },
+        closedMonths: new Set(["2026-01"]),
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.isClosed).toBe(true);
+    expect(jan.incomeUsed).toBe(320000);
+    expect(jan.futureExpectedIncomes).toBe(70000);
+    expect(jan.fixedExpensesUsed).toBe(150000);
+    expect(jan.variableExpensesUsed).toBe(50000);
+    expect(jan.totalExpenses).toBe(200000);
+    expect(jan.monthlyResult).toBe(120000);
+  });
+
+  it("mês fechado converge projetado e parcial", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        initialBalance: 100000,
+        actualLinkedIncomesByMonth: { "2026-01": 200000 },
+        actualOneTimeIncomesByMonth: { "2026-01": 0 },
+        actualFixedExpensesByMonth: { "2026-01": 50000 },
+        actualVariableExpensesByMonth: { "2026-01": 25000 },
+        closedMonths: ["2026-01"],
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.closingBalance).toBe(jan.partialClosingBalance);
+    expect(jan.monthlyResult).toBe(jan.partialMonthlyResult);
+  });
+
+  it("mês reaberto volta para regra dinâmica", () => {
+    const closed = calculateCashFlowProjection(
+      baseInput({
+        initialBalance: 0,
+        plannedIncomesTotal: 500000,
+        actualLinkedIncomesByMonth: { "2026-01": 0 },
+        actualOneTimeIncomesByMonth: { "2026-01": 10000 },
+        plannedFixedExpensesTotal: 200000,
+        actualFixedExpensesByMonth: { "2026-01": 50000 },
+        plannedVariableExpensesTotal: 100000,
+        actualVariableExpensesByMonth: { "2026-01": 20000 },
+        closedMonths: ["2026-01"],
+      })
+    );
+
+    const reopened = calculateCashFlowProjection(
+      baseInput({
+        initialBalance: 0,
+        plannedIncomesTotal: 500000,
+        actualLinkedIncomesByMonth: { "2026-01": 0 },
+        actualOneTimeIncomesByMonth: { "2026-01": 10000 },
+        plannedFixedExpensesTotal: 200000,
+        actualFixedExpensesByMonth: { "2026-01": 50000 },
+        plannedVariableExpensesTotal: 100000,
+        actualVariableExpensesByMonth: { "2026-01": 20000 },
+        closedMonths: [],
+      })
+    );
+
+    expect(closed.months[0].incomeUsed).toBe(10000);
+    expect(reopened.months[0].incomeUsed).toBe(510000);
+    expect(closed.months[0].variableExpensesUsed).toBe(20000);
+    expect(reopened.months[0].variableExpensesUsed).toBe(100000);
+  });
+
+  it("mês fechado afeta encadeamento do mês seguinte", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        initialBalance: 0,
+        plannedIncomesTotal: 500000,
+        actualLinkedIncomesByMonth: { "2026-01": 300000, "2026-02": 0 },
+        actualOneTimeIncomesByMonth: { "2026-01": 0, "2026-02": 0 },
+        plannedFixedExpensesTotal: 200000,
+        actualFixedExpensesByMonth: { "2026-01": 100000, "2026-02": 0 },
+        plannedVariableExpensesTotal: 100000,
+        actualVariableExpensesByMonth: { "2026-01": 50000, "2026-02": 0 },
+        closedMonths: ["2026-01"],
+      })
+    );
+
+    const jan = result.months[0];
+    const feb = result.months[1];
+    expect(jan.closingBalance).toBe(150000);
+    expect(feb.openingBalance).toBe(150000);
   });
 });

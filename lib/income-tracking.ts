@@ -18,6 +18,7 @@ export type IncomeTrackingItemLike = {
 export type IncomeTrackingSummary = {
   totalPlanned: number;
   totalReceived: number;
+  totalOneTimeReceived: number;
   totalRemaining: number;
   totalAbovePlanned: number;
   pendingCount: number;
@@ -136,10 +137,11 @@ export function getIncomeOverdueReason(expectedDay: number | null): string | nul
 }
 
 export function buildIncomeTrackingSummary(
-  items: IncomeTrackingItemLike[]
+  items: IncomeTrackingItemLike[],
+  oneTimeReceived: number = 0
 ): IncomeTrackingSummary {
   let totalPlanned = 0;
-  let totalReceived = 0;
+  let totalReceivedFromPlanned = 0;
   let totalRemaining = 0;
   let totalAbovePlanned = 0;
   let pendingCount = 0;
@@ -149,7 +151,7 @@ export function buildIncomeTrackingSummary(
 
   for (const item of items) {
     totalPlanned += item.plannedAmount;
-    totalReceived += item.actualAmount;
+    totalReceivedFromPlanned += item.actualAmount;
     totalRemaining += item.remainingAmount;
     totalAbovePlanned += item.abovePlannedAmount;
 
@@ -168,7 +170,8 @@ export function buildIncomeTrackingSummary(
 
   return {
     totalPlanned,
-    totalReceived,
+    totalReceived: totalReceivedFromPlanned + oneTimeReceived,
+    totalOneTimeReceived: oneTimeReceived,
     totalRemaining,
     totalAbovePlanned,
     pendingCount,

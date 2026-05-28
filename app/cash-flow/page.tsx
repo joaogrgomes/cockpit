@@ -6,7 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { getCurrentPeriodMonth } from "@/lib/cash-flow";
 import { getCashFlowProjection } from "@/lib/services/cash-flow.service";
-import { upsertCashFlowSettingsAction } from "./actions";
+import {
+  closeMonthAction,
+  reopenMonthAction,
+  upsertCashFlowSettingsAction,
+} from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -94,11 +98,17 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Projeção mensal ({projection.year})</CardTitle>
           <CardDescription>
-            Projetado considera o orçamento variável inteiro. Parcial considera apenas o variável já realizado até agora.
+            Projetado considera o orçamento variável inteiro. Entradas futuras previstas somam no mês esperado.
+            Parcial considera apenas o variável já realizado até agora.
+            Meses fechados usam valores realizados como verdade final.
           </CardDescription>
         </CardHeader>
         <CardContent className="w-full px-4 sm:px-6">
-          <CashFlowTable months={projection.months} />
+          <CashFlowTable
+            months={projection.months}
+            closeMonthAction={closeMonthAction}
+            reopenMonthAction={reopenMonthAction}
+          />
         </CardContent>
       </Card>
     </section>

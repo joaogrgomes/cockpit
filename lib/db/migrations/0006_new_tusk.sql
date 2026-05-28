@@ -1,0 +1,5 @@
+ALTER TABLE "monthly_income_entries" ALTER COLUMN "monthly_income_id" DROP NOT NULL;--> statement-breakpoint
+ALTER TABLE "monthly_income_entries" ADD COLUMN "name" text;--> statement-breakpoint
+ALTER TABLE "monthly_income_entries" ADD COLUMN "category" text;--> statement-breakpoint
+ALTER TABLE "monthly_income_entries" ADD CONSTRAINT "monthly_income_entries_category_valid" CHECK ("monthly_income_entries"."category" IS NULL OR "monthly_income_entries"."category" IN ('salario','freela','reembolso','beneficio','venda','rendimento','presente','outros'));--> statement-breakpoint
+ALTER TABLE "monthly_income_entries" ADD CONSTRAINT "monthly_income_entries_requires_name_category_when_unlinked" CHECK ("monthly_income_entries"."monthly_income_id" IS NOT NULL OR ("monthly_income_entries"."name" IS NOT NULL AND "monthly_income_entries"."category" IS NOT NULL));

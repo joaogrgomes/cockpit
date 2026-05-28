@@ -1,12 +1,16 @@
-export type CashFlowSource = "realizado" | "planejado";
+export type CashFlowSource = "realizado" | "planejado" | "planejado_avulso";
 
 export type CashFlowMonth = {
   periodMonth: string;
   monthLabel: string;
   isBeforeStart: boolean;
+  isClosed: boolean;
   openingBalance: number;
   partialOpeningBalance: number;
   plannedIncome: number;
+  actualLinkedIncome: number;
+  actualOneTimeIncome: number;
+  futureExpectedIncomes: number;
   actualIncome: number;
   incomeUsed: number;
   incomeSource: CashFlowSource;
@@ -42,7 +46,10 @@ export type CashFlowProjectionInput = {
   startMonth: string;
   initialBalance: number;
   plannedIncomesTotal: number;
-  actualIncomesByMonth: Record<string, number>;
+  actualLinkedIncomesByMonth: Record<string, number>;
+  actualOneTimeIncomesByMonth: Record<string, number>;
+  futureExpectedIncomesByMonth: Record<string, number>;
+  closedMonths: Set<string> | string[];
   plannedFixedExpensesTotal: number;
   actualFixedExpensesByMonth: Record<string, number>;
   plannedVariableExpensesTotal: number;
@@ -95,10 +102,24 @@ export function isMonthBefore(monthA: string, monthB: string): boolean {
   return monthA < monthB;
 }
 
+export function canClosePeriodMonth(
+  periodMonth: string,
+  referenceMonth: string = getCurrentPeriodMonth()
+): boolean {
+  if (!isValidPeriodMonth(periodMonth) || !isValidPeriodMonth(referenceMonth)) {
+    return false;
+  }
+
+  return periodMonth <= referenceMonth;
+}
+
 export function calculateCashFlowProjection(
   input: CashFlowProjectionInput
 ): CashFlowProjection {
   const monthsOfYear = getYearMonths(input.year);
+  const closedMonthsSet = Array.isArray(input.closedMonths)
+    ? new Set(input.closedMonths)
+    : input.closedMonths;
   const normalizedStartMonth = isValidPeriodMonth(input.startMonth)
     ? input.startMonth
     : getCurrentPeriodMonth();
@@ -115,10 +136,16 @@ export function calculateCashFlowProjection(
         periodMonth,
         monthLabel: getMonthLabel(periodMonth),
         isBeforeStart: true,
+        isClosed: false,
         openingBalance: 0,
         partialOpeningBalance: 0,
         plannedIncome: input.plannedIncomesTotal,
-        actualIncome: input.actualIncomesByMonth[periodMonth] ?? 0,
+        actualLinkedIncome: input.actualLinkedIncomesByMonth[periodMonth] ?? 0,
+        actualOneTimeIncome: input.actualOneTimeIncomesByMonth[periodMonth] ?? 0,
+        futureExpectedIncomes: input.futureExpectedIncomesByMonth[periodMonth] ?? 0,
+        actualIncome:
+          (input.actualLinkedIncomesByMonth[periodMonth] ?? 0) +
+          (input.actualOneTimeIncomesByMonth[periodMonth] ?? 0),
         incomeUsed: 0,
         incomeSource: "planejado",
         plannedFixedExpenses: input.plannedFixedExpensesTotal,
@@ -147,18 +174,43 @@ export function calculateCashFlowProjection(
     }
 
     const plannedIncome = input.plannedIncomesTotal;
-    const actualIncome = input.actualIncomesByMonth[periodMonth] ?? 0;
-    const incomeSource: CashFlowSource = actualIncome > 0 ? "realizado" : "planejado";
-    const incomeUsed = incomeSource === "realizado" ? actualIncome : plannedIncome;
+    const isClosed = closedMonthsSet.has(periodMonth);
+    const actualLinkedIncome = input.actualLinkedIncomesByMonth[periodMonth] ?? 0;
+    const actualOneTimeIncome = input.actualOneTimeIncomesByMonth[periodMonth] ?? 0;
+    const futureExpectedIncomes = input.futureExpectedIncomesByMonth[periodMonth] ?? 0;
+    const actualIncome = actualLinkedIncome + actualOneTimeIncome;
+    const hasLinkedIncome = actualLinkedIncome > 0;
+    const hasOneTimeIncome = actualOneTimeIncome > 0;
+    const hasFutureExpectedIncome = futureExpectedIncomes > 0;
+    const incomeSource: CashFlowSource = isClosed
+      ? "realizado"
+      : hasLinkedIncome
+      ? "realizado"
+      : hasOneTimeIncome || hasFutureExpectedIncome
+      ? "planejado_avulso"
+      : "planejado";
+    const incomeUsed = isClosed
+      ? actualIncome
+      : hasLinkedIncome
+      ? actualIncome + futureExpectedIncomes
+      : plannedIncome + actualOneTimeIncome + futureExpectedIncomes;
 
     const plannedFixedExpenses = input.plannedFixedExpensesTotal;
     const actualFixedExpenses = input.actualFixedExpensesByMonth[periodMonth] ?? 0;
-    const fixedExpenseSource: CashFlowSource =
-      actualFixedExpenses > 0 ? "realizado" : "planejado";
-    const fixedExpensesUsed =
-      fixedExpenseSource === "realizado" ? actualFixedExpenses : plannedFixedExpenses;
+    const fixedExpenseSource: CashFlowSource = isClosed
+      ? "realizado"
+      : actualFixedExpenses > 0
+      ? "realizado"
+      : "planejado";
+    const fixedExpensesUsed = isClosed
+      ? actualFixedExpenses
+      : fixedExpenseSource === "realizado"
+      ? actualFixedExpenses
+      : plannedFixedExpenses;
 
-    const variableExpensesUsed = input.plannedVariableExpensesTotal;
+    const variableExpensesUsed = isClosed
+      ? input.actualVariableExpensesByMonth[periodMonth] ?? 0
+      : input.plannedVariableExpensesTotal;
     const actualVariableExpenses = input.actualVariableExpensesByMonth[periodMonth] ?? 0;
     const remainingVariableBudget =
       input.plannedVariableExpensesTotal - actualVariableExpenses;
@@ -170,23 +222,32 @@ export function calculateCashFlowProjection(
     const monthlyResult = incomeUsed - totalExpenses;
     const closingBalance = currentOpeningBalance + monthlyResult;
 
-    const partialTotalExpenses = hasActualVariableExpenses
+    const partialTotalExpenses = isClosed
+      ? totalExpenses
+      : hasActualVariableExpenses
       ? fixedExpensesUsed + actualVariableExpenses
       : totalExpenses;
-    const partialMonthlyResult = hasActualVariableExpenses
+    const partialMonthlyResult = isClosed
+      ? monthlyResult
+      : hasActualVariableExpenses
       ? incomeUsed - partialTotalExpenses
       : monthlyResult;
-    const partialClosingBalance = hasActualVariableExpenses
-      ? currentPartialOpeningBalance + partialMonthlyResult
-      : currentPartialOpeningBalance + partialMonthlyResult;
+    const partialOpeningBalance = isClosed
+      ? currentOpeningBalance
+      : currentPartialOpeningBalance;
+    const partialClosingBalance = partialOpeningBalance + partialMonthlyResult;
 
     const row: CashFlowMonth = {
       periodMonth,
       monthLabel: getMonthLabel(periodMonth),
       isBeforeStart: false,
+      isClosed,
       openingBalance: currentOpeningBalance,
-      partialOpeningBalance: currentPartialOpeningBalance,
+      partialOpeningBalance,
       plannedIncome,
+      actualLinkedIncome,
+      actualOneTimeIncome,
+      futureExpectedIncomes,
       actualIncome,
       incomeUsed,
       incomeSource,

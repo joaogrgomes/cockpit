@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { parseBRL } from "@/lib/calculations";
 import { upsertCashFlowSettings } from "@/lib/services/cash-flow.service";
-import { CashFlowSettingsSchema } from "@/lib/validations";
+import { closeMonth, reopenMonth } from "@/lib/services/monthly-closing.service";
+import { CashFlowSettingsSchema, MonthlyClosingSchema } from "@/lib/validations";
 
 type CashFlowActionResult = {
   ok: boolean;
@@ -45,5 +46,51 @@ export async function upsertCashFlowSettingsAction(
   await upsertCashFlowSettings(parsed.data);
   revalidatePath("/cash-flow");
 
+  return { ok: true };
+}
+
+function revalidateClosingPaths() {
+  revalidatePath("/cash-flow");
+  revalidatePath("/expenses/tracking");
+  revalidatePath("/incomes/tracking");
+}
+
+export async function closeMonthAction(
+  formData: FormData
+): Promise<CashFlowActionResult> {
+  const payload = {
+    periodMonth: parseOptionalText(formData.get("periodMonth")) ?? "",
+  };
+
+  const parsed = MonthlyClosingSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Período inválido" };
+  }
+
+  try {
+    await closeMonth(parsed.data.periodMonth);
+    revalidateClosingPaths();
+    return { ok: true };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Não foi possível fechar o mês.";
+    return { ok: false, error: message };
+  }
+}
+
+export async function reopenMonthAction(
+  formData: FormData
+): Promise<CashFlowActionResult> {
+  const payload = {
+    periodMonth: parseOptionalText(formData.get("periodMonth")) ?? "",
+  };
+
+  const parsed = MonthlyClosingSchema.safeParse(payload);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Período inválido" };
+  }
+
+  await reopenMonth(parsed.data.periodMonth);
+  revalidateClosingPaths();
   return { ok: true };
 }

@@ -32,6 +32,7 @@ const EXPENSE_NAV_ITEMS = [
 const INCOME_NAV_ITEMS = [
   { href: "/incomes", label: "Planejamento", icon: LandmarkIcon, exact: true },
   { href: "/incomes/tracking", label: "Acompanhamento", icon: LandmarkIcon },
+  { href: "/incomes/future", label: "Futuras", icon: LandmarkIcon },
 ];
 
 const DEBT_NAV_ITEMS = [

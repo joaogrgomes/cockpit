@@ -19,7 +19,14 @@ import type { MonthlyIncomeEntry, NewMonthlyIncomeEntry } from "@/types";
 
 export type MonthlyIncomeEntryCreateInput = Pick<
   NewMonthlyIncomeEntry,
-  "monthlyIncomeId" | "periodMonth" | "amount" | "receivedAt" | "paymentMethod" | "notes"
+  | "monthlyIncomeId"
+  | "name"
+  | "category"
+  | "periodMonth"
+  | "amount"
+  | "receivedAt"
+  | "paymentMethod"
+  | "notes"
 >;
 
 export type IncomeTrackingEntryView = {
@@ -45,10 +52,21 @@ export type IncomeTrackingItemView = {
   entries: IncomeTrackingEntryView[];
 };
 
+export type OneTimeIncomeEntryView = {
+  id: string;
+  name: string;
+  category: string;
+  amount: number;
+  receivedAt: string;
+  paymentMethod: string | null;
+  notes: string | null;
+};
+
 export type IncomeTrackingByPeriod = {
   periodMonth: string;
   summary: IncomeTrackingSummary;
   items: IncomeTrackingItemView[];
+  oneTimeEntries: OneTimeIncomeEntryView[];
   summaryByCategory: IncomeTrackingCategorySummaryItem[];
 };
 
@@ -94,7 +112,9 @@ export async function createMonthlyIncomeEntry(
   const result = await db
     .insert(monthlyIncomeEntries)
     .values({
-      monthlyIncomeId: input.monthlyIncomeId,
+      monthlyIncomeId: input.monthlyIncomeId ?? null,
+      name: input.name ?? null,
+      category: input.category ?? null,
       periodMonth: input.periodMonth,
       amount: input.amount,
       receivedAt: input.receivedAt,
@@ -135,17 +155,33 @@ export async function getIncomeTrackingByPeriod(
   ]);
 
   const entriesByIncomeId = new Map<string, IncomeTrackingEntryView[]>();
+  const oneTimeEntries: OneTimeIncomeEntryView[] = [];
 
   for (const entry of periodEntries) {
-    const list = entriesByIncomeId.get(entry.monthlyIncomeId) ?? [];
-    list.push({
+    const entryView: IncomeTrackingEntryView = {
       id: entry.id,
       amount: entry.amount,
       receivedAt: toDateString(entry.receivedAt),
       paymentMethod: entry.paymentMethod,
       notes: entry.notes,
+    };
+
+    if (entry.monthlyIncomeId) {
+      const list = entriesByIncomeId.get(entry.monthlyIncomeId) ?? [];
+      list.push(entryView);
+      entriesByIncomeId.set(entry.monthlyIncomeId, list);
+      continue;
+    }
+
+    if (!entry.name || !entry.category) {
+      continue;
+    }
+
+    oneTimeEntries.push({
+      ...entryView,
+      name: entry.name,
+      category: entry.category,
     });
-    entriesByIncomeId.set(entry.monthlyIncomeId, list);
   }
 
   const items: IncomeTrackingItemView[] = activeIncomes.map((income) => {
@@ -177,10 +213,25 @@ export async function getIncomeTrackingByPeriod(
     };
   });
 
+  const oneTimeReceivedTotal = sumIncomeEntryAmounts(oneTimeEntries);
+  const summaryByCategory = buildIncomeTrackingSummaryByCategory([
+    ...items.map((item) => ({
+      category: item.category,
+      plannedAmount: item.plannedAmount,
+      actualAmount: item.actualAmount,
+    })),
+    ...oneTimeEntries.map((entry) => ({
+      category: entry.category,
+      plannedAmount: 0,
+      actualAmount: entry.amount,
+    })),
+  ]);
+
   return {
     periodMonth,
-    summary: buildIncomeTrackingSummary(items),
+    summary: buildIncomeTrackingSummary(items, oneTimeReceivedTotal),
     items,
-    summaryByCategory: buildIncomeTrackingSummaryByCategory(items),
+    oneTimeEntries,
+    summaryByCategory,
   };
 }
