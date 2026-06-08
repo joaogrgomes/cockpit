@@ -18,6 +18,7 @@ import {
   calcRemainingInstallments,
   formatBRL,
 } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import { getDebtById } from "@/lib/services/debt.service";
 import {
@@ -40,13 +41,6 @@ import {
 type DebtDetailPageProps = {
   params: Promise<{ id: string }>;
 };
-
-function formatDate(value?: string | Date | null) {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
 
 function toStatus(value: string): DebtStatus {
   if (DEBT_STATUS_VALUES.includes(value as DebtStatus)) {
@@ -148,7 +142,7 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
               <div>
                 <p className="text-sm text-muted-foreground">Vencimento</p>
                 <p className="font-medium">
-                  {debt.dueDate ? formatDate(debt.dueDate) : `Dia ${debt.dueDay}`}
+                  {debt.dueDate ? formatDateOnlyBR(debt.dueDate) : `Dia ${debt.dueDay}`}
                 </p>
               </div>
             ) : null}

@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import type { FutureIncomeReceivable } from "@/types";
 import { IncomeCategoryBadge } from "./IncomeCategoryBadge";
 import { FutureIncomeForm } from "./FutureIncomeForm";
@@ -34,12 +35,6 @@ type FutureIncomeRowProps = {
   markAsReceivedAction: (formData: FormData) => Promise<FutureIncomeActionResult>;
 };
 
-function formatDate(value: string | Date): string {
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
-
 export function FutureIncomeRow({
   futureIncome,
   updateAction,
@@ -53,7 +48,7 @@ export function FutureIncomeRow({
   return (
     <TableRow className="border-border/70 hover:bg-muted/35">
       <TableCell className="py-3 text-sm text-muted-foreground">
-        {formatDate(futureIncome.expectedDate)}
+        {formatDateOnlyBR(futureIncome.expectedDate)}
       </TableCell>
       <TableCell className="py-3 font-medium text-foreground">{futureIncome.name}</TableCell>
       <TableCell className="py-3">

@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 import { getIncomeCategoryLabel } from "@/lib/incomes";
 import type { IncomeTrackingItemView } from "@/lib/services/monthly-income-entry.service";
 import { IncomeEntryForm } from "./IncomeEntryForm";
@@ -30,10 +31,6 @@ function expectedLabel(expectedDay: number | null): string {
   }
 
   return "-";
-}
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
 }
 
 export function IncomeTrackingRow({
@@ -98,7 +95,7 @@ export function IncomeTrackingRow({
                   formData.set("monthlyIncomeId", item.monthlyIncomeId);
                   formData.set("periodMonth", periodMonth);
                   formData.set("amount", String(item.plannedAmount));
-                  formData.set("receivedAt", todayIsoDate());
+                  formData.set("receivedAt", getLocalDateInputValue());
                   formData.set("paymentMethod", "");
                   formData.set("notes", "");
 

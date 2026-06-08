@@ -6,6 +6,7 @@ import {
   calcDiscountPct,
   calcGrowthPct,
 } from "@/lib/calculations";
+import { normalizeDateOnly } from "@/lib/date-utils";
 import {
   compareRiskSignals,
   getPerceivedRiskRank,
@@ -76,11 +77,19 @@ export type DashboardMetrics = {
 };
 
 function calculateDaysUntil(dateValue: string | Date): number {
-  const target = new Date(dateValue);
+  const normalized = normalizeDateOnly(dateValue);
+  if (!normalized) return 0;
+
+  const [yearText, monthText, dayText] = normalized.split("-");
+  const year = Number.parseInt(yearText, 10);
+  const month = Number.parseInt(monthText, 10);
+  const day = Number.parseInt(dayText, 10);
+  if ([year, month, day].some(Number.isNaN)) return 0;
+
+  const target = new Date(year, month - 1, day);
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const dayTarget = new Date(target.getFullYear(), target.getMonth(), target.getDate());
-  const diffMs = dayTarget.getTime() - today.getTime();
+  const diffMs = target.getTime() - today.getTime();
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 

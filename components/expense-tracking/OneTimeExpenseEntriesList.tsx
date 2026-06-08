@@ -24,6 +24,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import {
   getExpenseCategoryLabel,
   getExpenseTypeLabel,
@@ -40,12 +41,6 @@ type OneTimeExpenseEntriesListProps = {
   entries: ExpenseTrackingOneTimeEntryView[];
   deleteAction: (formData: FormData) => Promise<ExpenseEntryActionResult>;
 };
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
 
 export function OneTimeExpenseEntriesList({
   entries,
@@ -79,9 +74,9 @@ export function OneTimeExpenseEntriesList({
               </TableRow>
             ) : (
               entries.map((entry) => (
-                <TableRow key={entry.id} className="border-border/70 hover:bg-muted/20">
+                  <TableRow key={entry.id} className="border-border/70 hover:bg-muted/20">
                   <TableCell className="text-sm text-muted-foreground">
-                    {formatDate(entry.paidAt)}
+                    {formatDateOnlyBR(entry.paidAt)}
                   </TableCell>
                   <TableCell className="font-medium">{entry.name}</TableCell>
                   <TableCell>

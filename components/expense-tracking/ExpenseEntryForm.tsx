@@ -7,6 +7,7 @@ import {
   getPaymentMethodLabel,
 } from "@/lib/expenses";
 import { formatBRL } from "@/lib/calculations";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,10 +34,6 @@ type ExpenseEntryFormProps = {
   defaultAmountCents?: number;
   action: (formData: FormData) => Promise<ExpenseEntryActionResult>;
 };
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function ExpenseEntryForm({
   monthlyExpenseId,
@@ -112,7 +109,7 @@ export function ExpenseEntryForm({
                 name="paidAt"
                 type="date"
                 required
-                defaultValue={todayIsoDate()}
+                defaultValue={getLocalDateInputValue()}
               />
             </div>
             <div className="space-y-2">

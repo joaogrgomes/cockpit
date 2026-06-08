@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import type { DebtValueUpdate } from "@/types";
 
 type ValueChartProps = {
@@ -23,16 +24,10 @@ type ChartPoint = {
   recordedValue: number;
 };
 
-function formatDate(value: string | Date) {
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return "-";
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
-
 function toChartPoints(updates: DebtValueUpdate[]): ChartPoint[] {
   return updates.map((update) => ({
     id: update.id,
-    dateLabel: formatDate(update.recordedAt),
+    dateLabel: formatDateOnlyBR(update.recordedAt),
     recordedValue: update.recordedValue,
   }));
 }
@@ -69,7 +64,7 @@ export function ValueChart({ updates }: ValueChartProps) {
           <p className="text-sm">
             Último valor: <span className="font-medium">{formatBRL(single.recordedValue)}</span>
           </p>
-          <p className="text-sm text-muted-foreground">Data: {formatDate(single.recordedAt)}</p>
+          <p className="text-sm text-muted-foreground">Data: {formatDateOnlyBR(single.recordedAt)}</p>
         </CardContent>
       </Card>
     );

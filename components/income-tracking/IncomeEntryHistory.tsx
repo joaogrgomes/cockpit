@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import { getIncomePaymentMethodLabel } from "@/lib/incomes";
 import type { IncomeTrackingEntryView } from "@/lib/services/monthly-income-entry.service";
 
@@ -28,12 +29,6 @@ type IncomeEntryHistoryProps = {
   entries: IncomeTrackingEntryView[];
   deleteAction: (formData: FormData) => Promise<IncomeEntryActionResult>;
 };
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
 
 export function IncomeEntryHistory({ entries, deleteAction }: IncomeEntryHistoryProps) {
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +49,7 @@ export function IncomeEntryHistory({ entries, deleteAction }: IncomeEntryHistory
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <p className="font-medium text-foreground">{formatBRL(entry.amount)}</p>
-              <Badge variant="outline">{formatDate(entry.receivedAt)}</Badge>
+              <Badge variant="outline">{formatDateOnlyBR(entry.receivedAt)}</Badge>
               {entry.paymentMethod ? (
                 <Badge variant="outline">{getIncomePaymentMethodLabel(entry.paymentMethod)}</Badge>
               ) : null}

@@ -21,6 +21,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 
 type IncomeEntryActionResult = {
   ok: boolean;
@@ -31,10 +32,6 @@ type OneTimeIncomeEntryFormProps = {
   periodMonth: string;
   action: (formData: FormData) => Promise<IncomeEntryActionResult>;
 };
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function OneTimeIncomeEntryForm({
   periodMonth,
@@ -135,7 +132,7 @@ export function OneTimeIncomeEntryForm({
                 name="receivedAt"
                 type="date"
                 required
-                defaultValue={todayIsoDate()}
+                defaultValue={getLocalDateInputValue()}
               />
             </div>
 

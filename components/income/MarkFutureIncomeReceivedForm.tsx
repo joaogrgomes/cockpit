@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "@/lib/calculations";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 import { INCOME_PAYMENT_METHOD_VALUES, getIncomePaymentMethodLabel } from "@/lib/incomes";
 import type { FutureIncomeReceivable } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -28,10 +29,6 @@ type MarkFutureIncomeReceivedFormProps = {
   futureIncome: FutureIncomeReceivable;
   action: (formData: FormData) => Promise<FutureIncomeActionResult>;
 };
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function MarkFutureIncomeReceivedForm({
   futureIncome,
@@ -102,7 +99,7 @@ export function MarkFutureIncomeReceivedForm({
                 id={`receivedAt-${futureIncome.id}`}
                 name="receivedAt"
                 type="date"
-                defaultValue={todayIsoDate()}
+                defaultValue={getLocalDateInputValue()}
                 required
               />
             </div>

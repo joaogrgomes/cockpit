@@ -1,18 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import type { ProposalViewModel } from "@/lib/services/proposal.service";
 
 type ProposalCardProps = {
   proposal: ProposalViewModel;
 };
-
-function formatDate(value: string | Date | null | undefined) {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
 
 export function ProposalCard({ proposal }: ProposalCardProps) {
   const discountPctLabel =
@@ -44,16 +38,16 @@ export function ProposalCard({ proposal }: ProposalCardProps) {
           <p className="text-sm text-muted-foreground">Desconto (%)</p>
           <p className="font-semibold">{discountPctLabel ?? "-"}</p>
         </div>
-        <div>
-          <p className="text-sm text-muted-foreground">Data da proposta</p>
-          <p className="font-medium">{formatDate(proposal.proposedAt) ?? "-"}</p>
-        </div>
-        {proposal.expiresAt ? (
           <div>
-            <p className="text-sm text-muted-foreground">Validade</p>
-            <p className="font-medium">{formatDate(proposal.expiresAt)}</p>
+            <p className="text-sm text-muted-foreground">Data da proposta</p>
+            <p className="font-medium">{formatDateOnlyBR(proposal.proposedAt)}</p>
           </div>
-        ) : null}
+          {proposal.expiresAt ? (
+            <div>
+              <p className="text-sm text-muted-foreground">Validade</p>
+              <p className="font-medium">{formatDateOnlyBR(proposal.expiresAt)}</p>
+            </div>
+          ) : null}
         {proposal.origin ? (
           <div>
             <p className="text-sm text-muted-foreground">Origem</p>

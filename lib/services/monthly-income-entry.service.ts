@@ -2,6 +2,7 @@ import "server-only";
 
 import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
+import { normalizeDateOnly } from "@/lib/date-utils";
 import { monthlyIncomeEntries, monthlyIncomes } from "@/lib/db/schema";
 import {
   buildIncomeTrackingSummary,
@@ -71,10 +72,7 @@ export type IncomeTrackingByPeriod = {
 };
 
 function toDateString(value: string | Date): string {
-  if (value instanceof Date) {
-    return value.toISOString().slice(0, 10);
-  }
-  return value;
+  return normalizeDateOnly(value) ?? String(value);
 }
 
 export async function listIncomeEntriesByPeriod(

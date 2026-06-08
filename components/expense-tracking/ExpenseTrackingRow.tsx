@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 import {
   getExpenseCategoryLabel,
   getExpenseTypeLabel,
@@ -26,10 +27,6 @@ type ExpenseTrackingRowProps = {
   createAction: (formData: FormData) => Promise<ExpenseEntryActionResult>;
   deleteAction: (formData: FormData) => Promise<ExpenseEntryActionResult>;
 };
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 function dueLabel(dueDay: number | null): string {
   if (typeof dueDay === "number") {
@@ -104,7 +101,7 @@ export function ExpenseTrackingRow({
                     formData.set("monthlyExpenseId", item.monthlyExpenseId);
                     formData.set("periodMonth", periodMonth);
                     formData.set("amount", String(item.plannedAmount));
-                    formData.set("paidAt", todayIsoDate());
+                    formData.set("paidAt", getLocalDateInputValue());
                     formData.set("paymentMethod", "");
                     formData.set("notes", "");
 

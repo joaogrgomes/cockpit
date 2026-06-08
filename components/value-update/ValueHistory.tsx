@@ -1,17 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import type { ValueUpdateHistoryItem } from "@/lib/value-update-history";
 
 type ValueHistoryProps = {
   updates: ValueUpdateHistoryItem[];
 };
-
-function formatDate(value: string | Date | null | undefined) {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
 
 function getDifferenceLabel(difference: number | null) {
   if (difference === null) {
@@ -45,7 +39,7 @@ export function ValueHistory({ updates }: ValueHistoryProps) {
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="font-semibold">{formatBRL(update.recordedValue)}</p>
                   <p className="text-xs text-muted-foreground">
-                    {formatDate(update.recordedAt) ?? "Data inválida"}
+                    {formatDateOnlyBR(update.recordedAt)}
                   </p>
                 </div>
 

@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 
 type ProposalActionResult = {
   ok: boolean;
@@ -25,10 +26,6 @@ type ProposalFormProps = {
   debtId: string;
   action: (formData: FormData) => Promise<ProposalActionResult>;
 };
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function ProposalForm({ debtId, action }: ProposalFormProps) {
   const [open, setOpen] = useState(false);
@@ -88,7 +85,13 @@ export function ProposalForm({ debtId, action }: ProposalFormProps) {
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="proposedAt">Data da proposta</Label>
-              <Input id="proposedAt" name="proposedAt" type="date" required defaultValue={todayIsoDate()} />
+              <Input
+                id="proposedAt"
+                name="proposedAt"
+                type="date"
+                required
+                defaultValue={getLocalDateInputValue()}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="expiresAt">Validade (opcional)</Label>

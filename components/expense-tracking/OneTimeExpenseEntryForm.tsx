@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 import {
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
@@ -33,10 +34,6 @@ type OneTimeExpenseEntryFormProps = {
   periodMonth: string;
   action: (formData: FormData) => Promise<ExpenseEntryActionResult>;
 };
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function OneTimeExpenseEntryForm({
   periodMonth,
@@ -139,7 +136,7 @@ export function OneTimeExpenseEntryForm({
                 id="one-time-paidAt"
                 name="paidAt"
                 type="date"
-                defaultValue={todayIsoDate()}
+                defaultValue={getLocalDateInputValue()}
                 required
               />
             </div>

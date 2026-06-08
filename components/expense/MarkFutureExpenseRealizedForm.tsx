@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "@/lib/calculations";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 import { PAYMENT_METHOD_VALUES, getPaymentMethodLabel } from "@/lib/expenses";
 import type { FutureExpensePayable } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -28,10 +29,6 @@ type MarkFutureExpenseRealizedFormProps = {
   futureExpense: FutureExpensePayable;
   action: (formData: FormData) => Promise<FutureExpenseActionResult>;
 };
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function MarkFutureExpenseRealizedForm({
   futureExpense,
@@ -98,7 +95,7 @@ export function MarkFutureExpenseRealizedForm({
                 id={`paidAt-${futureExpense.id}`}
                 name="paidAt"
                 type="date"
-                defaultValue={todayIsoDate()}
+                defaultValue={getLocalDateInputValue()}
                 required
               />
             </div>

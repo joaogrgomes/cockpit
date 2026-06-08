@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 
 type ValueUpdateActionResult = {
   ok: boolean;
@@ -25,10 +26,6 @@ type ValueUpdateFormProps = {
   debtId: string;
   action: (formData: FormData) => Promise<ValueUpdateActionResult>;
 };
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function ValueUpdateForm({ debtId, action }: ValueUpdateFormProps) {
   const [open, setOpen] = useState(false);
@@ -93,7 +90,7 @@ export function ValueUpdateForm({ debtId, action }: ValueUpdateFormProps) {
                 name="recordedAt"
                 type="date"
                 required
-                defaultValue={todayIsoDate()}
+                defaultValue={getLocalDateInputValue()}
               />
             </div>
 

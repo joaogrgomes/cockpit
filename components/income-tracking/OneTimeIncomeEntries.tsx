@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import {
   Table,
   TableBody,
@@ -36,12 +37,6 @@ type OneTimeIncomeEntriesProps = {
   entries: OneTimeIncomeEntryView[];
   deleteAction: (formData: FormData) => Promise<IncomeEntryActionResult>;
 };
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
 
 export function OneTimeIncomeEntries({
   entries,
@@ -78,7 +73,7 @@ export function OneTimeIncomeEntries({
               ) : (
                 entries.map((entry) => (
                   <TableRow key={entry.id} className="border-border/70 hover:bg-muted/25">
-                    <TableCell>{formatDate(entry.receivedAt)}</TableCell>
+                    <TableCell>{formatDateOnlyBR(entry.receivedAt)}</TableCell>
                     <TableCell className="font-medium">{entry.name}</TableCell>
                     <TableCell>{getIncomeCategoryLabel(entry.category)}</TableCell>
                     <TableCell className="font-medium">{formatBRL(entry.amount)}</TableCell>

@@ -2,15 +2,10 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { TopList } from "@/components/dashboard/TopList";
 import { PageHeader } from "@/components/layout/page-header";
 import { formatBRL } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import { getDashboardMetrics } from "@/lib/services/dashboard.service";
 
 export const dynamic = "force-dynamic";
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
 
 function formatSignedCurrency(value: number) {
   return `${value >= 0 ? "+" : ""}${formatBRL(value)}`;
@@ -28,7 +23,7 @@ export default async function DashboardPage() {
     : "Nenhuma proposta";
 
   const nextExpiringDescription = metrics.nextExpiringProposal
-    ? `Vence em ${metrics.nextExpiringProposal.daysUntilExpiry} dia(s) • ${formatDate(metrics.nextExpiringProposal.expiresAt)}`
+    ? `Vence em ${metrics.nextExpiringProposal.daysUntilExpiry} dia(s) • ${formatDateOnlyBR(metrics.nextExpiringProposal.expiresAt)}`
     : "Sem proposta ativa com validade futura.";
 
   return (

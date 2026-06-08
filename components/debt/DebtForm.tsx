@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { formatBRL } from "@/lib/calculations";
+import { normalizeDateOnly } from "@/lib/date-utils";
 import type { Debt } from "@/types";
 
 const DEBT_TYPE_OPTIONS = [
@@ -73,9 +74,7 @@ function moneyToInput(cents?: number | null): string {
 }
 
 function dateToInput(value?: string | Date | null): string {
-  if (!value) return "";
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  return value.slice(0, 10);
+  return normalizeDateOnly(value) ?? "";
 }
 
 export function DebtForm({ mode, action, debt }: DebtFormProps) {

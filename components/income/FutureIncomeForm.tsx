@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "@/lib/calculations";
+import { normalizeDateOnly } from "@/lib/date-utils";
 import { INCOME_CATEGORY_VALUES, getIncomeCategoryLabel } from "@/lib/incomes";
 import type { FutureIncomeReceivable } from "@/types";
 import { Button } from "@/components/ui/button";
@@ -36,8 +37,7 @@ function moneyToInput(cents?: number | null): string {
 }
 
 function dateToInput(dateValue: string | Date): string {
-  if (typeof dateValue === "string") return dateValue;
-  return dateValue.toISOString().slice(0, 10);
+  return normalizeDateOnly(dateValue) ?? "";
 }
 
 export function FutureIncomeForm({

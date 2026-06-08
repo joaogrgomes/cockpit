@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import { getPaymentMethodLabel } from "@/lib/expenses";
 import type { ExpenseTrackingEntryView } from "@/lib/services/monthly-expense-entry.service";
 
@@ -28,12 +29,6 @@ type ExpenseEntryHistoryProps = {
   entries: ExpenseTrackingEntryView[];
   deleteAction: (formData: FormData) => Promise<ExpenseEntryActionResult>;
 };
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
 
 export function ExpenseEntryHistory({ entries, deleteAction }: ExpenseEntryHistoryProps) {
   const [error, setError] = useState<string | null>(null);
@@ -52,10 +47,10 @@ export function ExpenseEntryHistory({ entries, deleteAction }: ExpenseEntryHisto
           className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-xs"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <p className="font-medium text-foreground">{formatBRL(entry.amount)}</p>
-              <Badge variant="outline">{formatDate(entry.paidAt)}</Badge>
-              {entry.paymentMethod ? (
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-foreground">{formatBRL(entry.amount)}</p>
+                <Badge variant="outline">{formatDateOnlyBR(entry.paidAt)}</Badge>
+                {entry.paymentMethod ? (
                 <Badge variant="outline">{getPaymentMethodLabel(entry.paymentMethod)}</Badge>
               ) : null}
             </div>

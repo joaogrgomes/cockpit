@@ -1,18 +1,12 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import type { ProposalViewModel } from "@/lib/services/proposal.service";
 
 type ProposalHistoryProps = {
   proposals: ProposalViewModel[];
 };
-
-function formatDate(value: string | Date | null | undefined) {
-  if (!value) return null;
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
 
 function formatStatus(status: string, isExpired: boolean) {
   if (isExpired) return "expirada";
@@ -39,8 +33,8 @@ export function ProposalHistory({ proposals }: ProposalHistoryProps) {
                   </Badge>
                 </div>
                 <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
-                  <p>Proposta em: {formatDate(proposal.proposedAt) ?? "-"}</p>
-                  <p>Validade: {formatDate(proposal.expiresAt) ?? "-"}</p>
+                  <p>Proposta em: {formatDateOnlyBR(proposal.proposedAt)}</p>
+                  <p>Validade: {formatDateOnlyBR(proposal.expiresAt)}</p>
                   <p>Desconto: {`${proposal.discountValue >= 0 ? "+" : ""}${formatBRL(proposal.discountValue)}`}</p>
                   <p>
                     Desconto %:{" "}

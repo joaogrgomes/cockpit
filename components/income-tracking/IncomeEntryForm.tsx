@@ -7,6 +7,7 @@ import {
   getIncomePaymentMethodLabel,
 } from "@/lib/incomes";
 import { formatBRL } from "@/lib/calculations";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,10 +34,6 @@ type IncomeEntryFormProps = {
   defaultAmountCents?: number;
   action: (formData: FormData) => Promise<IncomeEntryActionResult>;
 };
-
-function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 export function IncomeEntryForm({
   monthlyIncomeId,
@@ -112,7 +109,7 @@ export function IncomeEntryForm({
                 name="receivedAt"
                 type="date"
                 required
-                defaultValue={todayIsoDate()}
+                defaultValue={getLocalDateInputValue()}
               />
             </div>
 

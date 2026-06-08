@@ -1,6 +1,7 @@
 import "server-only";
 
 import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { normalizeDateOnly } from "@/lib/date-utils";
 import { getDb } from "@/lib/db";
 import { debtProposals, debts } from "@/lib/db/schema";
 import { calcDiscountPct, calcDiscountValue } from "@/lib/calculations";
@@ -23,10 +24,23 @@ export type ProposalViewModel = DebtProposal & {
   discountPct: number | null;
 };
 
+function parseDateOnly(value: string | Date | null): Date | null {
+  const normalized = normalizeDateOnly(value);
+  if (!normalized) return null;
+
+  const [yearText, monthText, dayText] = normalized.split("-");
+  const year = Number.parseInt(yearText, 10);
+  const month = Number.parseInt(monthText, 10);
+  const day = Number.parseInt(dayText, 10);
+  if ([year, month, day].some(Number.isNaN)) return null;
+
+  return new Date(year, month - 1, day);
+}
+
 export function getDaysUntilExpiry(expiresAt: string | Date | null): number | null {
   if (!expiresAt) return null;
-  const expiryDate = expiresAt instanceof Date ? expiresAt : new Date(expiresAt);
-  if (Number.isNaN(expiryDate.getTime())) return null;
+  const expiryDate = parseDateOnly(expiresAt);
+  if (!expiryDate) return null;
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());

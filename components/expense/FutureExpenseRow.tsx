@@ -16,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
+import { formatDateOnlyBR } from "@/lib/date-utils";
 import { getExpenseCategoryLabel, getExpenseTypeLabel } from "@/lib/expenses";
 import type { FutureExpensePayable } from "@/types";
 import { FutureExpenseForm } from "./FutureExpenseForm";
@@ -34,12 +35,6 @@ type FutureExpenseRowProps = {
   markAsRealizedAction: (formData: FormData) => Promise<FutureExpenseActionResult>;
 };
 
-function formatDate(value: string | Date): string {
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
-  return new Intl.DateTimeFormat("pt-BR").format(date);
-}
-
 export function FutureExpenseRow({
   futureExpense,
   updateAction,
@@ -53,7 +48,7 @@ export function FutureExpenseRow({
   return (
     <TableRow className="border-border/70 hover:bg-muted/35">
       <TableCell className="py-3 text-sm text-muted-foreground">
-        {formatDate(futureExpense.expectedDate)}
+        {formatDateOnlyBR(futureExpense.expectedDate)}
       </TableCell>
       <TableCell className="py-3 font-medium text-foreground">{futureExpense.name}</TableCell>
       <TableCell className="py-3 text-sm text-muted-foreground">

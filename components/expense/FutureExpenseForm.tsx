@@ -9,6 +9,7 @@ import {
   getExpenseCategoryLabel,
   getExpenseTypeLabel,
 } from "@/lib/expenses";
+import { normalizeDateOnly } from "@/lib/date-utils";
 import type { FutureExpensePayable } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,8 +42,7 @@ function moneyToInput(cents?: number | null): string {
 }
 
 function dateToInput(dateValue: string | Date): string {
-  if (typeof dateValue === "string") return dateValue;
-  return dateValue.toISOString().slice(0, 10);
+  return normalizeDateOnly(dateValue) ?? "";
 }
 
 export function FutureExpenseForm({

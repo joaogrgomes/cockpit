@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { getLocalDateInputValue } from "@/lib/date-utils";
 import {
   DEBT_STATUS_VALUES,
   EXPENSE_CATEGORY_VALUES,
@@ -26,7 +27,7 @@ const PERCEIVED_RISK_VALUES = [
 ] as const;
 
 function todayIsoDate() {
-  return new Date().toISOString().slice(0, 10);
+  return getLocalDateInputValue();
 }
 
 export const DebtSchema = z
@@ -77,8 +78,8 @@ export const DebtProposalSchema = z
       return;
     }
 
-    const proposedDate = new Date(data.proposedAt);
-    const expiresDate = new Date(data.expiresAt);
+    const proposedDate = data.proposedAt.slice(0, 10);
+    const expiresDate = data.expiresAt.slice(0, 10);
 
     if (expiresDate < proposedDate) {
       ctx.addIssue({

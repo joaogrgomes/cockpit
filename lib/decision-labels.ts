@@ -1,4 +1,5 @@
 import { calcDiscountPct, calcGrowthPct } from "@/lib/calculations";
+import { normalizeDateOnly } from "@/lib/date-utils";
 import { compareRiskSignals } from "@/lib/dashboard-rankings";
 
 export type DecisionLabelKey =
@@ -44,14 +45,29 @@ function startOfDay(value: Date) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());
 }
 
+function parseDateOnly(value: string | Date | null | undefined): Date | null {
+  const normalized = normalizeDateOnly(value);
+  if (!normalized) return null;
+
+  const [yearText, monthText, dayText] = normalized.split("-");
+  const year = Number.parseInt(yearText, 10);
+  const month = Number.parseInt(monthText, 10);
+  const day = Number.parseInt(dayText, 10);
+  if ([year, month, day].some(Number.isNaN)) return null;
+
+  return new Date(year, month - 1, day);
+}
+
 function calculateDaysBetween(from: string | Date, to: Date): number {
-  const fromDate = from instanceof Date ? from : new Date(from);
+  const fromDate = parseDateOnly(from);
+  if (!fromDate) return 0;
   const diffMs = startOfDay(to).getTime() - startOfDay(fromDate).getTime();
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
 
 function calculateDaysUntil(from: Date, target: string | Date): number {
-  const toDate = target instanceof Date ? target : new Date(target);
+  const toDate = parseDateOnly(target);
+  if (!toDate) return 0;
   const diffMs = startOfDay(toDate).getTime() - startOfDay(from).getTime();
   return Math.round(diffMs / (1000 * 60 * 60 * 24));
 }
