@@ -59,6 +59,7 @@ function revalidateExpensePages() {
   revalidatePath("/expenses/tracking");
   revalidatePath("/cash-flow");
   revalidatePath("/expenses/future");
+  revalidatePath("/statement");
 }
 
 export async function createMonthlyExpenseEntryAction(

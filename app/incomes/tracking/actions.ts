@@ -57,6 +57,7 @@ function revalidateIncomePages() {
   revalidatePath("/incomes");
   revalidatePath("/incomes/tracking");
   revalidatePath("/cash-flow");
+  revalidatePath("/statement");
 }
 
 export async function createMonthlyIncomeEntryAction(

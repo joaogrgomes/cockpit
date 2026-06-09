@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
 import {
   BarChart3Icon,
+  FileTextIcon,
   GaugeIcon,
   HandCoinsIcon,
   LandmarkIcon,
@@ -45,6 +46,8 @@ const DEBT_NAV_ITEMS = [
 const CASH_FLOW_NAV_ITEMS = [
   { href: "/cash-flow", label: "Fluxo de caixa", icon: BarChart3Icon, exact: true },
 ];
+
+const STATEMENT_NAV_ITEMS = [{ href: "/statement", label: "Extrato", icon: FileTextIcon, exact: true }];
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -99,6 +102,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-3">
+        {renderGroup("Operação", STATEMENT_NAV_ITEMS)}
         {renderGroup("Entradas", INCOME_NAV_ITEMS)}
         {renderGroup("Gastos", EXPENSE_NAV_ITEMS)}
         {renderGroup("Fluxo", CASH_FLOW_NAV_ITEMS)}
