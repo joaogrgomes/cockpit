@@ -195,10 +195,17 @@ export function CashFlowMonthRow({
         <div className="space-y-1">
           <p>{formatBRL(month.fixedExpensesUsed)}</p>
           {shouldShowDetails ? <SourceBadge source={month.fixedExpenseSource} /> : null}
+          {shouldShowDetails ? (
+            <DetailLine label="Planejados" value={month.plannedFixedExpenses} />
+          ) : null}
           {shouldShowDetails && month.actualFixedExpenses > 0 ? (
             <DetailLine label="Realizados" value={month.actualFixedExpenses} />
-          ) : shouldShowDetails ? (
-            <DetailLine label="Planejados" value={month.plannedFixedExpenses} />
+          ) : null}
+          {shouldShowDetails && !month.isClosed ? (
+            <DetailLine
+              label="Usado na previsão"
+              value={Math.max(month.plannedFixedExpenses, month.actualFixedExpenses)}
+            />
           ) : null}
           {shouldShowDetails && month.futureExpectedFixedExpenses > 0 && !month.isClosed ? (
             <DetailLine label="Futuras" value={month.futureExpectedFixedExpenses} />

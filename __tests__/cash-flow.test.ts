@@ -125,6 +125,38 @@ describe("calculateCashFlowProjection", () => {
     expect(result.months[0].fixedExpensesUsed).toBe(200000);
   });
 
+  it("mantém fixo planejado na previsão quando realizado está abaixo do orçamento", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedFixedExpensesTotal: 462600,
+        actualFixedExpensesByMonth: { "2026-01": 130768 },
+      })
+    );
+
+    const jan = result.months[0];
+
+    expect(jan.fixedExpensesUsed).toBe(462600);
+    expect(jan.totalExpenses).toBe(562600);
+    expect(jan.monthlyResult).toBe(-62600);
+    expect(jan.closingBalance).toBe(37400);
+  });
+
+  it("eleva fixo na previsão quando realizado supera o orçamento", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedFixedExpensesTotal: 462600,
+        actualFixedExpensesByMonth: { "2026-01": 500000 },
+      })
+    );
+
+    const jan = result.months[0];
+
+    expect(jan.fixedExpensesUsed).toBe(500000);
+    expect(jan.totalExpenses).toBe(600000);
+    expect(jan.monthlyResult).toBe(-100000);
+    expect(jan.closingBalance).toBe(0);
+  });
+
   it("mantém variável planejado como variável usada na projeção", () => {
     const result = calculateCashFlowProjection(
       baseInput({
@@ -141,6 +173,7 @@ describe("calculateCashFlowProjection", () => {
     const result = calculateCashFlowProjection(
       baseInput({
         plannedIncomesTotal: 1280000,
+        plannedFixedExpensesTotal: 462600,
         actualLinkedIncomesByMonth: { "2026-06": 200000 },
         actualOneTimeIncomesByMonth: { "2026-06": 288900 },
         futureExpectedIncomesByMonth: { "2026-06": 1350000 },
@@ -174,10 +207,11 @@ describe("calculateCashFlowProjection", () => {
     expect(june.actualLinkedIncome).toBe(200000);
     expect(june.actualOneTimeIncome).toBe(288900);
     expect(june.futureExpectedIncomes).toBe(1350000);
+    expect(june.fixedExpensesUsed).toBe(462600);
     expect(june.variableExpensesUsed).toBe(601384);
-    expect(june.totalExpenses).toBe(732152);
-    expect(june.monthlyResult).toBe(2186748);
-    expect(june.closingBalance).toBe(3518357);
+    expect(june.totalExpenses).toBe(1063984);
+    expect(june.monthlyResult).toBe(1854916);
+    expect(june.closingBalance).toBe(3186525);
     expect(june.partialMonthlyResult).toBe(-243252);
     expect(june.partialClosingBalance).toBe(1088357);
   });
@@ -263,7 +297,9 @@ describe("calculateCashFlowProjection", () => {
 
     expect(jan.futureExpectedFixedExpenses).toBe(20000);
     expect(jan.futureExpectedVariableExpenses).toBe(40000);
-    expect(jan.monthlyResult).toBe(-10000);
+    expect(jan.fixedExpensesUsed).toBe(220000);
+    expect(jan.variableExpensesUsed).toBe(140000);
+    expect(jan.monthlyResult).toBe(-160000);
     expect(jan.partialMonthlyResult).toBe(120000);
     expect(jan.partialClosingBalance).toBe(220000);
   });
@@ -309,9 +345,9 @@ describe("calculateCashFlowProjection", () => {
 
     const jan = result.months[0];
 
-    // projetado: 500000 - (150000 + 100000) = 250000
-    expect(jan.monthlyResult).toBe(250000);
-    expect(jan.closingBalance).toBe(350000);
+    // projetado: 500000 - (200000 + 100000) = 200000
+    expect(jan.monthlyResult).toBe(200000);
+    expect(jan.closingBalance).toBe(300000);
 
     // parcial: 500000 - (150000 + 20000) = 330000
     expect(jan.partialMonthlyResult).toBe(330000);

@@ -233,12 +233,10 @@ export function calculateCashFlowProjection(
       : actualFixedExpenses > 0
       ? "realizado"
       : "planejado";
-    const baseFixedExpensesUsed = isClosed
+    const projectedFixedExpenses = isClosed
       ? actualFixedExpenses
-      : fixedExpenseSource === "realizado"
-      ? actualFixedExpenses
-      : plannedFixedExpenses;
-    const fixedExpensesUsed = baseFixedExpensesUsed + futureExpectedFixedExpenses;
+      : Math.max(plannedFixedExpenses, actualFixedExpenses);
+    const fixedExpensesUsed = projectedFixedExpenses + futureExpectedFixedExpenses;
 
     const actualVariableExpenses = input.actualVariableExpensesByMonth[periodMonth] ?? 0;
     const futureExpectedVariableExpenses = isClosed
