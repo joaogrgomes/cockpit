@@ -103,6 +103,7 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Projeção mensal ({projection.year})</CardTitle>
           <CardDescription>
+            O mês atual aparece em destaque. Meses fechados anteriores começam recolhidos para reduzir ruído visual.
             Projetado considera o orçamento variável inteiro. Entradas futuras previstas somam no mês esperado.
             Gastos futuros previstos também somam no mês esperado.
             Parcial considera apenas entradas e gastos já realizados.
@@ -112,6 +113,7 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
         <CardContent className="w-full px-4 sm:px-6">
           <CashFlowTable
             months={projection.months}
+            currentPeriodMonth={getCurrentPeriodMonth()}
             closeMonthAction={closeMonthAction}
             reopenMonthAction={reopenMonthAction}
           />

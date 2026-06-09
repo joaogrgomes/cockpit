@@ -15,12 +15,14 @@ type CashFlowActionResult = {
 
 type CashFlowTableProps = {
   months: CashFlowMonth[];
+  currentPeriodMonth: string;
   closeMonthAction: (formData: FormData) => Promise<CashFlowActionResult>;
   reopenMonthAction: (formData: FormData) => Promise<CashFlowActionResult>;
 };
 
 export function CashFlowTable({
   months,
+  currentPeriodMonth,
   closeMonthAction,
   reopenMonthAction,
 }: CashFlowTableProps) {
@@ -47,6 +49,7 @@ export function CashFlowTable({
           <CashFlowMonthRow
             key={month.periodMonth}
             month={month}
+            currentPeriodMonth={currentPeriodMonth}
             closeMonthAction={closeMonthAction}
             reopenMonthAction={reopenMonthAction}
           />
