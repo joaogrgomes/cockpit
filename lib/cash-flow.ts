@@ -237,16 +237,8 @@ export function calculateCashFlowProjection(
     const monthlyResult = incomeUsed - totalExpenses;
     const closingBalance = currentOpeningBalance + monthlyResult;
 
-    const partialTotalExpenses = isClosed
-      ? totalExpenses
-      : hasActualVariableExpenses
-      ? fixedExpensesUsed + actualVariableExpenses + futureExpectedVariableExpenses
-      : totalExpenses;
-    const partialMonthlyResult = isClosed
-      ? monthlyResult
-      : hasActualVariableExpenses
-      ? incomeUsed - partialTotalExpenses
-      : monthlyResult;
+    const partialTotalExpenses = actualFixedExpenses + actualVariableExpenses;
+    const partialMonthlyResult = actualIncome - partialTotalExpenses;
     const partialOpeningBalance = isClosed
       ? currentOpeningBalance
       : currentPartialOpeningBalance;

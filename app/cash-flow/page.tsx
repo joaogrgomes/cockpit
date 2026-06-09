@@ -100,7 +100,7 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
           <CardDescription>
             Projetado considera o orçamento variável inteiro. Entradas futuras previstas somam no mês esperado.
             Gastos futuros previstos também somam no mês esperado.
-            Parcial considera apenas o variável já realizado até agora.
+            Parcial considera apenas entradas e gastos já realizados.
             Meses fechados usam valores realizados como verdade final.
           </CardDescription>
         </CardHeader>

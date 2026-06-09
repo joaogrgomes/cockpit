@@ -85,6 +85,12 @@ export type StatementSummary = {
   count: number;
 };
 
+export type StatementDayGroup = {
+  date: string;
+  items: StatementItem[];
+  dailyBalance: number;
+};
+
 export type StatementResult = {
   periodMonth: string;
   items: StatementItem[];
@@ -260,6 +266,26 @@ function compareStatementItems(a: StatementItem, b: StatementItem): number {
   }
 
   return b.id.localeCompare(a.id);
+}
+
+export function sortStatementItems(items: StatementItem[]): StatementItem[] {
+  return [...items].sort(compareStatementItems);
+}
+
+export function groupStatementItemsByDate(items: StatementItem[]): StatementDayGroup[] {
+  const groups = new Map<string, StatementItem[]>();
+
+  for (const item of sortStatementItems(items)) {
+    const current = groups.get(item.date) ?? [];
+    current.push(item);
+    groups.set(item.date, current);
+  }
+
+  return [...groups.entries()].map(([date, dayItems]) => ({
+    date,
+    items: dayItems,
+    dailyBalance: dayItems.reduce((sum, item) => sum + item.signedAmount, 0),
+  }));
 }
 
 export function getStatementGroupHeading(date: string): string {
@@ -480,7 +506,7 @@ export function buildStatementResult(params: {
     return true;
   });
 
-  const items = [...filtered].sort(compareStatementItems).map(({ createdAt: _createdAt, ...item }) => item);
+  const items = sortStatementItems(filtered).map(({ createdAt: _createdAt, ...item }) => item);
 
   return {
     periodMonth: params.periodMonth,

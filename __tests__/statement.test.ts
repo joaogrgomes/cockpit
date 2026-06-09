@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildStatementResult,
   buildStatementEntryUpdateValues,
+  groupStatementItemsByDate,
   getStatementEntryHref,
   mapExpenseEntryRowToDetail,
   mapExpenseEntryRowToStatementItem,
@@ -423,5 +424,217 @@ describe("buildStatementResult", () => {
 
     expect(categoryFiltered.items.map((item) => item.category)).toEqual(["moradia"]);
     expect(queryFiltered.items.map((item) => item.description)).toEqual(["Salário"]);
+  });
+});
+
+describe("groupStatementItemsByDate", () => {
+  it("calcula saldo do dia somando signedAmount", () => {
+    const groups = groupStatementItemsByDate([
+      mapIncomeEntryRowToStatementItem({
+        id: "income-1",
+        monthlyIncomeId: null,
+        entryName: "Entrada 1",
+        entryCategory: "outros",
+        monthlyIncomeName: null,
+        monthlyIncomeCategory: null,
+        periodMonth: "2026-05",
+        amount: 10000,
+        receivedAt: "2026-05-28",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-05-28T12:00:00.000Z",
+      }),
+      mapExpenseEntryRowToStatementItem({
+        id: "expense-1",
+        monthlyExpenseId: null,
+        entryName: "Gasto 1",
+        entryCategory: "lazer",
+        entryExpenseType: "variavel",
+        monthlyExpenseName: null,
+        monthlyExpenseCategory: null,
+        monthlyExpenseType: null,
+        periodMonth: "2026-05",
+        amount: 5000,
+        paidAt: "2026-05-28",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-05-28T10:00:00.000Z",
+      }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0]).toMatchObject({
+      date: "2026-05-28",
+      dailyBalance: 5000,
+    });
+  });
+
+  it("retorna saldo negativo quando só há gastos", () => {
+    const groups = groupStatementItemsByDate([
+      mapExpenseEntryRowToStatementItem({
+        id: "expense-1",
+        monthlyExpenseId: null,
+        entryName: "Gasto 1",
+        entryCategory: "lazer",
+        entryExpenseType: "variavel",
+        monthlyExpenseName: null,
+        monthlyExpenseCategory: null,
+        monthlyExpenseType: null,
+        periodMonth: "2026-05",
+        amount: 10000,
+        paidAt: "2026-05-27",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-05-27T10:00:00.000Z",
+      }),
+      mapExpenseEntryRowToStatementItem({
+        id: "expense-2",
+        monthlyExpenseId: null,
+        entryName: "Gasto 2",
+        entryCategory: "lazer",
+        entryExpenseType: "variavel",
+        monthlyExpenseName: null,
+        monthlyExpenseCategory: null,
+        monthlyExpenseType: null,
+        periodMonth: "2026-05",
+        amount: 20000,
+        paidAt: "2026-05-27",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-05-27T12:00:00.000Z",
+      }),
+      mapExpenseEntryRowToStatementItem({
+        id: "expense-3",
+        monthlyExpenseId: null,
+        entryName: "Gasto 3",
+        entryCategory: "lazer",
+        entryExpenseType: "variavel",
+        monthlyExpenseName: null,
+        monthlyExpenseCategory: null,
+        monthlyExpenseType: null,
+        periodMonth: "2026-05",
+        amount: 10000,
+        paidAt: "2026-05-27",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-05-27T14:00:00.000Z",
+      }),
+    ]);
+
+    expect(groups).toHaveLength(1);
+    expect(groups[0].dailyBalance).toBe(-40000);
+  });
+
+  it("retorna saldo zero quando entradas e saídas se anulam", () => {
+    const groups = groupStatementItemsByDate([
+      mapIncomeEntryRowToStatementItem({
+        id: "income-1",
+        monthlyIncomeId: null,
+        entryName: "Entrada 1",
+        entryCategory: "outros",
+        monthlyIncomeName: null,
+        monthlyIncomeCategory: null,
+        periodMonth: "2026-05",
+        amount: 10000,
+        receivedAt: "2026-05-26",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-05-26T08:00:00.000Z",
+      }),
+      mapExpenseEntryRowToStatementItem({
+        id: "expense-1",
+        monthlyExpenseId: null,
+        entryName: "Gasto 1",
+        entryCategory: "lazer",
+        entryExpenseType: "variavel",
+        monthlyExpenseName: null,
+        monthlyExpenseCategory: null,
+        monthlyExpenseType: null,
+        periodMonth: "2026-05",
+        amount: 10000,
+        paidAt: "2026-05-26",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-05-26T09:00:00.000Z",
+      }),
+    ]);
+
+    expect(groups[0].dailyBalance).toBe(0);
+  });
+
+  it("preserva ordenação por data", () => {
+    const groups = groupStatementItemsByDate([
+      mapIncomeEntryRowToStatementItem({
+        id: "income-1",
+        monthlyIncomeId: null,
+        entryName: "Entrada 1",
+        entryCategory: "outros",
+        monthlyIncomeName: null,
+        monthlyIncomeCategory: null,
+        periodMonth: "2026-05",
+        amount: 10000,
+        receivedAt: "2026-05-27",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-05-27T08:00:00.000Z",
+      }),
+      mapExpenseEntryRowToStatementItem({
+        id: "expense-1",
+        monthlyExpenseId: null,
+        entryName: "Gasto 1",
+        entryCategory: "lazer",
+        entryExpenseType: "variavel",
+        monthlyExpenseName: null,
+        monthlyExpenseCategory: null,
+        monthlyExpenseType: null,
+        periodMonth: "2026-05",
+        amount: 5000,
+        paidAt: "2026-05-28",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-05-28T08:00:00.000Z",
+      }),
+    ]);
+
+    expect(groups.map((group) => group.date)).toEqual(["2026-05-28", "2026-05-27"]);
+  });
+
+  it("usa signedAmount no cálculo do saldo diário", () => {
+    const groups = groupStatementItemsByDate([
+      {
+        id: "custom-1",
+        kind: "income",
+        source: "one_time",
+        date: "2026-05-25",
+        periodMonth: "2026-05",
+        description: "Entrada",
+        category: "outros",
+        categoryLabel: "Outros",
+        amount: 999999,
+        signedAmount: 100,
+        paymentMethod: null,
+        notes: null,
+        originId: "custom-1",
+        originType: "monthly_income_entry",
+      },
+      {
+        id: "custom-2",
+        kind: "expense",
+        source: "one_time",
+        date: "2026-05-25",
+        periodMonth: "2026-05",
+        description: "Gasto",
+        category: "lazer",
+        categoryLabel: "Lazer",
+        amount: 1,
+        signedAmount: -100,
+        paymentMethod: null,
+        notes: null,
+        originId: "custom-2",
+        originType: "monthly_expense_entry",
+      },
+    ]);
+
+    expect(groups[0].dailyBalance).toBe(0);
   });
 });

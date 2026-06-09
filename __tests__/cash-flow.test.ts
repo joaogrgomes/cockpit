@@ -68,12 +68,12 @@ describe("calculateCashFlowProjection", () => {
     expect(jan.partialOpeningBalance).toBe(100000);
     expect(jan.monthlyResult).toBe(200000);
     expect(jan.closingBalance).toBe(300000);
-    expect(jan.partialClosingBalance).toBe(300000);
+    expect(jan.partialClosingBalance).toBe(100000);
 
     expect(feb.openingBalance).toBe(300000);
-    expect(feb.partialOpeningBalance).toBe(300000);
+    expect(feb.partialOpeningBalance).toBe(100000);
     expect(feb.closingBalance).toBe(500000);
-    expect(feb.partialClosingBalance).toBe(500000);
+    expect(feb.partialClosingBalance).toBe(100000);
   });
 
   it("usa realizado de entrada quando existe", () => {
@@ -136,6 +136,44 @@ describe("calculateCashFlowProjection", () => {
     expect(result.months[0].variableExpensesUsed).toBe(90000);
   });
 
+  it("parcial de mês aberto ignora entradas futuras previstas", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedIncomesTotal: 500000,
+        actualLinkedIncomesByMonth: { "2026-01": 0 },
+        actualOneTimeIncomesByMonth: { "2026-01": 0 },
+        futureExpectedIncomesByMonth: { "2026-01": 70000 },
+      })
+    );
+
+    const jan = result.months[0];
+
+    expect(jan.futureExpectedIncomes).toBe(70000);
+    expect(jan.incomeUsed).toBe(570000);
+    expect(jan.partialMonthlyResult).toBe(0);
+    expect(jan.partialClosingBalance).toBe(100000);
+  });
+
+  it("parcial de mês aberto ignora gastos futuros previstos", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        actualLinkedIncomesByMonth: { "2026-01": 200000 },
+        actualFixedExpensesByMonth: { "2026-01": 50000 },
+        actualVariableExpensesByMonth: { "2026-01": 30000 },
+        futureExpectedFixedExpensesByMonth: { "2026-01": 20000 },
+        futureExpectedVariableExpensesByMonth: { "2026-01": 40000 },
+      })
+    );
+
+    const jan = result.months[0];
+
+    expect(jan.futureExpectedFixedExpenses).toBe(20000);
+    expect(jan.futureExpectedVariableExpenses).toBe(40000);
+    expect(jan.monthlyResult).toBe(-10000);
+    expect(jan.partialMonthlyResult).toBe(120000);
+    expect(jan.partialClosingBalance).toBe(220000);
+  });
+
   it("calcula actualVariableExpenses e remainingVariableBudget", () => {
     const result = calculateCashFlowProjection(
       baseInput({
@@ -161,31 +199,35 @@ describe("calculateCashFlowProjection", () => {
     expect(result.months[0].variableBudgetStatus).toBe("estourado");
   });
 
-  it("calcula resultado parcial e saldo parcial quando há variável realizado", () => {
+  it("calcula resultado parcial e saldo parcial com realizado-only", () => {
     const result = calculateCashFlowProjection(
       baseInput({
         initialBalance: 100000,
         plannedIncomesTotal: 500000,
+        actualLinkedIncomesByMonth: { "2026-01": 500000 },
         plannedFixedExpensesTotal: 200000,
+        actualFixedExpensesByMonth: { "2026-01": 150000 },
         plannedVariableExpensesTotal: 100000,
-        actualVariableExpensesByMonth: { "2026-01": 30000 },
+        actualVariableExpensesByMonth: { "2026-01": 20000 },
       })
     );
 
     const jan = result.months[0];
 
-    // projetado: 500000 - (200000 + 100000) = 200000
-    expect(jan.monthlyResult).toBe(200000);
-    expect(jan.closingBalance).toBe(300000);
+    // projetado: 500000 - (150000 + 100000) = 250000
+    expect(jan.monthlyResult).toBe(250000);
+    expect(jan.closingBalance).toBe(350000);
 
-    // parcial: 500000 - (200000 + 30000) = 270000
-    expect(jan.partialMonthlyResult).toBe(270000);
-    expect(jan.partialClosingBalance).toBe(370000);
+    // parcial: 500000 - (150000 + 20000) = 330000
+    expect(jan.partialMonthlyResult).toBe(330000);
+    expect(jan.partialClosingBalance).toBe(430000);
   });
 
   it("saldo parcial melhora quando variável realizado é menor que planejado", () => {
     const result = calculateCashFlowProjection(
       baseInput({
+        actualLinkedIncomesByMonth: { "2026-01": 500000 },
+        actualFixedExpensesByMonth: { "2026-01": 150000 },
         plannedVariableExpensesTotal: 100000,
         actualVariableExpensesByMonth: { "2026-01": 20000 },
       })
@@ -206,11 +248,10 @@ describe("calculateCashFlowProjection", () => {
     const feb = result.months[1];
 
     expect(feb.hasActualVariableExpenses).toBe(false);
-    expect(feb.partialTotalExpenses).toBe(feb.totalExpenses);
-    expect(feb.partialMonthlyResult).toBe(feb.monthlyResult);
-    expect(feb.partialMonthlyResult).toBe(200000);
+    expect(feb.partialTotalExpenses).toBe(0);
+    expect(feb.partialMonthlyResult).toBe(0);
     expect(feb.partialOpeningBalance).toBe(result.months[0].partialClosingBalance);
-    expect(feb.partialClosingBalance).toBe(result.months[0].partialClosingBalance + 200000);
+    expect(feb.partialClosingBalance).toBe(result.months[0].partialClosingBalance);
   });
 
   it("closingBalance projetado continua sendo base do mês seguinte", () => {
@@ -259,16 +300,16 @@ describe("calculateCashFlowProjection", () => {
     if (!may || !june) return;
 
     expect(may.monthlyResult).toBe(130_000);
-    expect(may.partialMonthlyResult).toBe(300_000);
+    expect(may.partialMonthlyResult).toBe(-300_000);
     expect(may.closingBalance).toBe(130_000);
-    expect(may.partialClosingBalance).toBe(300_000);
+    expect(may.partialClosingBalance).toBe(-300_000);
 
     expect(june.openingBalance).toBe(130_000);
-    expect(june.partialOpeningBalance).toBe(300_000);
+    expect(june.partialOpeningBalance).toBe(-300_000);
     expect(june.monthlyResult).toBe(130_000);
-    expect(june.partialMonthlyResult).toBe(130_000);
+    expect(june.partialMonthlyResult).toBe(0);
     expect(june.closingBalance).toBe(260_000);
-    expect(june.partialClosingBalance).toBe(430_000);
+    expect(june.partialClosingBalance).toBe(-300_000);
   });
 
   it("helper não quebra meses sem realizado", () => {
@@ -276,7 +317,8 @@ describe("calculateCashFlowProjection", () => {
 
     expect(result.months[0].actualVariableExpenses).toBe(0);
     expect(result.months[0].hasActualVariableExpenses).toBe(false);
-    expect(result.months[0].partialMonthlyResult).toBe(result.months[0].monthlyResult);
+    expect(result.months[0].partialMonthlyResult).toBe(0);
+    expect(result.months[0].partialClosingBalance).toBe(result.months[0].partialOpeningBalance);
   });
 
   it("entrada avulsa soma por fora sem substituir planejado quando não há vinculada", () => {
@@ -336,6 +378,7 @@ describe("calculateCashFlowProjection", () => {
     expect(jan.futureExpectedIncomes).toBe(70000);
     expect(jan.incomeSource).toBe("planejado_avulso");
     expect(jan.incomeUsed).toBe(570000);
+    expect(jan.partialMonthlyResult).toBe(0);
   });
 
   it("entrada futura soma junto quando há entrada vinculada realizada", () => {

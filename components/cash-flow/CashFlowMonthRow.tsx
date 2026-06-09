@@ -164,7 +164,7 @@ export function CashFlowMonthRow({
           {isPartialEqual ? (
             <p className="text-xs text-muted-foreground">Igual ao projetado</p>
           ) : !month.hasActualVariableExpenses ? (
-            <p className="text-xs text-muted-foreground">Sem variável realizado no mês</p>
+            <p className="text-xs text-muted-foreground">Somente realizado</p>
           ) : null}
         </div>
       </TableCell>
