@@ -213,6 +213,18 @@ describe("MonthlyExpenseSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  it("aceita categoria beleza_cuidados", () => {
+    const result = MonthlyExpenseSchema.safeParse({
+      name: "Salão",
+      category: "beleza_cuidados",
+      amount: 8500,
+      expenseType: "variavel",
+      isActive: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("aceita dueDay e paymentMethod nulos", () => {
     const result = MonthlyExpenseSchema.safeParse({
       name: "Academia",
@@ -348,6 +360,22 @@ describe("MonthlyExpenseEntrySchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("aceita gasto avulso com categoria beleza_cuidados", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: null,
+      name: "Corte de cabelo",
+      category: "beleza_cuidados",
+      expenseType: "variavel",
+      periodMonth: "2026-05",
+      amount: 4500,
+      paidAt: "2026-05-15",
+      paymentMethod: "pix",
+      notes: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
   it("rejeita gasto avulso sem name", () => {
     const result = MonthlyExpenseEntrySchema.safeParse({
       monthlyExpenseId: null,
@@ -398,6 +426,19 @@ describe("FutureExpensePayableSchema", () => {
       category: "lazer",
       expenseType: "variavel",
       expectedAmount: 300000,
+      expectedDate: "2026-08-10",
+      notes: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("aceita gasto futuro com categoria beleza_cuidados", () => {
+    const result = FutureExpensePayableSchema.safeParse({
+      name: "Salão mensal",
+      category: "beleza_cuidados",
+      expenseType: "variavel",
+      expectedAmount: 12000,
       expectedDate: "2026-08-10",
       notes: null,
     });

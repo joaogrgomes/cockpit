@@ -34,6 +34,7 @@ export const EXPENSE_CATEGORY_VALUES = [
   "transporte",
   "alimentacao",
   "esportes",
+  "beleza_cuidados",
   "reserva",
   "doacoes",
   "lazer",
@@ -210,7 +211,7 @@ export const monthlyExpenses = pgTable(
     ),
     check(
       "monthly_expenses_category_valid",
-      sql`${table.category} IN ('moradia','dividas','transporte','alimentacao','esportes','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
+      sql`${table.category} IN ('moradia','dividas','transporte','alimentacao','esportes','beleza_cuidados','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
     ),
     check(
       "monthly_expenses_payment_method_valid",
@@ -251,7 +252,7 @@ export const monthlyExpenseEntries = pgTable(
     ),
     check(
       "monthly_expense_entries_category_valid",
-      sql`${table.category} IS NULL OR ${table.category} IN ('moradia','dividas','transporte','alimentacao','esportes','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
+      sql`${table.category} IS NULL OR ${table.category} IN ('moradia','dividas','transporte','alimentacao','esportes','beleza_cuidados','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
     ),
     check(
       "monthly_expense_entries_type_valid",
@@ -295,7 +296,7 @@ export const futureExpensePayables = pgTable(
     ),
     check(
       "future_expense_payables_category_valid",
-      sql`${table.category} IN ('moradia','dividas','transporte','alimentacao','esportes','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
+      sql`${table.category} IN ('moradia','dividas','transporte','alimentacao','esportes','beleza_cuidados','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
     ),
     check(
       "future_expense_payables_type_valid",

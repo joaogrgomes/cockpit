@@ -12,6 +12,7 @@ import {
   splitItemsByExpenseType,
   sumEntryAmounts,
 } from "@/lib/expense-tracking";
+import { getExpenseCategoryLabel } from "@/lib/expenses";
 
 describe("period month helpers", () => {
   it("normaliza e valida YYYY-MM", () => {
@@ -43,6 +44,10 @@ describe("tracking aggregations", () => {
       category: "alimentacao",
       expenseType: "variavel",
     });
+  });
+
+  it("expõe label correto para beleza_cuidados", () => {
+    expect(getExpenseCategoryLabel("beleza_cuidados")).toBe("Beleza e cuidados");
   });
 
   it("não encontra planejamento quando categoria ou tipo não batem", () => {
