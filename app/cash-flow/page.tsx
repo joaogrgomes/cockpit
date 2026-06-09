@@ -42,7 +42,7 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
     <section className="w-full max-w-none space-y-6">
       <PageHeader
         title="Fluxo de caixa"
-        description="Projete seu saldo mês a mês combinando entradas, gastos e valores realizados."
+        description="Acompanhe o resultado e o saldo mês a mês com leitura prevista e realizada."
         actions={
           <CashFlowSettingsForm
             startMonth={projection.settings.startMonth}
@@ -91,6 +91,11 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
           </CardHeader>
         </Card>
       ) : null}
+
+      <div className="rounded-lg border border-border/80 bg-muted/20 px-4 py-3 text-sm text-muted-foreground">
+        <p>Resultado é o movimento do mês. Saldo é o acumulado após esse movimento.</p>
+        <p>Previsto considera planejamento e valores futuros. Realizado considera apenas entradas e gastos já lançados.</p>
+      </div>
 
       <CashFlowSummaryCards summary={projection.summary} />
 

@@ -30,15 +30,29 @@ function SourceBadge({
         variant="outline"
         className="border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200"
       >
-        Planejado + avulso
+        Previsto + avulso
       </Badge>
     );
   }
 
   return (
     <Badge variant="outline" className="border-border/80 text-muted-foreground">
-      Planejado
+      Previsto
     </Badge>
+  );
+}
+
+function DetailLine({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
+  return (
+    <p className="text-xs text-muted-foreground">
+      {label}: {formatBRL(value)}
+    </p>
   );
 }
 
@@ -76,6 +90,7 @@ export function CashFlowMonthRow({
   const isPartialEqual =
     month.partialMonthlyResult === month.monthlyResult &&
     month.partialClosingBalance === month.closingBalance;
+  const incomeStatusLabel = month.isClosed ? "Realizado" : "Previsto";
 
   return (
     <TableRow
@@ -91,7 +106,7 @@ export function CashFlowMonthRow({
           <p>{formatBRL(month.openingBalance)}</p>
           {month.partialOpeningBalance !== month.openingBalance ? (
             <p className="text-xs text-muted-foreground">
-              Parcial: {formatBRL(month.partialOpeningBalance)}
+              Realizado: {formatBRL(month.partialOpeningBalance)}
             </p>
           ) : null}
         </div>
@@ -99,16 +114,20 @@ export function CashFlowMonthRow({
       <TableCell>
         <div className="space-y-1">
           <p>{formatBRL(month.incomeUsed)}</p>
-          <SourceBadge source={month.incomeSource} />
-          {month.actualOneTimeIncome > 0 ? (
-            <p className="text-xs text-muted-foreground">
-              Avulsas: {formatBRL(month.actualOneTimeIncome)}
-            </p>
+          <Badge
+            variant="outline"
+            className={month.isClosed ? "border-emerald-300 text-emerald-800" : "border-border/80 text-muted-foreground"}
+          >
+            {incomeStatusLabel}
+          </Badge>
+          {month.expectedRecurringIncomes > 0 ? (
+            <DetailLine label="Recorrentes" value={month.expectedRecurringIncomes} />
+          ) : month.plannedIncome > 0 ? (
+            <DetailLine label="Planejadas" value={month.plannedIncome} />
           ) : null}
+          {month.actualOneTimeIncome > 0 ? <DetailLine label="Avulsas" value={month.actualOneTimeIncome} /> : null}
           {month.futureExpectedIncomes > 0 && !month.isClosed ? (
-            <p className="text-xs text-muted-foreground">
-              Futuras: {formatBRL(month.futureExpectedIncomes)}
-            </p>
+            <DetailLine label="Futuras" value={month.futureExpectedIncomes} />
           ) : null}
         </div>
       </TableCell>
@@ -116,10 +135,13 @@ export function CashFlowMonthRow({
         <div className="space-y-1">
           <p>{formatBRL(month.fixedExpensesUsed)}</p>
           <SourceBadge source={month.fixedExpenseSource} />
+          {month.actualFixedExpenses > 0 ? (
+            <DetailLine label="Realizados" value={month.actualFixedExpenses} />
+          ) : (
+            <DetailLine label="Planejados" value={month.plannedFixedExpenses} />
+          )}
           {month.futureExpectedFixedExpenses > 0 && !month.isClosed ? (
-            <p className="text-xs text-muted-foreground">
-              Futuras: {formatBRL(month.futureExpectedFixedExpenses)}
-            </p>
+            <DetailLine label="Futuras" value={month.futureExpectedFixedExpenses} />
           ) : null}
         </div>
       </TableCell>
@@ -127,13 +149,16 @@ export function CashFlowMonthRow({
         <div className="space-y-1">
           <p>{formatBRL(month.plannedVariableExpenses)}</p>
           {month.futureExpectedVariableExpenses > 0 && !month.isClosed ? (
-            <p className="text-xs text-muted-foreground">
-              Futuras: {formatBRL(month.futureExpectedVariableExpenses)}
-            </p>
+            <DetailLine label="Futuras" value={month.futureExpectedVariableExpenses} />
           ) : null}
         </div>
       </TableCell>
-      <TableCell>{formatBRL(month.actualVariableExpenses)}</TableCell>
+      <TableCell>
+        <div className="space-y-1">
+          <p>{formatBRL(month.actualVariableExpenses)}</p>
+          <p className="text-xs text-muted-foreground">Realizado</p>
+        </div>
+      </TableCell>
       <TableCell>
         <div className="space-y-1">
           <p className={`font-medium ${remainingVariableClassName}`}>
@@ -145,27 +170,35 @@ export function CashFlowMonthRow({
         </div>
       </TableCell>
       <TableCell className={`font-medium ${projectedResultClassName}`}>
-        {formatBRL(month.monthlyResult)}
+        <div className="space-y-1">
+          <p>{formatBRL(month.monthlyResult)}</p>
+          <p className="text-xs text-muted-foreground">Entradas previstas - saídas previstas</p>
+        </div>
       </TableCell>
       <TableCell className={`font-medium ${partialResultClassName}`}>
         <div className="space-y-1">
           <p>{formatBRL(month.partialMonthlyResult)}</p>
           {isPartialEqual ? (
-            <p className="text-xs text-muted-foreground">Igual ao projetado</p>
+            <p className="text-xs text-muted-foreground">Igual ao previsto</p>
           ) : null}
+          <p className="text-xs text-muted-foreground">Entradas realizadas - saídas realizadas</p>
         </div>
       </TableCell>
       <TableCell className={`font-semibold ${projectedClosingClassName}`}>
-        {formatBRL(month.closingBalance)}
+        <div className="space-y-1">
+          <p>{formatBRL(month.closingBalance)}</p>
+          <p className="text-xs text-muted-foreground">Saldo inicial + resultado previsto</p>
+        </div>
       </TableCell>
       <TableCell className={`font-medium ${partialClosingClassName}`}>
         <div className="space-y-1">
           <p>{formatBRL(month.partialClosingBalance)}</p>
           {isPartialEqual ? (
-            <p className="text-xs text-muted-foreground">Igual ao projetado</p>
+            <p className="text-xs text-muted-foreground">Igual ao previsto</p>
           ) : !month.hasActualVariableExpenses ? (
             <p className="text-xs text-muted-foreground">Somente realizado</p>
           ) : null}
+          <p className="text-xs text-muted-foreground">Saldo inicial + resultado realizado</p>
         </div>
       </TableCell>
       <TableCell>

@@ -47,6 +47,7 @@ describe("calculateCashFlowProjection", () => {
       actualLinkedIncomesByMonth: {},
       actualOneTimeIncomesByMonth: {},
       futureExpectedIncomesByMonth: {},
+      incomePlanItemsByMonth: {},
       closedMonths: new Set<string>(),
       plannedFixedExpensesTotal: 200000,
       actualFixedExpensesByMonth: {},
@@ -134,6 +135,95 @@ describe("calculateCashFlowProjection", () => {
 
     expect(result.months[0].plannedVariableExpenses).toBe(90000);
     expect(result.months[0].variableExpensesUsed).toBe(90000);
+  });
+
+  it("calcula entradas previstas por item planejado no mês aberto", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedIncomesTotal: 1280000,
+        actualLinkedIncomesByMonth: { "2026-06": 200000 },
+        actualOneTimeIncomesByMonth: { "2026-06": 288900 },
+        futureExpectedIncomesByMonth: { "2026-06": 1350000 },
+        actualFixedExpensesByMonth: { "2026-06": 130768 },
+        actualVariableExpensesByMonth: { "2026-06": 601384 },
+        initialBalance: 1331609,
+        startMonth: "2026-06",
+        incomePlanItemsByMonth: {
+          "2026-06": [
+            {
+              id: "salary",
+              name: "Salário BB",
+              plannedAmount: 980000,
+              realizedAmount: 0,
+            },
+            {
+              id: "freela",
+              name: "De Praxe",
+              plannedAmount: 300000,
+              realizedAmount: 200000,
+            },
+          ],
+        },
+      })
+    );
+
+    const june = result.months[5];
+
+    expect(june.expectedRecurringIncomes).toBe(1280000);
+    expect(june.incomeUsed).toBe(2918900);
+    expect(june.actualLinkedIncome).toBe(200000);
+    expect(june.actualOneTimeIncome).toBe(288900);
+    expect(june.futureExpectedIncomes).toBe(1350000);
+    expect(june.partialMonthlyResult).toBe(-243252);
+    expect(june.partialClosingBalance).toBe(1088357);
+  });
+
+  it("mantém planejado quando realizado é menor que o planejado", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedIncomesTotal: 300000,
+        actualLinkedIncomesByMonth: { "2026-01": 200000 },
+        incomePlanItemsByMonth: {
+          "2026-01": [
+            {
+              id: "freela",
+              name: "De Praxe",
+              plannedAmount: 300000,
+              realizedAmount: 200000,
+            },
+          ],
+        },
+      })
+    );
+
+    const jan = result.months[0];
+
+    expect(jan.expectedRecurringIncomes).toBe(300000);
+    expect(jan.incomeUsed).toBe(300000);
+  });
+
+  it("eleva a previsão quando realizado supera o planejado", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedIncomesTotal: 300000,
+        actualLinkedIncomesByMonth: { "2026-01": 350000 },
+        incomePlanItemsByMonth: {
+          "2026-01": [
+            {
+              id: "freela",
+              name: "De Praxe",
+              plannedAmount: 300000,
+              realizedAmount: 350000,
+            },
+          ],
+        },
+      })
+    );
+
+    const jan = result.months[0];
+
+    expect(jan.expectedRecurringIncomes).toBe(350000);
+    expect(jan.incomeUsed).toBe(350000);
   });
 
   it("parcial de mês aberto ignora entradas futuras previstas", () => {

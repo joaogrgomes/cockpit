@@ -30,15 +30,15 @@ export function CashFlowTable({
         <TableRow>
           <TableHead>Mês</TableHead>
           <TableHead>Saldo inicial</TableHead>
-          <TableHead>Entradas</TableHead>
-          <TableHead>Gastos fixos</TableHead>
-          <TableHead>Variável planejado</TableHead>
+          <TableHead>Entradas previstas</TableHead>
+          <TableHead>Gastos previstos</TableHead>
+          <TableHead>Orçamento previsto</TableHead>
           <TableHead>Variável realizado</TableHead>
-          <TableHead>Variável restante</TableHead>
-          <TableHead>Resultado projetado</TableHead>
-          <TableHead>Resultado parcial</TableHead>
-          <TableHead>Saldo projetado</TableHead>
-          <TableHead>Saldo parcial</TableHead>
+          <TableHead>Diferença</TableHead>
+          <TableHead>Resultado previsto</TableHead>
+          <TableHead>Resultado realizado</TableHead>
+          <TableHead>Saldo previsto</TableHead>
+          <TableHead>Saldo realizado</TableHead>
           <TableHead>Ações</TableHead>
         </TableRow>
       </TableHeader>

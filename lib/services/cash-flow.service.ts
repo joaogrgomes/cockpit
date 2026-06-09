@@ -1,7 +1,11 @@
 import "server-only";
 
 import { and, asc, eq, like, sql } from "drizzle-orm";
-import { calculateCashFlowProjection, getCurrentPeriodMonth } from "@/lib/cash-flow";
+import {
+  calculateCashFlowProjection,
+  getCurrentPeriodMonth,
+  getYearMonths,
+} from "@/lib/cash-flow";
 import { getDb } from "@/lib/db";
 import {
   cashFlowSettings,
@@ -128,7 +132,7 @@ export async function getCashFlowProjection(
   ] =
     await Promise.all([
     db
-      .select({ amount: monthlyIncomes.amount })
+      .select({ id: monthlyIncomes.id, name: monthlyIncomes.name, amount: monthlyIncomes.amount })
       .from(monthlyIncomes)
       .where(eq(monthlyIncomes.isActive, true)),
     db
@@ -138,16 +142,18 @@ export async function getCashFlowProjection(
     db
       .select({
         periodMonth: monthlyIncomeEntries.periodMonth,
+        monthlyIncomeId: monthlyIncomeEntries.monthlyIncomeId,
         totalAmount: sql<number>`coalesce(sum(${monthlyIncomeEntries.amount}), 0)`,
       })
       .from(monthlyIncomeEntries)
+      .innerJoin(monthlyIncomes, eq(monthlyIncomeEntries.monthlyIncomeId, monthlyIncomes.id))
       .where(
         and(
           like(monthlyIncomeEntries.periodMonth, yearFilter),
-          sql`${monthlyIncomeEntries.monthlyIncomeId} IS NOT NULL`
+          eq(monthlyIncomes.isActive, true)
         )
       )
-      .groupBy(monthlyIncomeEntries.periodMonth),
+      .groupBy(monthlyIncomeEntries.periodMonth, monthlyIncomeEntries.monthlyIncomeId),
     db
       .select({
         periodMonth: monthlyIncomeEntries.periodMonth,
@@ -252,9 +258,19 @@ export async function getCashFlowProjection(
     }
   }
 
-  const actualLinkedIncomesByMonth = Object.fromEntries(
-    linkedIncomeRows.map((row) => [row.periodMonth, toNumber(row.totalAmount)])
-  );
+  const actualLinkedIncomeByMonthMap = new Map<string, number>();
+  const incomeRealizedByMonthAndIncomeId = new Map<string, number>();
+
+  for (const row of linkedIncomeRows) {
+    const amount = toNumber(row.totalAmount);
+    actualLinkedIncomeByMonthMap.set(
+      row.periodMonth,
+      (actualLinkedIncomeByMonthMap.get(row.periodMonth) ?? 0) + amount
+    );
+    incomeRealizedByMonthAndIncomeId.set(`${row.periodMonth}:${row.monthlyIncomeId}`, amount);
+  }
+
+  const actualLinkedIncomesByMonth = Object.fromEntries(actualLinkedIncomeByMonthMap);
 
   const actualOneTimeIncomesByMonth = Object.fromEntries(
     oneTimeIncomeRows.map((row) => [row.periodMonth, toNumber(row.totalAmount)])
@@ -278,6 +294,19 @@ export async function getCashFlowProjection(
     futureExpectedVariableExpenseRows.map((row) => [row.periodMonth, toNumber(row.totalAmount)])
   );
 
+  const incomePlanItemsByMonth = Object.fromEntries(
+    getYearMonths(year).map((periodMonth) => [
+      periodMonth,
+      activeIncomes.map((income) => ({
+        id: income.id,
+        name: income.name,
+        plannedAmount: income.amount,
+        realizedAmount:
+          incomeRealizedByMonthAndIncomeId.get(`${periodMonth}:${income.id}`) ?? 0,
+      })),
+    ])
+  );
+
   const projection = calculateCashFlowProjection({
     year,
     startMonth: settings.startMonth,
@@ -286,6 +315,7 @@ export async function getCashFlowProjection(
     actualLinkedIncomesByMonth,
     actualOneTimeIncomesByMonth,
     futureExpectedIncomesByMonth,
+    incomePlanItemsByMonth,
     closedMonths: new Set(closingRows.map((row) => row.periodMonth)),
     plannedFixedExpensesTotal,
     actualFixedExpensesByMonth,

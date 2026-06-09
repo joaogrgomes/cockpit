@@ -1,5 +1,12 @@
 export type CashFlowSource = "realizado" | "planejado" | "planejado_avulso";
 
+export type CashFlowIncomePlanItem = {
+  id: string;
+  name: string;
+  plannedAmount: number;
+  realizedAmount: number;
+};
+
 export type CashFlowMonth = {
   periodMonth: string;
   monthLabel: string;
@@ -8,6 +15,7 @@ export type CashFlowMonth = {
   openingBalance: number;
   partialOpeningBalance: number;
   plannedIncome: number;
+  expectedRecurringIncomes: number;
   actualLinkedIncome: number;
   actualOneTimeIncome: number;
   futureExpectedIncomes: number;
@@ -51,6 +59,7 @@ export type CashFlowProjectionInput = {
   actualLinkedIncomesByMonth: Record<string, number>;
   actualOneTimeIncomesByMonth: Record<string, number>;
   futureExpectedIncomesByMonth: Record<string, number>;
+  incomePlanItemsByMonth?: Record<string, CashFlowIncomePlanItem[]>;
   closedMonths: Set<string> | string[];
   plannedFixedExpensesTotal: number;
   actualFixedExpensesByMonth: Record<string, number>;
@@ -144,6 +153,7 @@ export function calculateCashFlowProjection(
         openingBalance: 0,
         partialOpeningBalance: 0,
         plannedIncome: input.plannedIncomesTotal,
+        expectedRecurringIncomes: 0,
         actualLinkedIncome: input.actualLinkedIncomesByMonth[periodMonth] ?? 0,
         actualOneTimeIncome: input.actualOneTimeIncomesByMonth[periodMonth] ?? 0,
         futureExpectedIncomes: input.futureExpectedIncomesByMonth[periodMonth] ?? 0,
@@ -190,6 +200,18 @@ export function calculateCashFlowProjection(
     const hasLinkedIncome = actualLinkedIncome > 0;
     const hasOneTimeIncome = actualOneTimeIncome > 0;
     const hasFutureExpectedIncome = futureExpectedIncomes > 0;
+    const incomePlanItems = input.incomePlanItemsByMonth?.[periodMonth] ?? [];
+    const hasIncomePlanItems = incomePlanItems.length > 0;
+    const expectedRecurringIncomes = isClosed
+      ? actualLinkedIncome
+      : hasIncomePlanItems
+      ? incomePlanItems.reduce(
+          (acc, item) => acc + Math.max(item.plannedAmount, item.realizedAmount),
+          0
+        )
+      : hasLinkedIncome
+      ? actualLinkedIncome
+      : plannedIncome;
     const incomeSource: CashFlowSource = isClosed
       ? "realizado"
       : hasLinkedIncome
@@ -199,9 +221,7 @@ export function calculateCashFlowProjection(
       : "planejado";
     const incomeUsed = isClosed
       ? actualIncome
-      : hasLinkedIncome
-      ? actualIncome + futureExpectedIncomes
-      : plannedIncome + actualOneTimeIncome + futureExpectedIncomes;
+      : expectedRecurringIncomes + actualOneTimeIncome + futureExpectedIncomes;
 
     const plannedFixedExpenses = input.plannedFixedExpensesTotal;
     const actualFixedExpenses = input.actualFixedExpensesByMonth[periodMonth] ?? 0;
@@ -252,6 +272,7 @@ export function calculateCashFlowProjection(
       openingBalance: currentOpeningBalance,
       partialOpeningBalance,
       plannedIncome,
+      expectedRecurringIncomes,
       actualLinkedIncome,
       actualOneTimeIncome,
       futureExpectedIncomes,
