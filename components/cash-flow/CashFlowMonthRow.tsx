@@ -71,6 +71,7 @@ export function CashFlowMonthRow({
 }: CashFlowMonthRowProps) {
   const isCurrentMonth = month.periodMonth === currentPeriodMonth;
   const isClosedPastMonth = month.isClosed && month.periodMonth < currentPeriodMonth;
+  const canToggle = isClosedPastMonth;
   const defaultExpanded = !isClosedPastMonth;
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -126,22 +127,28 @@ export function CashFlowMonthRow({
               Fechado
             </Badge>
           ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="ml-auto size-8 shrink-0"
-            aria-expanded={isExpanded}
-            aria-label={isExpanded ? `Recolher mês ${month.monthLabel}` : `Expandir mês ${month.monthLabel}`}
-            onClick={() => setIsExpanded((value) => !value)}
-          >
-            <ChevronDownIcon
-              className={cn(
-                "size-4 transition-transform",
-                isExpanded ? "rotate-180" : "rotate-0"
-              )}
-            />
-          </Button>
+          {canToggle ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="ml-auto size-8 shrink-0"
+              aria-expanded={isExpanded}
+              aria-label={
+                isExpanded ? `Recolher mês ${month.monthLabel}` : `Expandir mês ${month.monthLabel}`
+              }
+              onClick={() => setIsExpanded((value) => !value)}
+            >
+              <ChevronDownIcon
+                className={cn(
+                  "size-4 transition-transform",
+                  isExpanded ? "rotate-180" : "rotate-0"
+                )}
+              />
+            </Button>
+          ) : (
+            <span aria-hidden="true" className="ml-auto size-8 shrink-0" />
+          )}
         </div>
       </TableCell>
       <TableCell>
