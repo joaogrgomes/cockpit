@@ -1,13 +1,19 @@
 import { MetricCard } from "@/components/dashboard/MetricCard";
+import { ExpenseTrackingVariableSummary } from "@/components/expense-tracking/ExpenseTrackingVariableSummary";
 import { ExpenseTrackingSummaryByCategory } from "@/components/expense-tracking/ExpenseTrackingSummaryByCategory";
 import { ExpenseTrackingTable } from "@/components/expense-tracking/ExpenseTrackingTable";
+import { OneTimeExpenseEntriesSummary } from "@/components/expense-tracking/OneTimeExpenseEntriesSummary";
 import { OneTimeExpenseEntriesList } from "@/components/expense-tracking/OneTimeExpenseEntriesList";
 import { OneTimeExpenseEntryForm } from "@/components/expense-tracking/OneTimeExpenseEntryForm";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
-import { normalizePeriodMonth, type ExpenseTrackingSummary } from "@/lib/expense-tracking";
+import {
+  buildExpenseTrackingVariableBreakdown,
+  normalizePeriodMonth,
+  type ExpenseTrackingSummary,
+} from "@/lib/expense-tracking";
 import { isMonthClosed } from "@/lib/services/monthly-closing.service";
 import { getExpenseTrackingByPeriod } from "@/lib/services/monthly-expense-entry.service";
 import {
@@ -166,11 +172,22 @@ export default async function ExpenseTrackingPage({
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Gastos variáveis</CardTitle>
           <CardDescription>
-            Limites e consumos acompanhados ao longo do mês.
+            Limite planejado, consumo vinculado e gastos fora do plano separados para leitura gerencial.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <SummaryGrid summary={tracking.variableSummary} mode="variable" />
+          <ExpenseTrackingVariableSummary
+            breakdown={buildExpenseTrackingVariableBreakdown({
+              plannedAmount: tracking.variableSummary.totalPlanned,
+              linkedActualAmount: tracking.variableItems.reduce(
+                (total, item) => total + item.actualAmount,
+                0
+              ),
+              oneTimeActualAmount: tracking.oneTimeEntries
+                .filter((entry) => entry.expenseType === "variavel")
+                .reduce((total, entry) => total + entry.amount, 0),
+            })}
+          />
           <div className="overflow-x-auto">
             <ExpenseTrackingTable
               periodMonth={tracking.periodMonth}
@@ -197,10 +214,13 @@ export default async function ExpenseTrackingPage({
           </div>
         </CardHeader>
         <CardContent>
-          <OneTimeExpenseEntriesList
-            entries={tracking.oneTimeEntries}
-            deleteAction={deleteMonthlyExpenseEntryAction}
-          />
+          <OneTimeExpenseEntriesSummary entries={tracking.oneTimeEntries} />
+          <div className="mt-4">
+            <OneTimeExpenseEntriesList
+              entries={tracking.oneTimeEntries}
+              deleteAction={deleteMonthlyExpenseEntryAction}
+            />
+          </div>
         </CardContent>
       </Card>
 

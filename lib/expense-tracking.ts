@@ -51,6 +51,21 @@ export type ExpenseTrackingCategorySummaryItem = {
   remainingAmount: number;
 };
 
+export type ExpenseTrackingOneTimeCategorySummaryItem = {
+  category: string;
+  totalAmount: number;
+  count: number;
+};
+
+export type ExpenseTrackingVariableBreakdown = {
+  plannedAmount: number;
+  linkedActualAmount: number;
+  oneTimeActualAmount: number;
+  totalActualAmount: number;
+  remainingPlannedAmount: number;
+  overBudgetAmount: number;
+};
+
 const PERIOD_MONTH_REGEX = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 function startOfDay(value: Date): Date {
@@ -281,4 +296,43 @@ export function buildTrackingSummaryByCategory(
   }
 
   return [...grouped.values()].sort((a, b) => b.plannedAmount - a.plannedAmount);
+}
+
+export function buildExpenseTrackingVariableBreakdown(params: {
+  plannedAmount: number;
+  linkedActualAmount: number;
+  oneTimeActualAmount: number;
+}): ExpenseTrackingVariableBreakdown {
+  const totalActualAmount = params.linkedActualAmount + params.oneTimeActualAmount;
+
+  return {
+    plannedAmount: params.plannedAmount,
+    linkedActualAmount: params.linkedActualAmount,
+    oneTimeActualAmount: params.oneTimeActualAmount,
+    totalActualAmount,
+    remainingPlannedAmount: params.plannedAmount - params.linkedActualAmount,
+    overBudgetAmount: Math.max(0, totalActualAmount - params.plannedAmount),
+  };
+}
+
+export function buildOneTimeExpenseSummaryByCategory(
+  entries: Array<{ category: string; amount: number }>
+): ExpenseTrackingOneTimeCategorySummaryItem[] {
+  const grouped = new Map<string, ExpenseTrackingOneTimeCategorySummaryItem>();
+
+  for (const entry of entries) {
+    const current = grouped.get(entry.category) ?? {
+      category: entry.category,
+      totalAmount: 0,
+      count: 0,
+    };
+
+    current.totalAmount += entry.amount;
+    current.count += 1;
+    grouped.set(entry.category, current);
+  }
+
+  return [...grouped.values()].sort(
+    (a, b) => b.totalAmount - a.totalAmount || a.category.localeCompare(b.category)
+  );
 }

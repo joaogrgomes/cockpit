@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildExpenseTrackingVariableBreakdown,
+  buildOneTimeExpenseSummaryByCategory,
   buildTrackingSummary,
   buildTrackingSummaryByCategory,
   calcTrackingStatusByExpenseType,
@@ -168,6 +170,45 @@ describe("tracking aggregations", () => {
 
     expect(variableSummary.totalPlanned).toBe(160000);
     expect(variableSummary.totalActual).toBe(140000);
+  });
+
+  it("separa consumo planejado, avulsos e total realizado do variável", () => {
+    const breakdown = buildExpenseTrackingVariableBreakdown({
+      plannedAmount: 470000,
+      linkedActualAmount: 240084,
+      oneTimeActualAmount: 361300,
+    });
+
+    expect(breakdown.plannedAmount).toBe(470000);
+    expect(breakdown.linkedActualAmount).toBe(240084);
+    expect(breakdown.oneTimeActualAmount).toBe(361300);
+    expect(breakdown.totalActualAmount).toBe(601384);
+    expect(breakdown.remainingPlannedAmount).toBe(229916);
+    expect(breakdown.overBudgetAmount).toBe(131384);
+  });
+
+  it("avulsos não reduzem o restante do planejado", () => {
+    const breakdown = buildExpenseTrackingVariableBreakdown({
+      plannedAmount: 100000,
+      linkedActualAmount: 30000,
+      oneTimeActualAmount: 50000,
+    });
+
+    expect(breakdown.remainingPlannedAmount).toBe(70000);
+    expect(breakdown.totalActualAmount).toBe(80000);
+  });
+
+  it("agrupa avulsos por categoria", () => {
+    const grouped = buildOneTimeExpenseSummaryByCategory([
+      { category: "lazer", amount: 20000 },
+      { category: "lazer", amount: 15000 },
+      { category: "alimentacao", amount: 5000 },
+    ]);
+
+    expect(grouped).toEqual([
+      { category: "lazer", totalAmount: 35000, count: 2 },
+      { category: "alimentacao", totalAmount: 5000, count: 1 },
+    ]);
   });
 
   it("monta resumo por categoria", () => {
