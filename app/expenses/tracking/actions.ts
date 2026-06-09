@@ -5,6 +5,7 @@ import { parseBRL } from "@/lib/calculations";
 import {
   createMonthlyExpenseEntry,
   deleteMonthlyExpenseEntry,
+  createSmartMonthlyExpenseEntry,
 } from "@/lib/services/monthly-expense-entry.service";
 import { MonthlyExpenseEntrySchema } from "@/lib/validations";
 
@@ -90,7 +91,7 @@ export async function createOneTimeExpenseEntryAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
   }
 
-  await createMonthlyExpenseEntry({
+  await createSmartMonthlyExpenseEntry({
     ...parsed.data,
     monthlyExpenseId: null,
   });

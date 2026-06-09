@@ -135,7 +135,11 @@ export function ExpenseTrackingRow({
       {showEntries ? (
         <TableRow className="border-border/50 bg-muted/15">
           <TableCell colSpan={9} className="py-3">
-            <ExpenseEntryHistory entries={item.entries} deleteAction={deleteAction} />
+            <ExpenseEntryHistory
+              entries={item.entries}
+              expenseName={item.name}
+              deleteAction={deleteAction}
+            />
           </TableCell>
         </TableRow>
       ) : null}

@@ -111,12 +111,16 @@ export function buildStatementEntryUpdateValues(
     periodMonth: input.date.slice(0, 7),
   };
 
-  if (detail.source === "one_time") {
+  if (detail.canEditDescription) {
     values.description = input.description ?? null;
+  }
+
+  if (detail.canEditCategory) {
     values.category = input.category ?? null;
-    if (detail.kind === "expense") {
-      values.expenseType = input.expenseType ?? null;
-    }
+  }
+
+  if (detail.canEditExpenseType) {
+    values.expenseType = input.expenseType ?? null;
   }
 
   return values;
@@ -298,7 +302,7 @@ export function mapIncomeEntryRowToStatementItem(row: StatementIncomeRow): State
 export function mapExpenseEntryRowToStatementItem(row: StatementExpenseRow): StatementItem {
   const isLinked = row.monthlyExpenseId !== null;
   const description = isLinked
-    ? row.monthlyExpenseName ?? row.entryName ?? "Gasto"
+    ? row.entryName ?? row.monthlyExpenseName ?? "Gasto"
     : row.entryName ?? row.monthlyExpenseName ?? "Gasto avulso";
   const category = isLinked
     ? row.monthlyExpenseCategory ?? row.entryCategory ?? "outros"
@@ -380,7 +384,7 @@ export function mapIncomeEntryRowToDetail(row: StatementIncomeDetailRow): Statem
     sourceLabel: source === "linked" ? "Planejado" : "Avulso",
     linkedNotice:
       source === "linked"
-        ? "Este lançamento está vinculado a um item planejado. Descrição e categoria são herdadas do planejamento."
+        ? "Este lançamento está vinculado a um item planejado. A categoria é herdada do planejamento e a descrição pode ser ajustada."
         : null,
     canEditDescription: source === "one_time",
     canEditCategory: source === "one_time",
@@ -391,7 +395,7 @@ export function mapIncomeEntryRowToDetail(row: StatementIncomeDetailRow): Statem
 export function mapExpenseEntryRowToDetail(row: StatementExpenseDetailRow): StatementEntryDetail {
   const source: StatementSource = row.monthlyExpenseId ? "linked" : "one_time";
   const description = source === "linked"
-    ? row.monthlyExpenseName ?? row.entryName ?? "Gasto"
+    ? row.entryName ?? row.monthlyExpenseName ?? "Gasto"
     : row.entryName ?? row.monthlyExpenseName ?? "Gasto avulso";
   const category = source === "linked"
     ? row.monthlyExpenseCategory ?? row.entryCategory ?? "outros"
@@ -417,9 +421,9 @@ export function mapExpenseEntryRowToDetail(row: StatementExpenseDetailRow): Stat
     sourceLabel: source === "linked" ? "Planejado" : "Avulso",
     linkedNotice:
       source === "linked"
-        ? "Este lançamento está vinculado a um item planejado. Descrição e categoria são herdadas do planejamento."
+        ? "Este lançamento está vinculado a um item planejado. A categoria é herdada do planejamento e a descrição pode ser ajustada."
         : null,
-    canEditDescription: source === "one_time",
+    canEditDescription: source === "one_time" || source === "linked",
     canEditCategory: source === "one_time",
     canEditExpenseType: source === "one_time",
   };

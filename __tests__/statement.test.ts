@@ -75,14 +75,14 @@ describe("statement mapping", () => {
     const linked = mapExpenseEntryRowToStatementItem({
       id: "expense-1",
       monthlyExpenseId: "planned-expense-1",
-      entryName: null,
+      entryName: "Bebida - Missão Vida",
       entryCategory: null,
       entryExpenseType: null,
-      monthlyExpenseName: "Aluguel",
-      monthlyExpenseCategory: "moradia",
-      monthlyExpenseType: "fixo",
+      monthlyExpenseName: "Alimentação",
+      monthlyExpenseCategory: "alimentacao",
+      monthlyExpenseType: "variavel",
       periodMonth: "2026-05",
-      amount: 120000,
+      amount: 1400,
       paidAt: "2026-05-05",
       paymentMethod: "pix",
       notes: null,
@@ -109,10 +109,10 @@ describe("statement mapping", () => {
     expect(linked).toMatchObject({
       kind: "expense",
       source: "linked",
-      description: "Aluguel",
-      category: "moradia",
-      categoryLabel: "Moradia",
-      signedAmount: -120000,
+      description: "Bebida - Missão Vida",
+      category: "alimentacao",
+      categoryLabel: "Alimentação",
+      signedAmount: -1400,
     });
     expect(oneTime).toMatchObject({
       kind: "expense",
@@ -175,14 +175,14 @@ describe("statement mapping", () => {
     const linked = mapExpenseEntryRowToDetail({
       id: "expense-detail-1",
       monthlyExpenseId: "planned-expense-1",
-      entryName: null,
+      entryName: "Bebida - Missão Vida",
       entryCategory: null,
       entryExpenseType: null,
-      monthlyExpenseName: "Aluguel",
-      monthlyExpenseCategory: "moradia",
-      monthlyExpenseType: "fixo",
+      monthlyExpenseName: "Alimentação",
+      monthlyExpenseCategory: "alimentacao",
+      monthlyExpenseType: "variavel",
       periodMonth: "2026-05",
-      amount: 120000,
+      amount: 1400,
       paidAt: "2026-05-05",
       paymentMethod: "pix",
       notes: null,
@@ -206,11 +206,11 @@ describe("statement mapping", () => {
 
     expect(linked).toMatchObject({
       source: "linked",
-      description: "Aluguel",
-      category: "moradia",
-      expenseType: "fixo",
+      description: "Bebida - Missão Vida",
+      category: "alimentacao",
+      expenseType: "variavel",
       date: "2026-05-05",
-      canEditDescription: false,
+      canEditDescription: true,
       canEditCategory: false,
       canEditExpenseType: false,
     });
@@ -227,30 +227,6 @@ describe("statement mapping", () => {
   });
 
   it("aplica campos editáveis corretos na atualização de lançamento", () => {
-    const linkedIncome = buildStatementEntryUpdateValues(
-      mapIncomeEntryRowToDetail({
-        id: "income-detail-1",
-        monthlyIncomeId: "planned-income-1",
-        entryName: null,
-        entryCategory: null,
-        monthlyIncomeName: "Salário",
-        monthlyIncomeCategory: "salario",
-        periodMonth: "2026-05",
-        amount: 500000,
-        receivedAt: "2026-05-28",
-        paymentMethod: "pix",
-        notes: "Pagamento do mês",
-      }),
-      {
-        amount: 510000,
-        date: "2026-05-29",
-        paymentMethod: "transferencia",
-        notes: "Ajustado",
-        description: "Não pode",
-        category: "outros",
-      }
-    );
-
     const oneTimeExpense = buildStatementEntryUpdateValues(
       mapExpenseEntryRowToDetail({
         id: "expense-detail-2",
@@ -278,16 +254,6 @@ describe("statement mapping", () => {
       }
     );
 
-    expect(linkedIncome).toMatchObject({
-      amount: 510000,
-      date: "2026-05-29",
-      periodMonth: "2026-05",
-      paymentMethod: "transferencia",
-      notes: "Ajustado",
-    });
-    expect(linkedIncome).not.toHaveProperty("description");
-    expect(linkedIncome).not.toHaveProperty("category");
-
     expect(oneTimeExpense).toMatchObject({
       amount: 360000,
       date: "2026-05-11",
@@ -298,6 +264,46 @@ describe("statement mapping", () => {
       category: "lazer",
       expenseType: "variavel",
     });
+  });
+
+  it("permite editar descrição de gasto vinculado sem liberar categoria ou tipo", () => {
+    const linkedExpense = buildStatementEntryUpdateValues(
+      mapExpenseEntryRowToDetail({
+        id: "expense-detail-1",
+        monthlyExpenseId: "planned-expense-1",
+        entryName: "Bebida - Missão Vida",
+        entryCategory: null,
+        entryExpenseType: null,
+        monthlyExpenseName: "Alimentação",
+        monthlyExpenseCategory: "alimentacao",
+        monthlyExpenseType: "variavel",
+        periodMonth: "2026-05",
+        amount: 1400,
+        paidAt: "2026-05-05",
+        paymentMethod: "pix",
+        notes: "Loja do bairro",
+      }),
+      {
+        amount: 1500,
+        date: "2026-05-06",
+        paymentMethod: "cartao",
+        notes: "Atualizado",
+        description: "Bebida - Missão Vida atualizada",
+        category: "lazer",
+        expenseType: "fixo",
+      }
+    );
+
+    expect(linkedExpense).toMatchObject({
+      amount: 1500,
+      date: "2026-05-06",
+      periodMonth: "2026-05",
+      paymentMethod: "cartao",
+      notes: "Atualizado",
+      description: "Bebida - Missão Vida atualizada",
+    });
+    expect(linkedExpense).not.toHaveProperty("category");
+    expect(linkedExpense).not.toHaveProperty("expenseType");
   });
 });
 

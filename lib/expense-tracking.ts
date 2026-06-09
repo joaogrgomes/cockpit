@@ -15,6 +15,13 @@ export type ExpenseTrackingEntryLike = {
   amount: number;
 };
 
+export type CompatibleExpensePlanCandidate = {
+  id: string;
+  category: string;
+  expenseType: string;
+  isActive: boolean;
+};
+
 export type ExpenseTrackingItemLike = {
   expenseType: string;
   category: string;
@@ -189,6 +196,24 @@ export function splitItemsByExpenseType<T extends { expenseType: string }>(items
   }
 
   return { fixedItems, variableItems };
+}
+
+export function findCompatibleMonthlyExpense(
+  expenses: CompatibleExpensePlanCandidate[],
+  input: { category: string | null | undefined; expenseType: string | null | undefined }
+): CompatibleExpensePlanCandidate | null {
+  if (!input.category || !input.expenseType) {
+    return null;
+  }
+
+  return (
+    expenses.find(
+      (expense) =>
+        expense.isActive &&
+        expense.category === input.category &&
+        expense.expenseType === input.expenseType
+    ) ?? null
+  );
 }
 
 export function buildTrackingSummary(items: ExpenseTrackingItemLike[]): ExpenseTrackingSummary {

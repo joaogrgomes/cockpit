@@ -39,7 +39,6 @@ export function StatementEntryEditForm({ entry, action }: StatementEntryEditForm
   const router = useRouter();
 
   const isIncome = entry.kind === "income";
-  const canEditDetails = entry.source === "one_time";
 
   return (
     <form
@@ -71,75 +70,64 @@ export function StatementEntryEditForm({ entry, action }: StatementEntryEditForm
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        {canEditDetails ? (
-          <>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Input id="description" name="description" defaultValue={entry.description} required />
+        <div className="space-y-2 sm:col-span-2">
+          <Label htmlFor="description">Descrição</Label>
+          {entry.canEditDescription ? (
+            <Input id="description" name="description" defaultValue={entry.description} required />
+          ) : (
+            <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-sm font-medium">
+              {entry.description}
             </div>
+          )}
+        </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoria</Label>
+        <div className="space-y-2">
+          <Label htmlFor="category">Categoria</Label>
+          {entry.canEditCategory ? (
+            <select
+              id="category"
+              name="category"
+              defaultValue={entry.category}
+              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+              required
+            >
+              {(isIncome ? INCOME_CATEGORY_VALUES : EXPENSE_CATEGORY_VALUES).map((category) => (
+                <option key={category} value={category}>
+                  {isIncome ? getIncomeCategoryLabel(category) : getExpenseCategoryLabel(category)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-sm">
+              {entry.categoryLabel}
+            </div>
+          )}
+        </div>
+
+        {!isIncome ? (
+          <div className="space-y-2">
+            <Label htmlFor="expenseType">Tipo</Label>
+            {entry.canEditExpenseType ? (
               <select
-                id="category"
-                name="category"
-                defaultValue={entry.category}
+                id="expenseType"
+                name="expenseType"
+                defaultValue={entry.expenseType ?? "variavel"}
                 className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
                 required
               >
-                {(isIncome ? INCOME_CATEGORY_VALUES : EXPENSE_CATEGORY_VALUES).map((category) => (
-                  <option key={category} value={category}>
-                    {isIncome ? getIncomeCategoryLabel(category) : getExpenseCategoryLabel(category)}
+                {EXPENSE_TYPE_VALUES.map((expenseType) => (
+                  <option key={expenseType} value={expenseType}>
+                    {getExpenseTypeLabel(expenseType)}
                   </option>
                 ))}
               </select>
-            </div>
-
-            {!isIncome ? (
-              <div className="space-y-2">
-                <Label htmlFor="expenseType">Tipo</Label>
-                <select
-                  id="expenseType"
-                  name="expenseType"
-                  defaultValue={entry.expenseType ?? "variavel"}
-                  className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
-                  required
-                >
-                  {EXPENSE_TYPE_VALUES.map((expenseType) => (
-                    <option key={expenseType} value={expenseType}>
-                      {getExpenseTypeLabel(expenseType)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <div className="space-y-2 sm:col-span-2">
-              <Label>Descrição</Label>
-              <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-sm font-medium">
-                {entry.description}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Categoria</Label>
+            ) : (
               <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-sm">
-                {entry.categoryLabel}
+                {entry.expenseType ? getExpenseTypeLabel(entry.expenseType) : "—"}
               </div>
-            </div>
-
-            {!isIncome ? (
-              <div className="space-y-2">
-                <Label>Tipo</Label>
-                <div className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-sm">
-                  {entry.expenseType ? getExpenseTypeLabel(entry.expenseType) : "—"}
-                </div>
-              </div>
-            ) : null}
-          </>
-        )}
+            )}
+          </div>
+        ) : null}
 
         <div className="space-y-2">
           <Label htmlFor="amount">Valor</Label>

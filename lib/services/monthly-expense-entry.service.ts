@@ -8,6 +8,7 @@ import {
   buildTrackingSummary,
   buildTrackingSummaryByCategory,
   calcTrackingStatusByExpenseType,
+  findCompatibleMonthlyExpense,
   getOverdueReason,
   getTrackingDisplayStatus,
   isFixedExpenseOverdue,
@@ -35,6 +36,7 @@ export type MonthlyExpenseEntryCreateInput = Pick<
 
 export type ExpenseTrackingEntryView = {
   id: string;
+  name: string | null;
   amount: number;
   paidAt: string;
   paymentMethod: string | null;
@@ -78,6 +80,13 @@ export type ExpenseTrackingByPeriod = {
   variableItems: ExpenseTrackingItemView[];
   oneTimeEntries: ExpenseTrackingOneTimeEntryView[];
   summaryByCategory: ExpenseTrackingCategorySummaryItem[];
+};
+
+export type SmartExpenseEntrySource = "linked" | "one_time";
+
+export type SmartExpenseEntryResult = {
+  entry: MonthlyExpenseEntry;
+  source: SmartExpenseEntrySource;
 };
 
 function toDateString(value: string | Date): string {
@@ -138,6 +147,43 @@ export async function createMonthlyExpenseEntry(
   return result[0];
 }
 
+export async function createSmartMonthlyExpenseEntry(
+  input: MonthlyExpenseEntryCreateInput
+): Promise<SmartExpenseEntryResult> {
+  const db = getDb();
+
+  if (input.monthlyExpenseId) {
+    const entry = await createMonthlyExpenseEntry(input);
+    return { entry, source: "linked" };
+  }
+
+  const compatibleExpenses = await db
+    .select({
+      id: monthlyExpenses.id,
+      category: monthlyExpenses.category,
+      expenseType: monthlyExpenses.expenseType,
+      isActive: monthlyExpenses.isActive,
+    })
+    .from(monthlyExpenses)
+    .where(eq(monthlyExpenses.isActive, true))
+    .orderBy(asc(monthlyExpenses.dueDay), asc(monthlyExpenses.name));
+
+  const compatibleExpense = findCompatibleMonthlyExpense(compatibleExpenses, {
+    category: input.category,
+    expenseType: input.expenseType,
+  });
+
+  const entry = await createMonthlyExpenseEntry({
+    ...input,
+    monthlyExpenseId: compatibleExpense?.id ?? null,
+  });
+
+  return {
+    entry,
+    source: compatibleExpense ? "linked" : "one_time",
+  };
+}
+
 export async function deleteMonthlyExpenseEntry(id: string): Promise<boolean> {
   const db = getDb();
   const result = await db
@@ -171,6 +217,7 @@ export async function getExpenseTrackingByPeriod(
   for (const entry of periodEntries) {
     const normalizedEntry = {
       id: entry.id,
+      name: entry.name ?? null,
       amount: entry.amount,
       paidAt: toDateString(entry.paidAt),
       paymentMethod: entry.paymentMethod,

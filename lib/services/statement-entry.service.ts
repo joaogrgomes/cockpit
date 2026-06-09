@@ -146,8 +146,11 @@ export async function updateStatementEntry(
       updatedAt: sql`now()`,
     };
 
-    if (existing.source === "one_time") {
+    if (existing.canEditDescription) {
       patch.name = values.description ?? null;
+    }
+
+    if (existing.canEditCategory) {
       patch.category = values.category ?? null;
     }
 
@@ -172,9 +175,15 @@ export async function updateStatementEntry(
     updatedAt: sql`now()`,
   };
 
-  if (existing.source === "one_time") {
+  if (existing.canEditDescription) {
     patch.name = values.description ?? null;
+  }
+
+  if (existing.canEditCategory) {
     patch.category = values.category ?? null;
+  }
+
+  if (existing.canEditExpenseType) {
     patch.expenseType = values.expenseType ?? null;
   }
 

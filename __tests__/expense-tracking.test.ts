@@ -3,6 +3,7 @@ import {
   buildTrackingSummary,
   buildTrackingSummaryByCategory,
   calcTrackingStatusByExpenseType,
+  findCompatibleMonthlyExpense,
   getTrackingDisplayStatus,
   getCurrentPeriodMonth,
   isFixedExpenseOverdue,
@@ -27,6 +28,32 @@ describe("period month helpers", () => {
 });
 
 describe("tracking aggregations", () => {
+  it("encontra planejamento compatível por categoria e tipo", () => {
+    const compatible = findCompatibleMonthlyExpense(
+      [
+        { id: "a", category: "alimentacao", expenseType: "variavel", isActive: true },
+        { id: "b", category: "alimentacao", expenseType: "fixo", isActive: true },
+        { id: "c", category: "alimentacao", expenseType: "variavel", isActive: false },
+      ],
+      { category: "alimentacao", expenseType: "variavel" }
+    );
+
+    expect(compatible).toMatchObject({
+      id: "a",
+      category: "alimentacao",
+      expenseType: "variavel",
+    });
+  });
+
+  it("não encontra planejamento quando categoria ou tipo não batem", () => {
+    expect(
+      findCompatibleMonthlyExpense(
+        [{ id: "a", category: "alimentacao", expenseType: "variavel", isActive: true }],
+        { category: "lazer", expenseType: "variavel" }
+      )
+    ).toBeNull();
+  });
+
   it("soma lançamentos corretamente", () => {
     expect(sumEntryAmounts([{ amount: 1000 }, { amount: 2500 }, { amount: 500 }])).toBe(4000);
   });

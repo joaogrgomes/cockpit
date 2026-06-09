@@ -27,10 +27,15 @@ type ExpenseEntryActionResult = {
 
 type ExpenseEntryHistoryProps = {
   entries: ExpenseTrackingEntryView[];
+  expenseName: string;
   deleteAction: (formData: FormData) => Promise<ExpenseEntryActionResult>;
 };
 
-export function ExpenseEntryHistory({ entries, deleteAction }: ExpenseEntryHistoryProps) {
+export function ExpenseEntryHistory({
+  entries,
+  expenseName,
+  deleteAction,
+}: ExpenseEntryHistoryProps) {
   const [error, setError] = useState<string | null>(null);
   const [isPendingDelete, startDelete] = useTransition();
   const router = useRouter();
@@ -47,12 +52,17 @@ export function ExpenseEntryHistory({ entries, deleteAction }: ExpenseEntryHisto
           className="rounded-lg border border-border/70 bg-muted/20 px-3 py-2 text-xs"
         >
           <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-col gap-1">
+              <p className="truncate font-medium text-foreground">
+                {entry.name ?? expenseName}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
                 <p className="font-medium text-foreground">{formatBRL(entry.amount)}</p>
                 <Badge variant="outline">{formatDateOnlyBR(entry.paidAt)}</Badge>
                 {entry.paymentMethod ? (
                 <Badge variant="outline">{getPaymentMethodLabel(entry.paymentMethod)}</Badge>
-              ) : null}
+                ) : null}
+              </div>
             </div>
 
             <AlertDialog>
