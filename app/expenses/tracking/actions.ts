@@ -5,7 +5,6 @@ import { parseBRL } from "@/lib/calculations";
 import {
   createMonthlyExpenseEntry,
   deleteMonthlyExpenseEntry,
-  createSmartMonthlyExpenseEntry,
 } from "@/lib/services/monthly-expense-entry.service";
 import { MonthlyExpenseEntrySchema } from "@/lib/validations";
 
@@ -45,6 +44,7 @@ function parseEntryFormData(formData: FormData) {
     name: parseOptionalTextOrNull(formData.get("name")),
     category: parseOptionalTextOrNull(formData.get("category")),
     expenseType: parseOptionalTextOrNull(formData.get("expenseType")),
+    occurrenceType: parseOptionalTextOrNull(formData.get("occurrenceType")),
     periodMonth: parseOptionalText(formData.get("periodMonth")) ?? "",
     amount: parseMoneyToCents(formData.get("amount")) ?? 0,
     paidAt: parseOptionalText(formData.get("paidAt")) ?? "",
@@ -91,7 +91,7 @@ export async function createOneTimeExpenseEntryAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
   }
 
-  await createSmartMonthlyExpenseEntry({
+  await createMonthlyExpenseEntry({
     ...parsed.data,
     monthlyExpenseId: null,
   });

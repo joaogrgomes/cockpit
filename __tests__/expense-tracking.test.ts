@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildExpenseTrackingVariableBreakdown,
   buildOneTimeExpenseSummaryByCategory,
+  buildOneTimeExpenseSummaryByOccurrenceType,
   buildTrackingSummary,
   buildTrackingSummaryByCategory,
   calcTrackingStatusByExpenseType,
@@ -14,7 +15,7 @@ import {
   splitItemsByExpenseType,
   sumEntryAmounts,
 } from "@/lib/expense-tracking";
-import { getExpenseCategoryLabel } from "@/lib/expenses";
+import { getExpenseCategoryLabel, getExpenseOccurrenceTypeLabel } from "@/lib/expenses";
 
 describe("period month helpers", () => {
   it("normaliza e valida YYYY-MM", () => {
@@ -50,6 +51,11 @@ describe("tracking aggregations", () => {
 
   it("expõe label correto para beleza_cuidados", () => {
     expect(getExpenseCategoryLabel("beleza_cuidados")).toBe("Beleza e cuidados");
+  });
+
+  it("expõe label correto para classificação de ocorrência", () => {
+    expect(getExpenseOccurrenceTypeLabel("planned_one_off")).toBe("Esporádico planejado");
+    expect(getExpenseOccurrenceTypeLabel("unexpected")).toBe("Imprevisto");
   });
 
   it("não encontra planejamento quando categoria ou tipo não batem", () => {
@@ -208,6 +214,20 @@ describe("tracking aggregations", () => {
     expect(grouped).toEqual([
       { category: "lazer", totalAmount: 35000, count: 2 },
       { category: "alimentacao", totalAmount: 5000, count: 1 },
+    ]);
+  });
+
+  it("agrupa avulsos por classificação", () => {
+    const grouped = buildOneTimeExpenseSummaryByOccurrenceType([
+      { occurrenceType: "planned_one_off", amount: 20000 },
+      { occurrenceType: "planned_one_off", amount: 15000 },
+      { occurrenceType: "unexpected", amount: 5000 },
+      { occurrenceType: null, amount: 7000 },
+    ]);
+
+    expect(grouped).toEqual([
+      { occurrenceType: "planned_one_off", totalAmount: 35000, count: 2 },
+      { occurrenceType: "unexpected", totalAmount: 12000, count: 2 },
     ]);
   });
 

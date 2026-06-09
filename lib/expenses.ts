@@ -1,11 +1,13 @@
 import {
   EXPENSE_CATEGORY_VALUES,
+  EXPENSE_OCCURRENCE_TYPE_VALUES,
   EXPENSE_TYPE_VALUES,
   FUTURE_EXPENSE_STATUS_VALUES,
   PAYMENT_METHOD_VALUES,
 } from "@/lib/db/schema";
 import type {
   ExpenseCategory,
+  ExpenseOccurrenceType,
   ExpenseType,
   FutureExpenseStatus,
   PaymentMethod,
@@ -36,6 +38,11 @@ export const EXPENSE_TYPE_LABELS: Record<ExpenseType, string> = {
   variavel: "Variável",
 };
 
+export const EXPENSE_OCCURRENCE_TYPE_LABELS: Record<ExpenseOccurrenceType, string> = {
+  planned_one_off: "Esporádico planejado",
+  unexpected: "Imprevisto",
+};
+
 export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   pix: "PIX",
   boleto: "Boleto",
@@ -54,6 +61,7 @@ export const FUTURE_EXPENSE_STATUS_LABELS: Record<FutureExpenseStatus, string> =
 
 export {
   EXPENSE_CATEGORY_VALUES,
+  EXPENSE_OCCURRENCE_TYPE_VALUES,
   EXPENSE_TYPE_VALUES,
   FUTURE_EXPENSE_STATUS_VALUES,
   PAYMENT_METHOD_VALUES,
@@ -65,6 +73,11 @@ export function getExpenseCategoryLabel(value: string): string {
 
 export function getExpenseTypeLabel(value: string): string {
   return EXPENSE_TYPE_LABELS[value as ExpenseType] ?? value;
+}
+
+export function getExpenseOccurrenceTypeLabel(value: string | null): string {
+  if (!value) return "-";
+  return EXPENSE_OCCURRENCE_TYPE_LABELS[value as ExpenseOccurrenceType] ?? value;
 }
 
 export function getPaymentMethodLabel(value: string | null): string {

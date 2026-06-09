@@ -57,6 +57,12 @@ export type ExpenseTrackingOneTimeCategorySummaryItem = {
   count: number;
 };
 
+export type ExpenseTrackingOneTimeOccurrenceSummaryItem = {
+  occurrenceType: string;
+  totalAmount: number;
+  count: number;
+};
+
 export type ExpenseTrackingVariableBreakdown = {
   plannedAmount: number;
   linkedActualAmount: number;
@@ -334,5 +340,28 @@ export function buildOneTimeExpenseSummaryByCategory(
 
   return [...grouped.values()].sort(
     (a, b) => b.totalAmount - a.totalAmount || a.category.localeCompare(b.category)
+  );
+}
+
+export function buildOneTimeExpenseSummaryByOccurrenceType(
+  entries: Array<{ occurrenceType: string | null; amount: number }>
+): ExpenseTrackingOneTimeOccurrenceSummaryItem[] {
+  const grouped = new Map<string, ExpenseTrackingOneTimeOccurrenceSummaryItem>();
+
+  for (const entry of entries) {
+    const occurrenceType = entry.occurrenceType ?? "unexpected";
+    const current = grouped.get(occurrenceType) ?? {
+      occurrenceType,
+      totalAmount: 0,
+      count: 0,
+    };
+
+    current.totalAmount += entry.amount;
+    current.count += 1;
+    grouped.set(occurrenceType, current);
+  }
+
+  return [...grouped.values()].sort(
+    (a, b) => b.totalAmount - a.totalAmount || a.occurrenceType.localeCompare(b.occurrenceType)
   );
 }

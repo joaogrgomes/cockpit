@@ -14,10 +14,15 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
 import { formatDateOnlyBR } from "@/lib/date-utils";
-import { getExpenseCategoryLabel, getExpenseTypeLabel } from "@/lib/expenses";
+import {
+  getExpenseCategoryLabel,
+  getExpenseOccurrenceTypeLabel,
+  getExpenseTypeLabel,
+} from "@/lib/expenses";
 import type { FutureExpensePayable } from "@/types";
 import { FutureExpenseForm } from "./FutureExpenseForm";
 import { FutureExpenseStatusBadge } from "./FutureExpenseStatusBadge";
@@ -56,6 +61,9 @@ export function FutureExpenseRow({
       </TableCell>
       <TableCell className="py-3 text-sm text-muted-foreground">
         {getExpenseTypeLabel(futureExpense.expenseType)}
+      </TableCell>
+      <TableCell className="py-3 text-sm text-muted-foreground">
+        <Badge variant="secondary">{getExpenseOccurrenceTypeLabel(futureExpense.occurrenceType)}</Badge>
       </TableCell>
       <TableCell className="py-3 font-medium">{formatBRL(futureExpense.expectedAmount)}</TableCell>
       <TableCell className="py-3">

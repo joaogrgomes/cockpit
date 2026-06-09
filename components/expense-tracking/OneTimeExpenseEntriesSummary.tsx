@@ -4,6 +4,7 @@ import { formatBRL } from "@/lib/calculations";
 import { getExpenseCategoryLabel } from "@/lib/expenses";
 import {
   buildOneTimeExpenseSummaryByCategory,
+  buildOneTimeExpenseSummaryByOccurrenceType,
   type ExpenseTrackingOneTimeCategorySummaryItem,
 } from "@/lib/expense-tracking";
 import type { ExpenseTrackingOneTimeEntryView } from "@/lib/services/monthly-expense-entry.service";
@@ -30,24 +31,34 @@ export function OneTimeExpenseEntriesSummary({
 }: OneTimeExpenseEntriesSummaryProps) {
   const totalAmount = entries.reduce((total, entry) => total + entry.amount, 0);
   const categories = buildOneTimeExpenseSummaryByCategory(entries);
+  const occurrenceSummary = buildOneTimeExpenseSummaryByOccurrenceType(entries);
+  const plannedOneOffAmount =
+    occurrenceSummary.find((item) => item.occurrenceType === "planned_one_off")?.totalAmount ?? 0;
+  const unexpectedAmount =
+    occurrenceSummary.find((item) => item.occurrenceType === "unexpected")?.totalAmount ?? 0;
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard
           title="Total avulso"
           value={formatBRL(totalAmount)}
           description="Fora do planejamento normal"
         />
         <MetricCard
+          title="Esporádicos planejados"
+          value={formatBRL(plannedOneOffAmount)}
+          description="Pontuais, mas previstos antes de acontecer"
+        />
+        <MetricCard
+          title="Imprevistos"
+          value={formatBRL(unexpectedAmount)}
+          description="Fora do planejamento"
+        />
+        <MetricCard
           title="Lançamentos"
           value={String(entries.length)}
           description="Itens registrados no mês"
-        />
-        <MetricCard
-          title="Categorias"
-          value={String(categories.length)}
-          description="Agrupadas por categoria"
         />
       </div>
 

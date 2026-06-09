@@ -122,6 +122,7 @@ export default async function FutureExpensesPage({
                   <TableHead>Descrição</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Classificação</TableHead>
                   <TableHead>Valor previsto</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Ações</TableHead>
@@ -130,7 +131,7 @@ export default async function FutureExpensesPage({
               <TableBody>
                 {futureExpenses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                       Nenhum gasto futuro encontrado.
                     </TableCell>
                   </TableRow>

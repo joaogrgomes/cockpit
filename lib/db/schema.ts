@@ -91,6 +91,11 @@ export const FUTURE_EXPENSE_STATUS_VALUES = [
   "cancelado",
 ] as const;
 
+export const EXPENSE_OCCURRENCE_TYPE_VALUES = [
+  "planned_one_off",
+  "unexpected",
+] as const;
+
 export const MONTHLY_CLOSING_STATUS_VALUES = ["closed"] as const;
 
 export const debts = pgTable(
@@ -232,6 +237,7 @@ export const monthlyExpenseEntries = pgTable(
     name: text("name"),
     category: text("category"),
     expenseType: text("expense_type"),
+    occurrenceType: text("occurrence_type"),
     periodMonth: text("period_month").notNull(),
     amount: integer("amount").notNull(),
     paidAt: date("paid_at").notNull(),
@@ -259,8 +265,12 @@ export const monthlyExpenseEntries = pgTable(
       sql`${table.expenseType} IS NULL OR ${table.expenseType} IN ('fixo','variavel')`
     ),
     check(
+      "monthly_expense_entries_occurrence_type_valid",
+      sql`${table.occurrenceType} IS NULL OR ${table.occurrenceType} IN ('planned_one_off','unexpected')`
+    ),
+    check(
       "monthly_expense_entries_requires_fields_when_unlinked",
-      sql`${table.monthlyExpenseId} IS NOT NULL OR (${table.name} IS NOT NULL AND ${table.category} IS NOT NULL AND ${table.expenseType} IS NOT NULL)`
+      sql`${table.monthlyExpenseId} IS NOT NULL OR (${table.name} IS NOT NULL AND ${table.category} IS NOT NULL AND ${table.expenseType} IS NOT NULL AND ${table.occurrenceType} IS NOT NULL)`
     ),
     index("idx_monthly_expense_entries_period_month").on(table.periodMonth),
     index("idx_monthly_expense_entries_expense_period").on(
@@ -278,6 +288,7 @@ export const futureExpensePayables = pgTable(
     name: text("name").notNull(),
     category: text("category").notNull(),
     expenseType: text("expense_type").notNull(),
+    occurrenceType: text("occurrence_type").notNull().default("planned_one_off"),
     expectedAmount: integer("expected_amount").notNull(),
     expectedDate: date("expected_date").notNull(),
     status: text("status").notNull().default("previsto"),
@@ -301,6 +312,10 @@ export const futureExpensePayables = pgTable(
     check(
       "future_expense_payables_type_valid",
       sql`${table.expenseType} IN ('fixo','variavel')`
+    ),
+    check(
+      "future_expense_payables_occurrence_type_valid",
+      sql`${table.occurrenceType} IN ('planned_one_off','unexpected')`
     ),
     index("idx_future_expense_payables_status_date").on(table.status, table.expectedDate),
     index("idx_future_expense_payables_expected_date").on(table.expectedDate),

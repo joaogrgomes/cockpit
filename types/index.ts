@@ -3,6 +3,7 @@ import {
   DEBT_STATUS_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
+  EXPENSE_OCCURRENCE_TYPE_VALUES,
   FUTURE_EXPENSE_STATUS_VALUES,
   INCOME_CATEGORY_VALUES,
   FUTURE_INCOME_STATUS_VALUES,
@@ -59,3 +60,4 @@ export type IncomeCategory = (typeof INCOME_CATEGORY_VALUES)[number];
 export type IncomePaymentMethod = (typeof INCOME_PAYMENT_METHOD_VALUES)[number];
 export type FutureIncomeStatus = (typeof FUTURE_INCOME_STATUS_VALUES)[number];
 export type MonthlyClosingStatus = (typeof MONTHLY_CLOSING_STATUS_VALUES)[number];
+export type ExpenseOccurrenceType = (typeof EXPENSE_OCCURRENCE_TYPE_VALUES)[number];

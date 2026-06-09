@@ -5,8 +5,10 @@ import { useRouter } from "next/navigation";
 import { formatBRL } from "@/lib/calculations";
 import {
   EXPENSE_CATEGORY_VALUES,
+  EXPENSE_OCCURRENCE_TYPE_VALUES,
   EXPENSE_TYPE_VALUES,
   getExpenseCategoryLabel,
+  getExpenseOccurrenceTypeLabel,
   getExpenseTypeLabel,
 } from "@/lib/expenses";
 import { normalizeDateOnly } from "@/lib/date-utils";
@@ -142,6 +144,26 @@ export function FutureExpenseForm({
                     </option>
                   ))}
                 </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="occurrenceType">Classificação</Label>
+                <select
+                  id="occurrenceType"
+                  name="occurrenceType"
+                  defaultValue={futureExpense?.occurrenceType ?? "planned_one_off"}
+                  className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                  required
+                >
+                  {EXPENSE_OCCURRENCE_TYPE_VALUES.map((occurrenceType) => (
+                    <option key={occurrenceType} value={occurrenceType}>
+                      {getExpenseOccurrenceTypeLabel(occurrenceType)}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Esporádico planejado: pontual, mas previsto antes de acontecer.
+                </p>
               </div>
 
               <div className="space-y-2">

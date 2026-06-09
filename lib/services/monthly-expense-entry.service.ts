@@ -27,6 +27,7 @@ export type MonthlyExpenseEntryCreateInput = Pick<
   | "name"
   | "category"
   | "expenseType"
+  | "occurrenceType"
   | "periodMonth"
   | "amount"
   | "paidAt"
@@ -64,6 +65,7 @@ export type ExpenseTrackingOneTimeEntryView = {
   name: string;
   category: string;
   expenseType: string;
+  occurrenceType: string;
   amount: number;
   paidAt: string;
   paymentMethod: string | null;
@@ -135,6 +137,7 @@ export async function createMonthlyExpenseEntry(
       name: input.name ?? null,
       category: input.category ?? null,
       expenseType: input.expenseType ?? null,
+      occurrenceType: input.occurrenceType ?? null,
       periodMonth: input.periodMonth,
       amount: input.amount,
       paidAt: input.paidAt,
@@ -240,6 +243,7 @@ export async function getExpenseTrackingByPeriod(
       name: entry.name,
       category: entry.category,
       expenseType: entry.expenseType,
+      occurrenceType: entry.occurrenceType ?? "unexpected",
     });
   }
 

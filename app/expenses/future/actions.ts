@@ -55,6 +55,7 @@ function parseFutureExpenseFormData(formData: FormData) {
     name: parseOptionalText(formData.get("name")) ?? "",
     category: parseOptionalText(formData.get("category")) ?? "",
     expenseType: parseOptionalText(formData.get("expenseType")) ?? "",
+    occurrenceType: parseOptionalText(formData.get("occurrenceType")) ?? "planned_one_off",
     expectedAmount: parseMoneyToCents(formData.get("expectedAmount")) ?? 0,
     expectedDate: parseOptionalText(formData.get("expectedDate")) ?? "",
     status: "previsto" as const,

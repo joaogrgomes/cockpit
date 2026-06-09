@@ -350,6 +350,7 @@ describe("MonthlyExpenseEntrySchema", () => {
       name: "Aniversário da Poli",
       category: "familia",
       expenseType: "variavel",
+      occurrenceType: "planned_one_off",
       periodMonth: "2026-05",
       amount: 150000,
       paidAt: "2026-05-15",
@@ -366,6 +367,7 @@ describe("MonthlyExpenseEntrySchema", () => {
       name: "Corte de cabelo",
       category: "beleza_cuidados",
       expenseType: "variavel",
+      occurrenceType: "unexpected",
       periodMonth: "2026-05",
       amount: 4500,
       paidAt: "2026-05-15",
@@ -417,10 +419,39 @@ describe("MonthlyExpenseEntrySchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("rejeita gasto avulso sem occurrenceType", () => {
+    const result = MonthlyExpenseEntrySchema.safeParse({
+      monthlyExpenseId: null,
+      name: "Presente",
+      category: "familia",
+      expenseType: "variavel",
+      periodMonth: "2026-05",
+      amount: 10000,
+      paidAt: "2026-05-15",
+      paymentMethod: "pix",
+    });
+
+    expect(result.success).toBe(false);
+  });
 });
 
 describe("FutureExpensePayableSchema", () => {
   it("aceita gasto futuro válido", () => {
+    const result = FutureExpensePayableSchema.safeParse({
+      name: "Férias",
+      category: "lazer",
+      expenseType: "variavel",
+      occurrenceType: "planned_one_off",
+      expectedAmount: 300000,
+      expectedDate: "2026-08-10",
+      notes: null,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("usa planned_one_off como padrão no gasto futuro", () => {
     const result = FutureExpensePayableSchema.safeParse({
       name: "Férias",
       category: "lazer",
@@ -431,6 +462,7 @@ describe("FutureExpensePayableSchema", () => {
     });
 
     expect(result.success).toBe(true);
+    expect(result.success ? result.data.occurrenceType : null).toBe("planned_one_off");
   });
 
   it("aceita gasto futuro com categoria beleza_cuidados", () => {
@@ -438,6 +470,7 @@ describe("FutureExpensePayableSchema", () => {
       name: "Salão mensal",
       category: "beleza_cuidados",
       expenseType: "variavel",
+      occurrenceType: "planned_one_off",
       expectedAmount: 12000,
       expectedDate: "2026-08-10",
       notes: null,

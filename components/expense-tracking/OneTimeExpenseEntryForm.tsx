@@ -18,9 +18,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { getLocalDateInputValue } from "@/lib/date-utils";
 import {
   EXPENSE_CATEGORY_VALUES,
+  EXPENSE_OCCURRENCE_TYPE_VALUES,
   EXPENSE_TYPE_VALUES,
   PAYMENT_METHOD_VALUES,
   getExpenseCategoryLabel,
+  getExpenseOccurrenceTypeLabel,
   getExpenseTypeLabel,
   getPaymentMethodLabel,
 } from "@/lib/expenses";
@@ -104,6 +106,26 @@ export function OneTimeExpenseEntryForm({
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="one-time-occurrenceType">Classificação</Label>
+              <select
+                id="one-time-occurrenceType"
+                name="occurrenceType"
+                defaultValue="unexpected"
+                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                required
+              >
+                {EXPENSE_OCCURRENCE_TYPE_VALUES.map((occurrenceType) => (
+                  <option key={occurrenceType} value={occurrenceType}>
+                    {getExpenseOccurrenceTypeLabel(occurrenceType)}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-muted-foreground">
+                Esporádico planejado: pontual, mas previsto antes de acontecer. Imprevisto: fora do planejamento.
+              </p>
             </div>
 
             <div className="space-y-2">

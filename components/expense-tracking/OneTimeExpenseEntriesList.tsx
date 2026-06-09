@@ -27,6 +27,7 @@ import { formatBRL } from "@/lib/calculations";
 import { formatDateOnlyBR } from "@/lib/date-utils";
 import {
   getExpenseCategoryLabel,
+  getExpenseOccurrenceTypeLabel,
   getExpenseTypeLabel,
   getPaymentMethodLabel,
 } from "@/lib/expenses";
@@ -60,6 +61,7 @@ export function OneTimeExpenseEntriesList({
               <TableHead>Descrição</TableHead>
               <TableHead>Categoria</TableHead>
               <TableHead>Tipo</TableHead>
+              <TableHead>Classificação</TableHead>
               <TableHead>Valor</TableHead>
               <TableHead>Pagamento</TableHead>
               <TableHead>Ações</TableHead>
@@ -68,13 +70,13 @@ export function OneTimeExpenseEntriesList({
           <TableBody>
             {entries.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                   Nenhum gasto avulso registrado neste mês.
                 </TableCell>
               </TableRow>
             ) : (
               entries.map((entry) => (
-                  <TableRow key={entry.id} className="border-border/70 hover:bg-muted/20">
+                <TableRow key={entry.id} className="border-border/70 hover:bg-muted/20">
                   <TableCell className="text-sm text-muted-foreground">
                     {formatDateOnlyBR(entry.paidAt)}
                   </TableCell>
@@ -83,6 +85,11 @@ export function OneTimeExpenseEntriesList({
                     <Badge variant="outline">{getExpenseCategoryLabel(entry.category)}</Badge>
                   </TableCell>
                   <TableCell>{getExpenseTypeLabel(entry.expenseType)}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {getExpenseOccurrenceTypeLabel(entry.occurrenceType)}
+                    </Badge>
+                  </TableCell>
                   <TableCell className="font-medium">{formatBRL(entry.amount)}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {getPaymentMethodLabel(entry.paymentMethod)}

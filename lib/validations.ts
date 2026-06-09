@@ -3,6 +3,7 @@ import { getLocalDateInputValue } from "@/lib/date-utils";
 import {
   DEBT_STATUS_VALUES,
   EXPENSE_CATEGORY_VALUES,
+  EXPENSE_OCCURRENCE_TYPE_VALUES,
   EXPENSE_TYPE_VALUES,
   FUTURE_EXPENSE_STATUS_VALUES,
   FUTURE_INCOME_STATUS_VALUES,
@@ -126,6 +127,7 @@ export const MonthlyExpenseEntrySchema = z
     name: z.string().trim().min(2).nullish(),
     category: z.enum(EXPENSE_CATEGORY_VALUES).nullish(),
     expenseType: z.enum(EXPENSE_TYPE_VALUES).nullish(),
+    occurrenceType: z.enum(EXPENSE_OCCURRENCE_TYPE_VALUES).nullish(),
     periodMonth: z.string().regex(periodMonthRegex),
     amount: z.number().int().positive(),
     paidAt: z.string().regex(dateRegex),
@@ -157,6 +159,14 @@ export const MonthlyExpenseEntrySchema = z
           path: ["expenseType"],
         });
       }
+
+      if (!data.occurrenceType) {
+        ctx.addIssue({
+          code: "custom",
+          message: "occurrenceType é obrigatório para gasto avulso",
+          path: ["occurrenceType"],
+        });
+      }
     }
 
     if (data.paidAt > todayIsoDate()) {
@@ -172,6 +182,7 @@ export const FutureExpensePayableSchema = z.object({
   name: z.string().trim().min(2),
   category: z.enum(EXPENSE_CATEGORY_VALUES),
   expenseType: z.enum(EXPENSE_TYPE_VALUES),
+  occurrenceType: z.enum(EXPENSE_OCCURRENCE_TYPE_VALUES).default("planned_one_off"),
   expectedAmount: z.number().int().positive(),
   expectedDate: z.string().regex(dateRegex),
   status: z.enum(FUTURE_EXPENSE_STATUS_VALUES).default("previsto"),

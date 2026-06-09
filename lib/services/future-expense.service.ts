@@ -18,7 +18,13 @@ export type FutureExpensePayableFilters = {
 
 export type FutureExpensePayableCreateInput = Pick<
   NewFutureExpensePayable,
-  "name" | "category" | "expenseType" | "expectedAmount" | "expectedDate" | "notes"
+  | "name"
+  | "category"
+  | "expenseType"
+  | "occurrenceType"
+  | "expectedAmount"
+  | "expectedDate"
+  | "notes"
 >;
 
 export type FutureExpensePayableUpdateInput = Partial<
@@ -90,6 +96,7 @@ export async function createFutureExpensePayable(
       name: input.name,
       category: input.category,
       expenseType: input.expenseType,
+      occurrenceType: input.occurrenceType ?? "planned_one_off",
       expectedAmount: input.expectedAmount,
       expectedDate: input.expectedDate,
       notes: input.notes ?? null,
@@ -115,6 +122,7 @@ export async function updateFutureExpensePayable(
     .set({
       ...input,
       notes: input.notes ?? null,
+      occurrenceType: input.occurrenceType ?? current.occurrenceType,
       updatedAt: sql`now()`,
     })
     .where(eq(futureExpensePayables.id, id))
@@ -168,6 +176,7 @@ export async function markFutureExpenseAsRealized(
         name: futureExpense.name,
         category: futureExpense.category,
         expenseType: futureExpense.expenseType,
+        occurrenceType: futureExpense.occurrenceType,
         periodMonth: input.paidAt.slice(0, 7),
         amount: input.realizedAmount,
         paidAt: input.paidAt,

@@ -52,7 +52,8 @@ export function MarkFutureExpenseRealizedForm({
         <DialogHeader>
           <DialogTitle>Confirmar gasto realizado</DialogTitle>
           <DialogDescription>
-            Isso criará um gasto avulso no acompanhamento e marcará esta previsão como realizada.
+            Isso criará um gasto avulso no acompanhamento, manterá a classificação da previsão e
+            marcará esta previsão como realizada.
           </DialogDescription>
         </DialogHeader>
 
