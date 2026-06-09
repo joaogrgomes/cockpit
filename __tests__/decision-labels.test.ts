@@ -64,6 +64,18 @@ describe("buildDecisionItems", () => {
             expiresAt: "2026-06-12",
           },
         },
+        {
+          id: "debt-e",
+          name: "Dívida E",
+          creditor: "Banco E",
+          status: "arquivada",
+          currentValue: 15_000,
+          originalValue: 15_000,
+          lastUpdatedAt: "2026-06-01T10:00:00.000Z",
+          priority: "media",
+          perceivedRisk: "baixo",
+          activeProposal: null,
+        },
       ],
       now
     );
@@ -71,6 +83,7 @@ describe("buildDecisionItems", () => {
     const byId = new Map(items.map((item) => [item.id, item]));
 
     expect(byId.has("debt-d")).toBe(false);
+    expect(byId.has("debt-e")).toBe(false);
 
     const debtA = byId.get("debt-a");
     const debtB = byId.get("debt-b");

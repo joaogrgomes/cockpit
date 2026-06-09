@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, ne, or, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import {
   calcAdditions,
   calcDiscountPct,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/dashboard-rankings";
 import { getDb } from "@/lib/db";
 import { debtProposals, debts } from "@/lib/db/schema";
+import { buildExcludeClosedDebtStatusesCondition } from "@/lib/debt-status";
 
 export type DashboardTopDebt = {
   id: string;
@@ -108,7 +109,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
       perceivedRisk: debts.perceivedRisk,
     })
     .from(debts)
-    .where(ne(debts.status, "quitada"));
+    .where(buildExcludeClosedDebtStatusesCondition());
 
   const activeProposalRows = await db
     .select({
@@ -124,7 +125,7 @@ export async function getDashboardMetrics(): Promise<DashboardMetrics> {
     .where(
       and(
         eq(debtProposals.status, "ativa"),
-        ne(debts.status, "quitada"),
+        buildExcludeClosedDebtStatusesCondition(),
         or(
           sql`${debtProposals.expiresAt} IS NULL`,
           sql`${debtProposals.expiresAt} >= CURRENT_DATE`

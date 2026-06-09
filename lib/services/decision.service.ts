@@ -1,8 +1,9 @@
 import "server-only";
 
-import { and, eq, ne, or, sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { debtProposals, debts } from "@/lib/db/schema";
+import { buildExcludeClosedDebtStatusesCondition } from "@/lib/debt-status";
 import { buildDecisionItems, type DecisionItem } from "@/lib/decision-labels";
 
 export type DecisionMetrics = {
@@ -25,7 +26,7 @@ export async function getDecisionMetrics(): Promise<DecisionMetrics> {
       perceivedRisk: debts.perceivedRisk,
     })
     .from(debts)
-    .where(ne(debts.status, "quitada"));
+    .where(buildExcludeClosedDebtStatusesCondition());
 
   const activeProposalRows = await db
     .select({
@@ -38,7 +39,7 @@ export async function getDecisionMetrics(): Promise<DecisionMetrics> {
     .where(
       and(
         eq(debtProposals.status, "ativa"),
-        ne(debts.status, "quitada"),
+        buildExcludeClosedDebtStatusesCondition(),
         or(
           sql`${debtProposals.expiresAt} IS NULL`,
           sql`${debtProposals.expiresAt} >= CURRENT_DATE`

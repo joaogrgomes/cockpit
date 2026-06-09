@@ -4,11 +4,13 @@ import { and, asc, desc, eq, getTableColumns, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { debtProposals, debts } from "@/lib/db/schema";
 import type { Debt, NewDebt } from "@/types";
+import { buildExcludeArchivedDebtStatusesCondition } from "@/lib/debt-status";
 
 export type DebtListFilters = {
   status?: string;
   type?: string;
   sort?: "current_desc" | "current_asc";
+  showArchived?: boolean;
 };
 
 export type DebtListItem = Debt & {
@@ -27,6 +29,10 @@ export async function listDebts(filters: DebtListFilters = {}): Promise<DebtList
     whereConditions.push(eq(debts.type, filters.type));
   }
 
+  if (!filters.status && !filters.showArchived) {
+    whereConditions.push(buildExcludeArchivedDebtStatusesCondition());
+  }
+
   const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
   const orderCurrentValue =
     filters.sort === "current_asc" ? asc(debts.currentValue) : desc(debts.currentValue);
@@ -41,6 +47,7 @@ export async function listDebts(filters: DebtListFilters = {}): Promise<DebtList
           where dp.debt_id = ${debts.id}
             and dp.status = 'ativa'
             and (dp.expires_at is null or dp.expires_at >= CURRENT_DATE)
+            and ${debts.status} not in ('quitada','aguardando_baixa','baixada','arquivada')
         )
       `,
     })
@@ -61,6 +68,7 @@ export async function listDebts(filters: DebtListFilters = {}): Promise<DebtList
           where dp.debt_id = ${debts.id}
             and dp.status = 'ativa'
             and (dp.expires_at is null or dp.expires_at >= CURRENT_DATE)
+            and ${debts.status} not in ('quitada','aguardando_baixa','baixada','arquivada')
         )
       `,
     })

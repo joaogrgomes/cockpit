@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   CashFlowSettingsSchema,
+  DebtAttachmentSchema,
   DebtProposalSchema,
   DebtSchema,
+  DebtClearanceSchema,
   DebtValueUpdateSchema,
+  DebtPaymentSchema,
   FutureExpensePayableSchema,
   FutureIncomeReceivableSchema,
   MarkFutureExpenseAsRealizedSchema,
@@ -101,6 +104,27 @@ describe("DebtSchema", () => {
 
     expect(result.success).toBe(false);
   });
+
+  it("aceita status de pós-pagamento", () => {
+    const awaiting = DebtSchema.safeParse({
+      name: "Cartão",
+      creditor: "Banco",
+      type: "cartao_credito",
+      status: "aguardando_baixa",
+      currentValue: 1000,
+    });
+
+    const archived = DebtSchema.safeParse({
+      name: "Cartão",
+      creditor: "Banco",
+      type: "cartao_credito",
+      status: "arquivada",
+      currentValue: 1000,
+    });
+
+    expect(awaiting.success).toBe(true);
+    expect(archived.success).toBe(true);
+  });
 });
 
 describe("DebtProposalSchema", () => {
@@ -170,6 +194,67 @@ describe("DebtValueUpdateSchema", () => {
       debtId: "550e8400-e29b-41d4-a716-446655440000",
       recordedValue: 12345,
       recordedAt: tomorrowIso,
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("DebtPaymentSchema", () => {
+  it("aceita pagamento válido", () => {
+    const result = DebtPaymentSchema.safeParse({
+      debtId: "550e8400-e29b-41d4-a716-446655440000",
+      paidAt: "2026-06-09",
+      paidAmount: 120000,
+      paymentMethod: "pix",
+      clearanceDueDate: "2026-06-16",
+      paymentNotes: "Pago com desconto",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita clearanceDueDate menor que paidAt", () => {
+    const result = DebtPaymentSchema.safeParse({
+      debtId: "550e8400-e29b-41d4-a716-446655440000",
+      paidAt: "2026-06-09",
+      paidAmount: 120000,
+      paymentMethod: "pix",
+      clearanceDueDate: "2026-06-08",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("DebtClearanceSchema", () => {
+  it("aceita confirmação de baixa válida", () => {
+    const result = DebtClearanceSchema.safeParse({
+      debtId: "550e8400-e29b-41d4-a716-446655440000",
+      clearedAt: "2026-06-09",
+      paymentNotes: "Regularizado no Serasa",
+    });
+
+    expect(result.success).toBe(true);
+  });
+});
+
+describe("DebtAttachmentSchema", () => {
+  it("aceita anexo com tipo válido", () => {
+    const result = DebtAttachmentSchema.safeParse({
+      debtId: "550e8400-e29b-41d4-a716-446655440000",
+      type: "payment_receipt",
+      notes: "Comprovante do PIX",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita tipo de anexo inválido", () => {
+    const result = DebtAttachmentSchema.safeParse({
+      debtId: "550e8400-e29b-41d4-a716-446655440000",
+      type: "arquivo_invalido",
+      notes: "Teste",
     });
 
     expect(result.success).toBe(false);

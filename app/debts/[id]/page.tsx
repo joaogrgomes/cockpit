@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DebtForm } from "@/components/debt/DebtForm";
+import { DebtAttachmentsCard } from "@/components/debt/DebtAttachmentsCard";
+import { DebtLifecycleActions } from "@/components/debt/DebtLifecycleActions";
 import { PriorityBadge } from "@/components/debt/PriorityBadge";
 import { StatusBadge } from "@/components/debt/StatusBadge";
 import { PageHeader } from "@/components/layout/page-header";
@@ -20,6 +22,8 @@ import {
 } from "@/lib/calculations";
 import { formatDateOnlyBR } from "@/lib/date-utils";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
+import { isClosedDebtStatus } from "@/lib/debt-status";
+import { listDebtAttachmentsByDebtId } from "@/lib/services/debt-attachment.service";
 import { getDebtById } from "@/lib/services/debt.service";
 import {
   getActiveProposalByDebtId,
@@ -33,10 +37,15 @@ import {
 import { cn } from "@/lib/utils";
 import type { DebtStatus } from "@/types";
 import {
+  archiveDebtAction,
+  confirmDebtClearanceAction,
+  createDebtAttachmentAction,
   createProposalAction,
   createValueUpdateAction,
+  markDebtAsPaidAction,
   updateDebtAction,
 } from "../actions";
+import { getPaymentMethodLabel } from "@/lib/expenses";
 
 type DebtDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -51,11 +60,12 @@ function toStatus(value: string): DebtStatus {
 
 export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
   const { id } = await params;
-  const [debt, activeProposal, proposalHistory, valueUpdates] = await Promise.all([
+  const [debt, activeProposal, proposalHistory, valueUpdates, attachments] = await Promise.all([
     getDebtById(id),
     getActiveProposalByDebtId(id),
     listProposalsByDebtId(id),
     listValueUpdatesByDebtId(id),
+    listDebtAttachmentsByDebtId(id),
   ]);
 
   if (!debt) {
@@ -82,6 +92,27 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
     mapProposalToViewModel(proposal, debt.currentValue)
   );
   const valueHistoryView = mapValueUpdatesToHistory(valueUpdates);
+  const suggestedPaidAmount =
+    typeof activeProposalView?.proposedValue === "number"
+      ? activeProposalView.proposedValue
+      : debt.currentValue;
+  const canNegotiate = !isClosedDebtStatus(debt.status);
+  const canMarkAsPaid =
+    debt.status === "em_aberto" ||
+    debt.status === "em_atraso" ||
+    debt.status === "em_negociacao" ||
+    debt.status === "parcelada" ||
+    debt.status === "suspensa";
+  const canConfirmClearance = debt.status === "aguardando_baixa";
+  const canArchive = debt.status === "baixada" || debt.status === "quitada";
+  const hasLifecycleData =
+    Boolean(debt.paidAt) ||
+    typeof debt.paidAmount === "number" ||
+    Boolean(debt.paymentMethod) ||
+    Boolean(debt.clearanceDueDate) ||
+    Boolean(debt.clearedAt) ||
+    Boolean(debt.archivedAt) ||
+    Boolean(debt.paymentNotes);
 
   return (
     <section className="space-y-6">
@@ -96,8 +127,8 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
             >
               Voltar
             </Link>
-            <ValueUpdateForm debtId={debt.id} action={createValueUpdateAction} />
-            <ProposalForm debtId={debt.id} action={createProposalAction} />
+            {canNegotiate ? <ValueUpdateForm debtId={debt.id} action={createValueUpdateAction} /> : null}
+            {canNegotiate ? <ProposalForm debtId={debt.id} action={createProposalAction} /> : null}
             <DebtForm mode="edit" debt={debt} action={updateDebtAction} />
           </>
         }
@@ -107,6 +138,13 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
         <StatusBadge status={toStatus(debt.status)} />
         <PriorityBadge priority={debt.priority} />
       </div>
+
+      {!canNegotiate ? (
+        <div className="rounded-xl border border-border/80 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          Esta dívida já está em pós-pagamento. Propostas e atualizações de valor ficam
+          desativadas para preservar o histórico.
+        </div>
+      ) : null}
 
       <Card className="border-border/80 shadow-sm">
         <CardHeader className="pb-3">
@@ -162,6 +200,77 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
         </CardContent>
       </Card>
 
+      <Card className="border-border/80 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Pós-pagamento</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <p className="text-sm text-muted-foreground">Status atual</p>
+              <div className="font-medium">
+                <StatusBadge status={toStatus(debt.status)} />
+              </div>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Pago em</p>
+              <p className="font-medium">{debt.paidAt ? formatDateOnlyBR(debt.paidAt) : "-"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Valor pago</p>
+              <p className="font-medium">
+                {typeof debt.paidAmount === "number" ? formatBRL(debt.paidAmount) : "-"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Método de pagamento</p>
+              <p className="font-medium">
+                {debt.paymentMethod ? getPaymentMethodLabel(debt.paymentMethod) : "-"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Previsão de baixa</p>
+              <p className="font-medium">
+                {debt.clearanceDueDate ? formatDateOnlyBR(debt.clearanceDueDate) : "-"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Baixada em</p>
+              <p className="font-medium">
+                {debt.clearedAt ? formatDateOnlyBR(debt.clearedAt) : "-"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Arquivada em</p>
+              <p className="font-medium">
+                {debt.archivedAt ? formatDateOnlyBR(debt.archivedAt) : "-"}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Observação</p>
+              <p className="font-medium">{debt.paymentNotes ?? "-"}</p>
+            </div>
+          </div>
+
+          {!hasLifecycleData ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum dado de pagamento ou baixa foi registrado ainda.
+            </p>
+          ) : null}
+
+          <DebtLifecycleActions
+            debt={debt}
+            suggestedPaidAmount={suggestedPaidAmount}
+            canMarkAsPaid={canMarkAsPaid}
+            canConfirmClearance={canConfirmClearance}
+            canArchive={canArchive}
+            markDebtAsPaidAction={markDebtAsPaidAction}
+            confirmDebtClearanceAction={confirmDebtClearanceAction}
+            archiveDebtAction={archiveDebtAction}
+          />
+        </CardContent>
+      </Card>
+
       {typeof debt.originalValue === "number" || remainingInstallments !== null ? (
         <Card className="border-border/80 shadow-sm">
           <CardHeader className="pb-3">
@@ -208,6 +317,11 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
       <ProposalHistory proposals={proposalHistoryView} />
       <ValueChart updates={valueUpdates} />
       <ValueHistory updates={valueHistoryView} />
+      <DebtAttachmentsCard
+        debtId={debt.id}
+        attachments={attachments}
+        action={createDebtAttachmentAction}
+      />
 
       {debt.notes ? (
         <Card className="border-border/80 shadow-sm">

@@ -11,6 +11,7 @@ import {
   INCOME_PAYMENT_METHOD_VALUES,
   PAYMENT_METHOD_VALUES,
   PROPOSAL_STATUS_VALUES,
+  DEBT_ATTACHMENT_TYPE_VALUES,
   debts,
   cashFlowSettings,
   monthlyIncomeEntries,
@@ -20,6 +21,7 @@ import {
   monthlyExpenseEntries,
   monthlyExpenses,
   futureExpensePayables,
+  debtAttachments,
   debtProposals,
   debtValueUpdates,
 } from "@/lib/db/schema";
@@ -32,6 +34,8 @@ export type NewDebtProposal = InferInsertModel<typeof debtProposals>;
 
 export type DebtValueUpdate = InferSelectModel<typeof debtValueUpdates>;
 export type NewDebtValueUpdate = InferInsertModel<typeof debtValueUpdates>;
+export type DebtAttachment = InferSelectModel<typeof debtAttachments>;
+export type NewDebtAttachment = InferInsertModel<typeof debtAttachments>;
 
 export type MonthlyExpense = InferSelectModel<typeof monthlyExpenses>;
 export type NewMonthlyExpense = InferInsertModel<typeof monthlyExpenses>;
@@ -61,3 +65,4 @@ export type IncomePaymentMethod = (typeof INCOME_PAYMENT_METHOD_VALUES)[number];
 export type FutureIncomeStatus = (typeof FUTURE_INCOME_STATUS_VALUES)[number];
 export type MonthlyClosingStatus = (typeof MONTHLY_CLOSING_STATUS_VALUES)[number];
 export type ExpenseOccurrenceType = (typeof EXPENSE_OCCURRENCE_TYPE_VALUES)[number];
+export type DebtAttachmentType = (typeof DEBT_ATTACHMENT_TYPE_VALUES)[number];

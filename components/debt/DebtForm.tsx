@@ -35,6 +35,9 @@ const STATUS_OPTIONS = [
   { value: "em_negociacao", label: "Em negociação" },
   { value: "parcelada", label: "Parcelada" },
   { value: "quitada", label: "Quitada" },
+  { value: "aguardando_baixa", label: "Aguardando baixa" },
+  { value: "baixada", label: "Baixada" },
+  { value: "arquivada", label: "Arquivada" },
   { value: "suspensa", label: "Suspensa" },
 ] as const;
 

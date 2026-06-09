@@ -17,7 +17,25 @@ export const DEBT_STATUS_VALUES = [
   "em_negociacao",
   "parcelada",
   "quitada",
+  "aguardando_baixa",
+  "baixada",
+  "arquivada",
   "suspensa",
+] as const;
+
+export const DEBT_CLOSED_STATUS_VALUES = [
+  "quitada",
+  "aguardando_baixa",
+  "baixada",
+  "arquivada",
+] as const;
+
+export const DEBT_ATTACHMENT_TYPE_VALUES = [
+  "proposal_slip",
+  "whatsapp_screenshot",
+  "payment_receipt",
+  "serasa_clearance",
+  "other",
 ] as const;
 
 export const PROPOSAL_STATUS_VALUES = [
@@ -114,6 +132,13 @@ export const debts = pgTable(
     totalInstallments: integer("total_installments"),
     paidInstallments: integer("paid_installments"),
     overdueSince: date("overdue_since"),
+    paidAt: date("paid_at"),
+    paidAmount: integer("paid_amount"),
+    paymentMethod: text("payment_method"),
+    clearanceDueDate: date("clearance_due_date"),
+    clearedAt: date("cleared_at"),
+    archivedAt: timestamp("archived_at", { withTimezone: true }),
+    paymentNotes: text("payment_notes"),
     priority: text("priority"),
     perceivedRisk: text("perceived_risk"),
     notes: text("notes"),
@@ -137,7 +162,15 @@ export const debts = pgTable(
     ),
     check(
       "debts_status_valid",
-      sql`${table.status} IN ('em_aberto','em_atraso','em_negociacao','parcelada','quitada','suspensa')`
+      sql`${table.status} IN ('em_aberto','em_atraso','em_negociacao','parcelada','quitada','aguardando_baixa','baixada','arquivada','suspensa')`
+    ),
+    check(
+      "debts_paid_amount_positive",
+      sql`${table.paidAmount} IS NULL OR ${table.paidAmount} > 0`
+    ),
+    check(
+      "debts_payment_method_valid",
+      sql`${table.paymentMethod} IS NULL OR ${table.paymentMethod} IN ('pix','boleto','cartao','debito_em_conta','dinheiro','transferencia','outro')`
     ),
     index("idx_debts_status").on(table.status),
   ]
@@ -188,6 +221,31 @@ export const debtValueUpdates = pgTable(
   (table) => [
     check("debt_value_updates_recorded_value_positive", sql`${table.recordedValue} > 0`),
     index("idx_debt_value_updates_debt_date").on(table.debtId, table.recordedAt),
+  ]
+);
+
+export const debtAttachments = pgTable(
+  "debt_attachments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    debtId: uuid("debt_id")
+      .notNull()
+      .references(() => debts.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    filename: text("filename").notNull(),
+    storagePath: text("storage_path").notNull(),
+    mimeType: text("mime_type"),
+    sizeBytes: integer("size_bytes"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "debt_attachments_type_valid",
+      sql`${table.type} IN ('proposal_slip','whatsapp_screenshot','payment_receipt','serasa_clearance','other')`
+    ),
+    check("debt_attachments_size_bytes_positive", sql`${table.sizeBytes} IS NULL OR ${table.sizeBytes} > 0`),
+    index("idx_debt_attachments_debt_created").on(table.debtId, table.createdAt),
   ]
 );
 

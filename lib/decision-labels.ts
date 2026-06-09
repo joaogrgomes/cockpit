@@ -1,5 +1,6 @@
 import { calcDiscountPct, calcGrowthPct } from "@/lib/calculations";
 import { normalizeDateOnly } from "@/lib/date-utils";
+import { isClosedDebtStatus } from "@/lib/debt-status";
 import { compareRiskSignals } from "@/lib/dashboard-rankings";
 
 export type DecisionLabelKey =
@@ -96,7 +97,7 @@ export function buildDecisionItems(
   debts: DecisionBaseDebt[],
   now: Date = new Date()
 ): DecisionItem[] {
-  const activeDebts = debts.filter((debt) => debt.status !== "quitada");
+  const activeDebts = debts.filter((debt) => !isClosedDebtStatus(debt.status));
 
   const enriched = activeDebts.map((debt) => {
     const growthPct =

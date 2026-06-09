@@ -32,6 +32,9 @@ const STATUS_OPTIONS = [
   { value: "em_negociacao", label: "Em negociação" },
   { value: "parcelada", label: "Parcelada" },
   { value: "quitada", label: "Quitada" },
+  { value: "aguardando_baixa", label: "Aguardando baixa" },
+  { value: "baixada", label: "Baixada" },
+  { value: "arquivada", label: "Arquivada" },
   { value: "suspensa", label: "Suspensa" },
 ];
 
@@ -40,6 +43,7 @@ type DebtsPageProps = {
     status?: string;
     type?: string;
     sort?: "current_desc" | "current_asc";
+    showArchived?: string;
   }>;
 };
 
@@ -49,12 +53,14 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
     status: params.status ?? "",
     type: params.type ?? "",
     sort: params.sort ?? "current_desc",
+    showArchived: params.showArchived === "true",
   };
 
   const debts = await listDebts({
     status: filters.status || undefined,
     type: filters.type || undefined,
     sort: filters.sort,
+    showArchived: filters.showArchived,
   });
 
   return (
@@ -122,10 +128,24 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
               </select>
             </div>
 
+            <label className="flex items-center gap-2 rounded-lg border border-input px-3 py-2 text-sm">
+              <input
+                type="checkbox"
+                name="showArchived"
+                value="true"
+                defaultChecked={filters.showArchived}
+                className="h-4 w-4 rounded border-input"
+              />
+              Mostrar arquivadas
+            </label>
+
             <Button type="submit" size="sm">
               Aplicar filtros
             </Button>
           </form>
+          <p className="mt-3 text-xs text-muted-foreground">
+            Dívidas arquivadas ficam ocultas por padrão para reduzir ruído na leitura diária.
+          </p>
         </CardContent>
       </Card>
 

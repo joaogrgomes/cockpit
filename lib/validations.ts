@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { getLocalDateInputValue } from "@/lib/date-utils";
 import {
+  DEBT_ATTACHMENT_TYPE_VALUES,
   DEBT_STATUS_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_OCCURRENCE_TYPE_VALUES,
@@ -108,6 +109,55 @@ export const DebtValueUpdateSchema = z
       });
     }
   });
+
+export const DebtPaymentSchema = z
+  .object({
+    debtId: z.string().uuid(),
+    paidAt: z.string().regex(dateRegex),
+    paidAmount: z.number().int().positive().nullish(),
+    paymentMethod: z.enum(PAYMENT_METHOD_VALUES).nullish(),
+    clearanceDueDate: z.string().regex(dateRegex).nullish(),
+    paymentNotes: z.string().trim().min(1).nullish(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.paidAt > todayIsoDate()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "paidAt não pode ser uma data futura",
+        path: ["paidAt"],
+      });
+    }
+
+    if (data.clearanceDueDate && data.clearanceDueDate < data.paidAt) {
+      ctx.addIssue({
+        code: "custom",
+        message: "clearanceDueDate não pode ser menor que paidAt",
+        path: ["clearanceDueDate"],
+      });
+    }
+  });
+
+export const DebtClearanceSchema = z
+  .object({
+    debtId: z.string().uuid(),
+    clearedAt: z.string().regex(dateRegex),
+    paymentNotes: z.string().trim().min(1).nullish(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.clearedAt > todayIsoDate()) {
+      ctx.addIssue({
+        code: "custom",
+        message: "clearedAt não pode ser uma data futura",
+        path: ["clearedAt"],
+      });
+    }
+  });
+
+export const DebtAttachmentSchema = z.object({
+  debtId: z.string().uuid(),
+  type: z.enum(DEBT_ATTACHMENT_TYPE_VALUES),
+  notes: z.string().trim().min(1).nullish(),
+});
 
 export const MonthlyExpenseSchema = z.object({
   name: z.string().min(2),

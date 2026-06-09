@@ -2,6 +2,7 @@ import "server-only";
 
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { normalizeDateOnly } from "@/lib/date-utils";
+import { isClosedDebtStatus } from "@/lib/debt-status";
 import { getDb } from "@/lib/db";
 import { debtProposals, debts } from "@/lib/db/schema";
 import { calcDiscountPct, calcDiscountValue } from "@/lib/calculations";
@@ -14,7 +15,16 @@ export type ProposalCreateInput = Pick<
 
 export type ProposalCreateResult =
   | { ok: true; proposal: DebtProposal }
-  | { ok: false; code: "DEBT_NOT_FOUND" | "INVALID_PROPOSED_VALUE" | "UNIQUE_ACTIVE_CONFLICT" | "UNKNOWN_ERROR"; message: string };
+  | {
+      ok: false;
+      code:
+        | "DEBT_NOT_FOUND"
+        | "DEBT_NOT_ELIGIBLE"
+        | "INVALID_PROPOSED_VALUE"
+        | "UNIQUE_ACTIVE_CONFLICT"
+        | "UNKNOWN_ERROR";
+      message: string;
+    };
 
 export type ProposalViewModel = DebtProposal & {
   isExpired: boolean;
@@ -94,7 +104,15 @@ export async function getActiveProposalByDebtId(debtId: string): Promise<DebtPro
       and(
         eq(debtProposals.debtId, debtId),
         eq(debtProposals.status, "ativa"),
-        sql`${debtProposals.expiresAt} IS NULL OR ${debtProposals.expiresAt} >= CURRENT_DATE`
+        sql`${debtProposals.expiresAt} IS NULL OR ${debtProposals.expiresAt} >= CURRENT_DATE`,
+        sql`
+          exists (
+            select 1
+            from ${debts}
+            where ${debts.id} = ${debtProposals.debtId}
+              and ${debts.status} not in ('quitada','aguardando_baixa','baixada','arquivada')
+          )
+        `
       )
     )
     .orderBy(desc(debtProposals.proposedAt), desc(debtProposals.createdAt))
@@ -107,7 +125,7 @@ export async function createActiveProposal(input: ProposalCreateInput): Promise<
   const db = getDb();
 
   const debt = await db
-    .select({ id: debts.id, currentValue: debts.currentValue })
+    .select({ id: debts.id, currentValue: debts.currentValue, status: debts.status })
     .from(debts)
     .where(eq(debts.id, input.debtId))
     .limit(1);
@@ -115,6 +133,14 @@ export async function createActiveProposal(input: ProposalCreateInput): Promise<
   const debtRow = debt[0];
   if (!debtRow) {
     return { ok: false, code: "DEBT_NOT_FOUND", message: "Dívida não encontrada." };
+  }
+
+  if (isClosedDebtStatus(debtRow.status)) {
+    return {
+      ok: false,
+      code: "DEBT_NOT_ELIGIBLE",
+      message: "Não é possível criar proposta para dívida paga, baixada ou arquivada.",
+    };
   }
 
   if (input.proposedValue >= debtRow.currentValue) {

@@ -116,7 +116,8 @@ export function DebtRow({ debt, updateAction, deleteAction }: DebtRowProps) {
               <AlertDialogHeader>
                 <AlertDialogTitle>Excluir dívida?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Esta ação remove a dívida e dados relacionados em cascata.
+                  Use apenas se a dívida foi criada por engano. Esta ação remove a dívida e o
+                  histórico relacionado em cascata.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               {deleteError ? <p className="text-sm text-destructive">{deleteError}</p> : null}
