@@ -151,6 +151,12 @@ export function CashFlowMonthRow({
           {month.futureExpectedVariableExpenses > 0 && !month.isClosed ? (
             <DetailLine label="Futuras" value={month.futureExpectedVariableExpenses} />
           ) : null}
+          {!month.isClosed ? (
+            <DetailLine
+              label="Usado na previsão"
+              value={Math.max(month.plannedVariableExpenses, month.actualVariableExpenses)}
+            />
+          ) : null}
         </div>
       </TableCell>
       <TableCell>

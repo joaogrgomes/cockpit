@@ -174,6 +174,10 @@ describe("calculateCashFlowProjection", () => {
     expect(june.actualLinkedIncome).toBe(200000);
     expect(june.actualOneTimeIncome).toBe(288900);
     expect(june.futureExpectedIncomes).toBe(1350000);
+    expect(june.variableExpensesUsed).toBe(601384);
+    expect(june.totalExpenses).toBe(732152);
+    expect(june.monthlyResult).toBe(2186748);
+    expect(june.closingBalance).toBe(3518357);
     expect(june.partialMonthlyResult).toBe(-243252);
     expect(june.partialClosingBalance).toBe(1088357);
   });
@@ -285,6 +289,7 @@ describe("calculateCashFlowProjection", () => {
       })
     );
 
+    expect(result.months[0].variableExpensesUsed).toBe(120000);
     expect(result.months[0].remainingVariableBudget).toBe(-20000);
     expect(result.months[0].variableBudgetStatus).toBe("estourado");
   });
