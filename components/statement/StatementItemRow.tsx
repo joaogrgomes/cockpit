@@ -1,10 +1,11 @@
+import Link from "next/link";
+import { ArrowDownRightIcon, ArrowUpRightIcon, ChevronRightIcon } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
-import { formatDateOnlyBR } from "@/lib/date-utils";
 import { getPaymentMethodLabel } from "@/lib/expenses";
 import { getIncomePaymentMethodLabel } from "@/lib/incomes";
 import { cn } from "@/lib/utils";
+import { getStatementEntryHref } from "@/lib/statement";
 import type { StatementItem } from "@/lib/statement";
 
 type StatementItemRowProps = {
@@ -18,54 +19,57 @@ export function StatementItemRow({ item }: StatementItemRowProps) {
   const paymentMethod = isIncome
     ? getIncomePaymentMethodLabel(item.paymentMethod)
     : getPaymentMethodLabel(item.paymentMethod);
+  const href = getStatementEntryHref(item.originType, item.originId);
 
   return (
-    <Card className="border-border/70 shadow-none">
-      <CardContent className="p-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0 space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge variant={isIncome ? "default" : "secondary"} className="rounded-full">
-                {isIncome ? "Entrada" : "Gasto"}
-              </Badge>
-              <Badge variant="outline" className="rounded-full">
-                {item.source === "linked" ? "Planejado" : "Avulso"}
-              </Badge>
-              <Badge variant="outline" className="rounded-full">
-                {item.categoryLabel}
-              </Badge>
-            </div>
+    <Link
+      href={href}
+      className="group flex items-center gap-3 border-b border-border/60 px-2 py-3 transition-colors last:border-b-0 hover:bg-muted/30"
+    >
+      <div
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-full",
+          isIncome ? "bg-emerald-500/10 text-emerald-600" : "bg-destructive/10 text-destructive"
+        )}
+      >
+        {isIncome ? (
+          <ArrowUpRightIcon className="size-4" />
+        ) : (
+          <ArrowDownRightIcon className="size-4" />
+        )}
+      </div>
 
-            <div className="space-y-1">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                {formatDateOnlyBR(item.date)}
-              </p>
-              <h3 className="text-base font-semibold leading-tight text-foreground">
-                {item.description}
-              </h3>
-            </div>
-
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-sm text-muted-foreground">
-              <span>Método: {paymentMethod}</span>
-              <span>Período: {item.periodMonth}</span>
-            </div>
-
-            {item.notes ? (
-              <p className="max-w-3xl text-sm text-muted-foreground">{item.notes}</p>
-            ) : null}
-          </div>
-
-          <div className="flex shrink-0 flex-col items-start gap-1 md:items-end md:text-right">
-            <p className={cn("text-lg font-semibold tracking-tight", amountClass)}>
-              {amountPrefix}
-              {formatBRL(item.amount)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              {item.source === "linked" ? "Planejado" : "Avulso"}
-            </p>
-          </div>
+      <div className="min-w-0 flex-1 space-y-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <p className="truncate text-sm font-medium text-foreground">{item.description}</p>
+          <Badge variant={isIncome ? "default" : "secondary"} className="h-5 rounded-full px-2">
+            {isIncome ? "Entrada" : "Gasto"}
+          </Badge>
+          <Badge variant="outline" className="h-5 rounded-full px-2">
+            {item.source === "linked" ? "Planejado" : "Avulso"}
+          </Badge>
         </div>
-      </CardContent>
-    </Card>
+
+        <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-muted-foreground">
+          <span>{item.categoryLabel}</span>
+          <span>·</span>
+          <span>{paymentMethod}</span>
+          {item.notes ? (
+            <>
+              <span>·</span>
+              <span className="line-clamp-1">{item.notes}</span>
+            </>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <p className={cn("text-sm font-semibold tracking-tight sm:text-base", amountClass)}>
+          {amountPrefix}
+          {formatBRL(item.amount)}
+        </p>
+        <ChevronRightIcon className="size-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+      </div>
+    </Link>
   );
 }

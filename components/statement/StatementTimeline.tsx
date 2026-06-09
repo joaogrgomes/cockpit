@@ -1,6 +1,5 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatDateOnlyBR } from "@/lib/date-utils";
-import type { StatementItem } from "@/lib/statement";
+import { getStatementGroupHeading, type StatementItem } from "@/lib/statement";
 import { StatementItemRow } from "./StatementItemRow";
 
 type StatementTimelineProps = {
@@ -37,10 +36,10 @@ export function StatementTimeline({ items }: StatementTimelineProps) {
       {groupedItems.map(([date, dayItems]) => (
         <Card key={date} className="border-border/80 shadow-sm">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">{formatDateOnlyBR(date)}</CardTitle>
+            <CardTitle className="text-base">{getStatementGroupHeading(date)}</CardTitle>
             <CardDescription>{dayItems.length} lançamento(s)</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="p-0">
             {dayItems.map((item) => (
               <StatementItemRow key={item.id} item={item} />
             ))}

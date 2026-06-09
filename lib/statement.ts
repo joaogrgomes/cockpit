@@ -41,6 +41,37 @@ export type StatementItem = {
   createdAt?: string | Date | null;
 };
 
+export type StatementEntryDetail = {
+  id: string;
+  originType: StatementOriginType;
+  kind: StatementKind;
+  source: StatementSource;
+  periodMonth: string;
+  description: string;
+  category: string;
+  categoryLabel: string;
+  amount: number;
+  date: string;
+  paymentMethod: string | null;
+  notes: string | null;
+  expenseType: string | null;
+  sourceLabel: string;
+  linkedNotice: string | null;
+  canEditDescription: boolean;
+  canEditCategory: boolean;
+  canEditExpenseType: boolean;
+};
+
+export type StatementEntryUpdateValues = {
+  amount: number;
+  date: string;
+  paymentMethod: string | null;
+  notes: string | null;
+  description?: string | null;
+  category?: string | null;
+  expenseType?: string | null;
+};
+
 export type StatementFilters = {
   type?: StatementTypeFilter;
   category?: string | null;
@@ -59,6 +90,37 @@ export type StatementResult = {
   items: StatementItem[];
   summary: StatementSummary;
 };
+
+export function isStatementOriginType(value: string): value is StatementOriginType {
+  return value === "monthly_income_entry" || value === "monthly_expense_entry";
+}
+
+export function getStatementEntryHref(originType: StatementOriginType, id: string): string {
+  return `/statement/${originType}/${id}`;
+}
+
+export function buildStatementEntryUpdateValues(
+  detail: StatementEntryDetail,
+  input: StatementEntryUpdateValues
+): Record<string, unknown> {
+  const values: Record<string, unknown> = {
+    amount: input.amount,
+    paymentMethod: input.paymentMethod,
+    notes: input.notes,
+    date: input.date,
+    periodMonth: input.date.slice(0, 7),
+  };
+
+  if (detail.source === "one_time") {
+    values.description = input.description ?? null;
+    values.category = input.category ?? null;
+    if (detail.kind === "expense") {
+      values.expenseType = input.expenseType ?? null;
+    }
+  }
+
+  return values;
+}
 
 export type StatementIncomeRow = {
   id: string;
@@ -196,6 +258,14 @@ function compareStatementItems(a: StatementItem, b: StatementItem): number {
   return b.id.localeCompare(a.id);
 }
 
+export function getStatementGroupHeading(date: string): string {
+  const normalized = normalizeDateOnly(date);
+  if (!normalized) return date;
+
+  const [year, month, day] = normalized.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 export function mapIncomeEntryRowToStatementItem(row: StatementIncomeRow): StatementItem {
   const isLinked = row.monthlyIncomeId !== null;
   const description = isLinked
@@ -251,6 +321,107 @@ export function mapExpenseEntryRowToStatementItem(row: StatementExpenseRow): Sta
     originId: row.id,
     originType: "monthly_expense_entry",
     createdAt: row.createdAt,
+  };
+}
+
+export type StatementIncomeDetailRow = {
+  id: string;
+  monthlyIncomeId: string | null;
+  entryName: string | null;
+  entryCategory: string | null;
+  monthlyIncomeName: string | null;
+  monthlyIncomeCategory: string | null;
+  periodMonth: string;
+  amount: number;
+  receivedAt: string | Date;
+  paymentMethod: string | null;
+  notes: string | null;
+};
+
+export type StatementExpenseDetailRow = {
+  id: string;
+  monthlyExpenseId: string | null;
+  entryName: string | null;
+  entryCategory: string | null;
+  entryExpenseType: string | null;
+  monthlyExpenseName: string | null;
+  monthlyExpenseCategory: string | null;
+  monthlyExpenseType: string | null;
+  periodMonth: string;
+  amount: number;
+  paidAt: string | Date;
+  paymentMethod: string | null;
+  notes: string | null;
+};
+
+export function mapIncomeEntryRowToDetail(row: StatementIncomeDetailRow): StatementEntryDetail {
+  const source: StatementSource = row.monthlyIncomeId ? "linked" : "one_time";
+  const description = source === "linked"
+    ? row.monthlyIncomeName ?? row.entryName ?? "Entrada"
+    : row.entryName ?? row.monthlyIncomeName ?? "Entrada avulsa";
+  const category = source === "linked"
+    ? row.monthlyIncomeCategory ?? row.entryCategory ?? "outros"
+    : row.entryCategory ?? row.monthlyIncomeCategory ?? "outros";
+
+  return {
+    id: row.id,
+    originType: "monthly_income_entry",
+    kind: "income",
+    source,
+    periodMonth: row.periodMonth,
+    description,
+    category,
+    categoryLabel: getStatementCategoryLabel("income", category),
+    amount: row.amount,
+    date: normalizeDateOnly(row.receivedAt) ?? "",
+    paymentMethod: row.paymentMethod,
+    notes: row.notes,
+    expenseType: null,
+    sourceLabel: source === "linked" ? "Planejado" : "Avulso",
+    linkedNotice:
+      source === "linked"
+        ? "Este lançamento está vinculado a um item planejado. Descrição e categoria são herdadas do planejamento."
+        : null,
+    canEditDescription: source === "one_time",
+    canEditCategory: source === "one_time",
+    canEditExpenseType: false,
+  };
+}
+
+export function mapExpenseEntryRowToDetail(row: StatementExpenseDetailRow): StatementEntryDetail {
+  const source: StatementSource = row.monthlyExpenseId ? "linked" : "one_time";
+  const description = source === "linked"
+    ? row.monthlyExpenseName ?? row.entryName ?? "Gasto"
+    : row.entryName ?? row.monthlyExpenseName ?? "Gasto avulso";
+  const category = source === "linked"
+    ? row.monthlyExpenseCategory ?? row.entryCategory ?? "outros"
+    : row.entryCategory ?? row.monthlyExpenseCategory ?? "outros";
+  const expenseType = source === "linked"
+    ? row.monthlyExpenseType ?? row.entryExpenseType ?? null
+    : row.entryExpenseType ?? row.monthlyExpenseType ?? null;
+
+  return {
+    id: row.id,
+    originType: "monthly_expense_entry",
+    kind: "expense",
+    source,
+    periodMonth: row.periodMonth,
+    description,
+    category,
+    categoryLabel: getStatementCategoryLabel("expense", category),
+    amount: row.amount,
+    date: normalizeDateOnly(row.paidAt) ?? "",
+    paymentMethod: row.paymentMethod,
+    notes: row.notes,
+    expenseType,
+    sourceLabel: source === "linked" ? "Planejado" : "Avulso",
+    linkedNotice:
+      source === "linked"
+        ? "Este lançamento está vinculado a um item planejado. Descrição e categoria são herdadas do planejamento."
+        : null,
+    canEditDescription: source === "one_time",
+    canEditCategory: source === "one_time",
+    canEditExpenseType: source === "one_time",
   };
 }
 

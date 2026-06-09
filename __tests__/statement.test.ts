@@ -1,11 +1,24 @@
 import { describe, expect, it } from "vitest";
 import {
   buildStatementResult,
+  buildStatementEntryUpdateValues,
+  getStatementEntryHref,
+  mapExpenseEntryRowToDetail,
   mapExpenseEntryRowToStatementItem,
+  mapIncomeEntryRowToDetail,
   mapIncomeEntryRowToStatementItem,
 } from "@/lib/statement";
 
 describe("statement mapping", () => {
+  it("gera href correto para detalhe de lançamento", () => {
+    expect(getStatementEntryHref("monthly_income_entry", "income-1")).toBe(
+      "/statement/monthly_income_entry/income-1"
+    );
+    expect(getStatementEntryHref("monthly_expense_entry", "expense-1")).toBe(
+      "/statement/monthly_expense_entry/expense-1"
+    );
+  });
+
   it("usa nome/categoria da entrada planejada quando o lançamento é vinculado", () => {
     const item = mapIncomeEntryRowToStatementItem({
       id: "income-1",
@@ -108,6 +121,182 @@ describe("statement mapping", () => {
       category: "lazer",
       categoryLabel: "Lazer",
       signedAmount: -350000,
+    });
+  });
+
+  it("resolve detalhe de entrada vinculada e avulsa com a fonte correta", () => {
+    const linked = mapIncomeEntryRowToDetail({
+      id: "income-detail-1",
+      monthlyIncomeId: "planned-income-1",
+      entryName: null,
+      entryCategory: null,
+      monthlyIncomeName: "Salário",
+      monthlyIncomeCategory: "salario",
+      periodMonth: "2026-05",
+      amount: 500000,
+      receivedAt: "2026-05-28",
+      paymentMethod: "pix",
+      notes: "Pagamento do mês",
+    });
+
+    const oneTime = mapIncomeEntryRowToDetail({
+      id: "income-detail-2",
+      monthlyIncomeId: null,
+      entryName: "Restituição IR",
+      entryCategory: "reembolso",
+      monthlyIncomeName: null,
+      monthlyIncomeCategory: null,
+      periodMonth: "2026-05",
+      amount: 200000,
+      receivedAt: "2026-05-28",
+      paymentMethod: "pix",
+      notes: "Recebido do governo",
+    });
+
+    expect(linked).toMatchObject({
+      source: "linked",
+      description: "Salário",
+      category: "salario",
+      date: "2026-05-28",
+      canEditDescription: false,
+      canEditCategory: false,
+    });
+    expect(oneTime).toMatchObject({
+      source: "one_time",
+      description: "Restituição IR",
+      category: "reembolso",
+      date: "2026-05-28",
+      canEditDescription: true,
+      canEditCategory: true,
+    });
+  });
+
+  it("resolve detalhe de gasto vinculada e avulsa com o tipo correto", () => {
+    const linked = mapExpenseEntryRowToDetail({
+      id: "expense-detail-1",
+      monthlyExpenseId: "planned-expense-1",
+      entryName: null,
+      entryCategory: null,
+      entryExpenseType: null,
+      monthlyExpenseName: "Aluguel",
+      monthlyExpenseCategory: "moradia",
+      monthlyExpenseType: "fixo",
+      periodMonth: "2026-05",
+      amount: 120000,
+      paidAt: "2026-05-05",
+      paymentMethod: "pix",
+      notes: null,
+    });
+
+    const oneTime = mapExpenseEntryRowToDetail({
+      id: "expense-detail-2",
+      monthlyExpenseId: null,
+      entryName: "Viagem",
+      entryCategory: "lazer",
+      entryExpenseType: "variavel",
+      monthlyExpenseName: null,
+      monthlyExpenseCategory: null,
+      monthlyExpenseType: null,
+      periodMonth: "2026-05",
+      amount: 350000,
+      paidAt: "2026-05-10",
+      paymentMethod: "cartao",
+      notes: "Fim de semana prolongado",
+    });
+
+    expect(linked).toMatchObject({
+      source: "linked",
+      description: "Aluguel",
+      category: "moradia",
+      expenseType: "fixo",
+      date: "2026-05-05",
+      canEditDescription: false,
+      canEditCategory: false,
+      canEditExpenseType: false,
+    });
+    expect(oneTime).toMatchObject({
+      source: "one_time",
+      description: "Viagem",
+      category: "lazer",
+      expenseType: "variavel",
+      date: "2026-05-10",
+      canEditDescription: true,
+      canEditCategory: true,
+      canEditExpenseType: true,
+    });
+  });
+
+  it("aplica campos editáveis corretos na atualização de lançamento", () => {
+    const linkedIncome = buildStatementEntryUpdateValues(
+      mapIncomeEntryRowToDetail({
+        id: "income-detail-1",
+        monthlyIncomeId: "planned-income-1",
+        entryName: null,
+        entryCategory: null,
+        monthlyIncomeName: "Salário",
+        monthlyIncomeCategory: "salario",
+        periodMonth: "2026-05",
+        amount: 500000,
+        receivedAt: "2026-05-28",
+        paymentMethod: "pix",
+        notes: "Pagamento do mês",
+      }),
+      {
+        amount: 510000,
+        date: "2026-05-29",
+        paymentMethod: "transferencia",
+        notes: "Ajustado",
+        description: "Não pode",
+        category: "outros",
+      }
+    );
+
+    const oneTimeExpense = buildStatementEntryUpdateValues(
+      mapExpenseEntryRowToDetail({
+        id: "expense-detail-2",
+        monthlyExpenseId: null,
+        entryName: "Viagem",
+        entryCategory: "lazer",
+        entryExpenseType: "variavel",
+        monthlyExpenseName: null,
+        monthlyExpenseCategory: null,
+        monthlyExpenseType: null,
+        periodMonth: "2026-05",
+        amount: 350000,
+        paidAt: "2026-05-10",
+        paymentMethod: "cartao",
+        notes: "Fim de semana prolongado",
+      }),
+      {
+        amount: 360000,
+        date: "2026-05-11",
+        paymentMethod: "pix",
+        notes: "Novo texto",
+        description: "Viagem atualizada",
+        category: "lazer",
+        expenseType: "variavel",
+      }
+    );
+
+    expect(linkedIncome).toMatchObject({
+      amount: 510000,
+      date: "2026-05-29",
+      periodMonth: "2026-05",
+      paymentMethod: "transferencia",
+      notes: "Ajustado",
+    });
+    expect(linkedIncome).not.toHaveProperty("description");
+    expect(linkedIncome).not.toHaveProperty("category");
+
+    expect(oneTimeExpense).toMatchObject({
+      amount: 360000,
+      date: "2026-05-11",
+      periodMonth: "2026-05",
+      paymentMethod: "pix",
+      notes: "Novo texto",
+      description: "Viagem atualizada",
+      category: "lazer",
+      expenseType: "variavel",
     });
   });
 });
