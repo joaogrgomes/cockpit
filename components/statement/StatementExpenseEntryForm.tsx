@@ -4,14 +4,15 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -134,24 +135,24 @@ export function StatementExpenseEntryForm({
   }, [open]);
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger
         render={
           <Button size="sm" variant="default">
             Novo gasto
           </Button>
         }
       />
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Novo gasto pelo extrato</DialogTitle>
-          <DialogDescription>
-            Registre um lançamento real como vínculo do planejamento ou como gasto avulso.
-          </DialogDescription>
-        </DialogHeader>
+      <SheetContent side="right" className="flex w-full flex-col overflow-hidden sm:max-w-2xl">
+        <SheetHeader className="border-b border-border/70 px-4 py-4">
+          <SheetTitle>Novo gasto</SheetTitle>
+          <SheetDescription>
+            Registre um gasto no extrato e escolha se ele pertence ao planejamento ou é avulso.
+          </SheetDescription>
+        </SheetHeader>
 
         <form
-          className="space-y-4"
+          className="flex min-h-0 flex-1 flex-col"
           onSubmit={(event) => {
             event.preventDefault();
             setError(null);
@@ -188,213 +189,231 @@ export function StatementExpenseEntryForm({
             });
           }}
         >
-          <input type="hidden" name="periodMonth" value={periodMonth} />
-          <input
-            type="hidden"
-            name="monthlyExpenseId"
-            value={mode === "linked" ? selectedLinkedExpense?.id ?? "" : ""}
-          />
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-4">
+            <input type="hidden" name="periodMonth" value={periodMonth} />
 
-          <div className="space-y-2">
-            <Label htmlFor="statement-expense-name">Descrição</Label>
-            <Input id="statement-expense-name" name="name" required />
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="statement-expense-category">Categoria</Label>
-              <select
-                id="statement-expense-category"
-                name="category"
-                value={category}
-                onChange={(event) => setCategory(event.target.value as ExpenseCategory)}
-                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
-                required
-              >
-                {EXPENSE_CATEGORY_VALUES.map((value) => (
-                  <option key={value} value={value}>
-                    {getExpenseCategoryLabel(value)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="statement-expense-type">Tipo</Label>
-              <select
-                id="statement-expense-type"
-                name="expenseType"
-                value={expenseType}
-                onChange={(event) => setExpenseType(event.target.value as ExpenseType)}
-                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
-                required
-              >
-                {EXPENSE_TYPE_VALUES.map((value) => (
-                  <option key={value} value={value}>
-                    {getExpenseTypeLabel(value)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {compatibleMonthlyExpenses.length > 0 ? (
-            <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
-              <div>
-                <p className="text-sm font-medium">Este gasto pertence ao planejamento?</p>
-                <p className="text-xs text-muted-foreground">
-                  Selecione um item planejado compatível ou registre como avulso.
-                </p>
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold">Dados do lançamento</h3>
+              <div className="space-y-2">
+                <Label htmlFor="statement-expense-name">Descrição</Label>
+                <Input id="statement-expense-name" name="name" required />
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm">
-                  <input
-                    type="radio"
-                    name="entryMode"
-                    checked={mode === "linked"}
-                    onChange={() => {
-                      setMode("linked");
-                      setModeTouched(true);
-                      if (!selectedMonthlyExpenseId && compatibleMonthlyExpenses[0]) {
-                        setSelectedMonthlyExpenseId(compatibleMonthlyExpenses[0].id);
-                      }
-                    }}
-                  />
-                  Vincular ao planejamento mensal
-                </label>
-
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm">
-                  <input
-                    type="radio"
-                    name="entryMode"
-                    checked={mode === "one_time"}
-                    onChange={() => {
-                      setMode("one_time");
-                      setModeTouched(true);
-                    }}
-                  />
-                  Registrar como avulso
-                </label>
-              </div>
-
-              {mode === "linked" ? (
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="statement-expense-monthlyExpenseId">Planejamento compatível</Label>
+                  <Label htmlFor="statement-expense-category">Categoria</Label>
                   <select
-                    id="statement-expense-monthlyExpenseId"
-                    name="monthlyExpenseId"
-                    value={selectedMonthlyExpenseId}
-                    onChange={(event) => setSelectedMonthlyExpenseId(event.target.value)}
+                    id="statement-expense-category"
+                    name="category"
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value as ExpenseCategory)}
                     className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
                     required
                   >
-                    {compatibleMonthlyExpenses.map((expense) => (
-                      <option key={expense.id} value={expense.id}>
-                        {formatPlanLabel(expense)}
+                    {EXPENSE_CATEGORY_VALUES.map((value) => (
+                      <option key={value} value={value}>
+                        {getExpenseCategoryLabel(value)}
                       </option>
                     ))}
                   </select>
+                </div>
 
-                  {selectedLinkedExpense ? (
+                <div className="space-y-2">
+                  <Label htmlFor="statement-expense-type">Tipo</Label>
+                  <select
+                    id="statement-expense-type"
+                    name="expenseType"
+                    value={expenseType}
+                    onChange={(event) => setExpenseType(event.target.value as ExpenseType)}
+                    className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                    required
+                  >
+                    {EXPENSE_TYPE_VALUES.map((value) => (
+                      <option key={value} value={value}>
+                        {getExpenseTypeLabel(value)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold">Vínculo ao planejamento</h3>
+
+              {compatibleMonthlyExpenses.length > 0 ? (
+                <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <div>
+                    <p className="text-sm font-medium">Este gasto pertence ao planejamento?</p>
                     <p className="text-xs text-muted-foreground">
-                      Lançamento será vinculado a{" "}
-                      <span className="font-medium text-foreground">
-                        {selectedLinkedExpense.name}
-                      </span>
-                      , reduzindo o restante do planejamento.
+                      Selecione um item planejado compatível ou registre como avulso.
                     </p>
-                  ) : null}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3">
+                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm">
+                      <input
+                        type="radio"
+                        name="entryMode"
+                        checked={mode === "linked"}
+                        onChange={() => {
+                          setMode("linked");
+                          setModeTouched(true);
+                          if (!selectedMonthlyExpenseId && compatibleMonthlyExpenses[0]) {
+                            setSelectedMonthlyExpenseId(compatibleMonthlyExpenses[0].id);
+                          }
+                        }}
+                      />
+                      Vincular ao planejamento mensal
+                    </label>
+
+                    <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border/70 px-3 py-2 text-sm">
+                      <input
+                        type="radio"
+                        name="entryMode"
+                        checked={mode === "one_time"}
+                        onChange={() => {
+                          setMode("one_time");
+                          setModeTouched(true);
+                        }}
+                      />
+                      Registrar como avulso
+                    </label>
+                  </div>
+
+                  {mode === "linked" ? (
+                    <div className="space-y-2">
+                      <Label htmlFor="statement-expense-monthlyExpenseId">
+                        Planejamento compatível
+                      </Label>
+                      <select
+                        id="statement-expense-monthlyExpenseId"
+                        name="monthlyExpenseId"
+                        value={selectedMonthlyExpenseId}
+                        onChange={(event) => setSelectedMonthlyExpenseId(event.target.value)}
+                        className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                        required
+                      >
+                        {compatibleMonthlyExpenses.map((expense) => (
+                          <option key={expense.id} value={expense.id}>
+                            {formatPlanLabel(expense)}
+                          </option>
+                        ))}
+                      </select>
+
+                      {selectedLinkedExpense ? (
+                        <p className="text-xs text-muted-foreground">
+                          Lançamento será vinculado a{" "}
+                          <span className="font-medium text-foreground">
+                            {selectedLinkedExpense.name}
+                          </span>
+                          , reduzindo o restante do planejamento.
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Label htmlFor="statement-expense-occurrenceType">Classificação</Label>
+                      <select
+                        id="statement-expense-occurrenceType"
+                        name="occurrenceType"
+                        value={occurrenceType}
+                        onChange={(event) =>
+                          setOccurrenceType(event.target.value as ExpenseOccurrenceType)
+                        }
+                        className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                        required
+                      >
+                        {EXPENSE_OCCURRENCE_TYPE_VALUES.map((value) => (
+                          <option key={value} value={value}>
+                            {getExpenseOccurrenceTypeLabel(value)}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-muted-foreground">
+                        Esporádico planejado: pontual, mas previsto antes de acontecer. Imprevisto:
+                        fora do planejamento.
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
+                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
+                  Não encontramos planejamento compatível para essa categoria e tipo. Este gasto
+                  será registrado como avulso.
+                </div>
+              )}
+            </section>
+
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold">Pagamento e observações</h3>
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="statement-expense-occurrenceType">Classificação</Label>
-                  <select
-                    id="statement-expense-occurrenceType"
-                    name="occurrenceType"
-                    value={occurrenceType}
-                    onChange={(event) =>
-                      setOccurrenceType(event.target.value as ExpenseOccurrenceType)
-                    }
-                    className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                  <Label htmlFor="statement-expense-amount">Valor (BRL)</Label>
+                  <Input
+                    id="statement-expense-amount"
+                    name="amount"
                     required
+                    placeholder="Ex.: R$ 250,00"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="statement-expense-paidAt">Data</Label>
+                  <Input
+                    id="statement-expense-paidAt"
+                    name="paidAt"
+                    type="date"
+                    defaultValue={getLocalDateInputValue()}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="statement-expense-paymentMethod">Pagamento</Label>
+                  <select
+                    id="statement-expense-paymentMethod"
+                    name="paymentMethod"
+                    defaultValue=""
+                    className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
                   >
-                    {EXPENSE_OCCURRENCE_TYPE_VALUES.map((value) => (
-                      <option key={value} value={value}>
-                        {getExpenseOccurrenceTypeLabel(value)}
+                    <option value="">Sem método definido</option>
+                    {PAYMENT_METHOD_VALUES.map((paymentMethod) => (
+                      <option key={paymentMethod} value={paymentMethod}>
+                        {getPaymentMethodLabel(paymentMethod)}
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-muted-foreground">
-                    Esporádico planejado: pontual, mas previsto antes de acontecer. Imprevisto:
-                    fora do planejamento.
-                  </p>
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-              Não encontramos planejamento compatível para essa categoria e tipo. Este gasto será
-              registrado como avulso.
-            </div>
-          )}
+              </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="statement-expense-amount">Valor (BRL)</Label>
-              <Input
-                id="statement-expense-amount"
-                name="amount"
-                required
-                placeholder="Ex.: R$ 250,00"
+              <div className="space-y-2">
+                <Label htmlFor="statement-expense-notes">Observações</Label>
+                <Textarea id="statement-expense-notes" name="notes" />
+              </div>
+            </section>
+
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+          </div>
+
+          <SheetFooter className="border-t border-border/70 bg-background/95 px-4 py-4">
+            <div className="flex w-full items-center justify-end gap-2">
+              <SheetClose
+                render={
+                  <Button type="button" variant="outline">
+                    Cancelar
+                  </Button>
+                }
               />
+              <Button type="submit" disabled={isPending}>
+                {isPending ? "Salvando..." : "Salvar lançamento"}
+              </Button>
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="statement-expense-paidAt">Data</Label>
-              <Input
-                id="statement-expense-paidAt"
-                name="paidAt"
-                type="date"
-                defaultValue={getLocalDateInputValue()}
-                required
-              />
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="statement-expense-paymentMethod">Pagamento</Label>
-              <select
-                id="statement-expense-paymentMethod"
-                name="paymentMethod"
-                defaultValue=""
-                className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
-              >
-                <option value="">Sem método definido</option>
-                {PAYMENT_METHOD_VALUES.map((paymentMethod) => (
-                  <option key={paymentMethod} value={paymentMethod}>
-                    {getPaymentMethodLabel(paymentMethod)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="statement-expense-notes">Observações</Label>
-            <Textarea id="statement-expense-notes" name="notes" />
-          </div>
-
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-
-          <DialogFooter>
-            <Button type="submit" disabled={isPending}>
-              {isPending ? "Salvando..." : "Salvar lançamento"}
-            </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }
