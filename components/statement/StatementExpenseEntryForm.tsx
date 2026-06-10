@@ -28,6 +28,10 @@ import {
   getExpenseTypeLabel,
   getPaymentMethodLabel,
 } from "@/lib/expenses";
+import {
+  getEffectiveStatementExpenseMode,
+  shouldShowStatementExpenseOccurrenceTypeField,
+} from "@/lib/statement-expense-entry";
 import type { MonthlyExpense, ExpenseCategory, ExpenseOccurrenceType, ExpenseType } from "@/types";
 
 type ExpenseEntryActionResult = {
@@ -83,7 +87,12 @@ export function StatementExpenseEntryForm({
   );
 
   const hasCompatiblePlanning = compatibleMonthlyExpenses.length > 0;
-  const effectiveIsOneTime = !hasCompatiblePlanning || mode === "one_time";
+  const effectiveMode = getEffectiveStatementExpenseMode(hasCompatiblePlanning, mode);
+  const effectiveIsOneTime = shouldShowStatementExpenseOccurrenceTypeField(
+    hasCompatiblePlanning,
+    mode
+  );
+  const isLinkedMode = effectiveMode === "linked";
 
   const selectedLinkedExpense = useMemo(
     () =>
@@ -92,6 +101,9 @@ export function StatementExpenseEntryForm({
       null,
     [compatibleMonthlyExpenses, selectedMonthlyExpenseId]
   );
+
+  const showPlanningModeSelector = hasCompatiblePlanning;
+  const showOccurrenceTypeField = effectiveIsOneTime;
 
   useEffect(() => {
     if (!hasCompatiblePlanning) {
@@ -161,7 +173,7 @@ export function StatementExpenseEntryForm({
             event.preventDefault();
             setError(null);
 
-            if (!effectiveIsOneTime && !selectedLinkedExpense) {
+            if (isLinkedMode && !selectedLinkedExpense) {
               setError("Selecione um planejamento compatível para vincular o lançamento.");
               return;
             }
@@ -171,7 +183,7 @@ export function StatementExpenseEntryForm({
             formData.set("category", category);
             formData.set("expenseType", expenseType);
 
-            if (!effectiveIsOneTime) {
+            if (isLinkedMode) {
               formData.set("monthlyExpenseId", selectedLinkedExpense?.id ?? "");
               formData.delete("occurrenceType");
             } else {
@@ -179,7 +191,7 @@ export function StatementExpenseEntryForm({
               formData.set("occurrenceType", occurrenceType);
             }
 
-            const action = effectiveIsOneTime ? oneTimeAction : linkedAction;
+            const action = isLinkedMode ? linkedAction : oneTimeAction;
 
             startTransition(async () => {
               const result = await action(formData);
@@ -245,7 +257,7 @@ export function StatementExpenseEntryForm({
             <section className="space-y-4">
               <h3 className="text-sm font-semibold">Vínculo ao planejamento</h3>
 
-              {hasCompatiblePlanning ? (
+              {showPlanningModeSelector ? (
                 <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
                   <div>
                     <p className="text-sm font-medium">Este gasto pertence ao planejamento?</p>
@@ -285,7 +297,7 @@ export function StatementExpenseEntryForm({
                     </label>
                   </div>
 
-                  {mode === "linked" ? (
+                  {isLinkedMode ? (
                     <div className="space-y-2">
                       <Label htmlFor="statement-expense-monthlyExpenseId">
                         Planejamento compatível
@@ -323,33 +335,36 @@ export function StatementExpenseEntryForm({
                     Não encontramos planejamento compatível para essa categoria e tipo. Este gasto
                     será registrado como avulso.
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="statement-expense-occurrenceType">
-                      Classificação do avulso
-                    </Label>
-                    <select
-                      id="statement-expense-occurrenceType"
-                      name="occurrenceType"
-                      value={occurrenceType}
-                      onChange={(event) =>
-                        setOccurrenceType(event.target.value as ExpenseOccurrenceType)
-                      }
-                      className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
-                      required
-                    >
-                      {EXPENSE_OCCURRENCE_TYPE_VALUES.map((value) => (
-                        <option key={value} value={value}>
-                          {getExpenseOccurrenceTypeLabel(value)}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-muted-foreground">
-                      Esporádico planejado: pontual, mas previsto antes de acontecer. Imprevisto:
-                      fora do planejamento.
-                    </p>
-                  </div>
                 </div>
               )}
+
+              {showOccurrenceTypeField ? (
+                <div className="space-y-2 rounded-xl border border-border/70 bg-muted/20 p-4">
+                  <Label htmlFor="statement-expense-occurrenceType">
+                    Classificação do avulso
+                  </Label>
+                  <select
+                    id="statement-expense-occurrenceType"
+                    name="occurrenceType"
+                    value={occurrenceType}
+                    onChange={(event) =>
+                      setOccurrenceType(event.target.value as ExpenseOccurrenceType)
+                    }
+                    className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                    required
+                  >
+                    {EXPENSE_OCCURRENCE_TYPE_VALUES.map((value) => (
+                      <option key={value} value={value}>
+                        {getExpenseOccurrenceTypeLabel(value)}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-muted-foreground">
+                    Esporádico planejado: pontual, mas previsto antes de acontecer. Imprevisto:
+                    fora do planejamento.
+                  </p>
+                </div>
+              ) : null}
             </section>
 
             <section className="space-y-4">
