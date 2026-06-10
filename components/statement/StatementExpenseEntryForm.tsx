@@ -82,6 +82,9 @@ export function StatementExpenseEntryForm({
     [category, expenseType, monthlyExpenses]
   );
 
+  const hasCompatiblePlanning = compatibleMonthlyExpenses.length > 0;
+  const effectiveIsOneTime = !hasCompatiblePlanning || mode === "one_time";
+
   const selectedLinkedExpense = useMemo(
     () =>
       compatibleMonthlyExpenses.find((expense) => expense.id === selectedMonthlyExpenseId) ??
@@ -91,7 +94,7 @@ export function StatementExpenseEntryForm({
   );
 
   useEffect(() => {
-    if (compatibleMonthlyExpenses.length === 0) {
+    if (!hasCompatiblePlanning) {
       if (mode !== "one_time") {
         setMode("one_time");
       }
@@ -117,6 +120,7 @@ export function StatementExpenseEntryForm({
     }
   }, [
     compatibleMonthlyExpenses,
+    hasCompatiblePlanning,
     mode,
     modeTouched,
     selectedMonthlyExpenseId,
@@ -157,7 +161,7 @@ export function StatementExpenseEntryForm({
             event.preventDefault();
             setError(null);
 
-            if (mode === "linked" && !selectedLinkedExpense) {
+            if (!effectiveIsOneTime && !selectedLinkedExpense) {
               setError("Selecione um planejamento compatível para vincular o lançamento.");
               return;
             }
@@ -167,7 +171,7 @@ export function StatementExpenseEntryForm({
             formData.set("category", category);
             formData.set("expenseType", expenseType);
 
-            if (mode === "linked") {
+            if (!effectiveIsOneTime) {
               formData.set("monthlyExpenseId", selectedLinkedExpense?.id ?? "");
               formData.delete("occurrenceType");
             } else {
@@ -175,7 +179,7 @@ export function StatementExpenseEntryForm({
               formData.set("occurrenceType", occurrenceType);
             }
 
-            const action = mode === "linked" ? linkedAction : oneTimeAction;
+            const action = effectiveIsOneTime ? oneTimeAction : linkedAction;
 
             startTransition(async () => {
               const result = await action(formData);
@@ -241,7 +245,7 @@ export function StatementExpenseEntryForm({
             <section className="space-y-4">
               <h3 className="text-sm font-semibold">Vínculo ao planejamento</h3>
 
-              {compatibleMonthlyExpenses.length > 0 ? (
+              {hasCompatiblePlanning ? (
                 <div className="space-y-3 rounded-xl border border-border/70 bg-muted/20 p-4">
                   <div>
                     <p className="text-sm font-medium">Este gasto pertence ao planejamento?</p>
@@ -311,36 +315,39 @@ export function StatementExpenseEntryForm({
                         </p>
                       ) : null}
                     </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <Label htmlFor="statement-expense-occurrenceType">Classificação</Label>
-                      <select
-                        id="statement-expense-occurrenceType"
-                        name="occurrenceType"
-                        value={occurrenceType}
-                        onChange={(event) =>
-                          setOccurrenceType(event.target.value as ExpenseOccurrenceType)
-                        }
-                        className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
-                        required
-                      >
-                        {EXPENSE_OCCURRENCE_TYPE_VALUES.map((value) => (
-                          <option key={value} value={value}>
-                            {getExpenseOccurrenceTypeLabel(value)}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="text-xs text-muted-foreground">
-                        Esporádico planejado: pontual, mas previsto antes de acontecer. Imprevisto:
-                        fora do planejamento.
-                      </p>
-                    </div>
-                  )}
+                  ) : null}
                 </div>
               ) : (
-                <div className="rounded-xl border border-dashed border-border/70 bg-muted/20 p-4 text-sm text-muted-foreground">
-                  Não encontramos planejamento compatível para essa categoria e tipo. Este gasto
-                  será registrado como avulso.
+                <div className="space-y-4 rounded-xl border border-dashed border-border/70 bg-muted/20 p-4">
+                  <div className="text-sm text-muted-foreground">
+                    Não encontramos planejamento compatível para essa categoria e tipo. Este gasto
+                    será registrado como avulso.
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="statement-expense-occurrenceType">
+                      Classificação do avulso
+                    </Label>
+                    <select
+                      id="statement-expense-occurrenceType"
+                      name="occurrenceType"
+                      value={occurrenceType}
+                      onChange={(event) =>
+                        setOccurrenceType(event.target.value as ExpenseOccurrenceType)
+                      }
+                      className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                      required
+                    >
+                      {EXPENSE_OCCURRENCE_TYPE_VALUES.map((value) => (
+                        <option key={value} value={value}>
+                          {getExpenseOccurrenceTypeLabel(value)}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-muted-foreground">
+                      Esporádico planejado: pontual, mas previsto antes de acontecer. Imprevisto:
+                      fora do planejamento.
+                    </p>
+                  </div>
                 </div>
               )}
             </section>

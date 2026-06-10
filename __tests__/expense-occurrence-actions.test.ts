@@ -95,6 +95,36 @@ describe("expense occurrence actions", () => {
     );
   });
 
+  it("cria gasto vinculado sem exigir occurrenceType", async () => {
+    mocks.getMonthlyExpenseById.mockResolvedValue({
+      id: "550e8400-e29b-41d4-a716-446655440011",
+      isActive: true,
+      category: "familia",
+      expenseType: "variavel",
+    });
+    mocks.createMonthlyExpenseEntry.mockResolvedValue({ id: "entry-linked-11" });
+
+    const formData = new FormData();
+    formData.set("name", "Pagamento dívida CAEDU");
+    formData.set("category", "familia");
+    formData.set("expenseType", "variavel");
+    formData.set("monthlyExpenseId", "550e8400-e29b-41d4-a716-446655440011");
+    formData.set("periodMonth", "2026-06");
+    formData.set("amount", "15000");
+    formData.set("paidAt", "2026-06-04");
+    formData.set("paymentMethod", "pix");
+
+    const result = await createMonthlyExpenseEntryAction(formData);
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.createMonthlyExpenseEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        monthlyExpenseId: "550e8400-e29b-41d4-a716-446655440011",
+        occurrenceType: null,
+      })
+    );
+  });
+
   it("rejeita gasto vinculado quando planejamento está inativo", async () => {
     mocks.getMonthlyExpenseById.mockResolvedValue({
       id: "550e8400-e29b-41d4-a716-446655440002",
@@ -164,6 +194,23 @@ describe("expense occurrence actions", () => {
         occurrenceType: "planned_one_off",
       })
     );
+  });
+
+  it("rejeita gasto avulso sem occurrenceType", async () => {
+    const formData = new FormData();
+    formData.set("name", "Pagamento dívida CAEDU");
+    formData.set("category", "dividas");
+    formData.set("expenseType", "variavel");
+    formData.set("periodMonth", "2026-06");
+    formData.set("amount", "15000");
+    formData.set("paidAt", "2026-06-04");
+    formData.set("paymentMethod", "pix");
+
+    const result = await createOneTimeExpenseEntryAction(formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("occurrenceType é obrigatório para gasto avulso");
+    expect(mocks.createMonthlyExpenseEntry).not.toHaveBeenCalled();
   });
 
   it("cria gasto futuro com planned_one_off por padrão informado", async () => {
