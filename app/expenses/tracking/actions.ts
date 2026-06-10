@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { parseBRL } from "@/lib/calculations";
+import { getMonthlyExpenseById } from "@/lib/services/monthly-expense.service";
 import {
   createMonthlyExpenseEntry,
   deleteMonthlyExpenseEntry,
@@ -63,12 +64,52 @@ function revalidateExpensePages() {
   revalidatePath("/statement");
 }
 
+async function validateLinkedMonthlyExpense(
+  monthlyExpenseId: string,
+  category: string | null,
+  expenseType: string | null
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const monthlyExpense = await getMonthlyExpenseById(monthlyExpenseId);
+
+  if (!monthlyExpense || !monthlyExpense.isActive) {
+    return { ok: false, error: "Planejamento não encontrado ou inativo" };
+  }
+
+  if (category && category !== monthlyExpense.category) {
+    return {
+      ok: false,
+      error: "O planejamento selecionado não corresponde à categoria informada",
+    };
+  }
+
+  if (expenseType && expenseType !== monthlyExpense.expenseType) {
+    return {
+      ok: false,
+      error: "O planejamento selecionado não corresponde ao tipo informado",
+    };
+  }
+
+  return { ok: true };
+}
+
 export async function createMonthlyExpenseEntryAction(
   formData: FormData
 ): Promise<ExpenseEntryActionResult> {
   const parsed = parseEntryFormData(formData);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  if (parsed.data.monthlyExpenseId) {
+    const linkedValidation = await validateLinkedMonthlyExpense(
+      parsed.data.monthlyExpenseId,
+      parsed.data.category ?? null,
+      parsed.data.expenseType ?? null
+    );
+
+    if (!linkedValidation.ok) {
+      return linkedValidation;
+    }
   }
 
   await createMonthlyExpenseEntry(parsed.data);

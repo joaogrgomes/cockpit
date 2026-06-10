@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   createMonthlyExpenseEntry: vi.fn(),
   deleteMonthlyExpenseEntry: vi.fn(),
+  getMonthlyExpenseById: vi.fn(),
   createFutureExpensePayable: vi.fn(),
   updateFutureExpensePayable: vi.fn(),
   cancelFutureExpensePayable: vi.fn(),
@@ -19,6 +20,10 @@ vi.mock("@/lib/services/monthly-expense-entry.service", () => ({
   deleteMonthlyExpenseEntry: mocks.deleteMonthlyExpenseEntry,
 }));
 
+vi.mock("@/lib/services/monthly-expense.service", () => ({
+  getMonthlyExpenseById: mocks.getMonthlyExpenseById,
+}));
+
 vi.mock("@/lib/services/future-expense.service", () => ({
   createFutureExpensePayable: mocks.createFutureExpensePayable,
   updateFutureExpensePayable: mocks.updateFutureExpensePayable,
@@ -27,6 +32,7 @@ vi.mock("@/lib/services/future-expense.service", () => ({
 }));
 
 import {
+  createMonthlyExpenseEntryAction,
   createOneTimeExpenseEntryAction,
 } from "@/app/expenses/tracking/actions";
 import {
@@ -64,6 +70,67 @@ beforeEach(() => {
 });
 
 describe("expense occurrence actions", () => {
+  it("cria gasto vinculado quando planejamento compatível existe", async () => {
+    mocks.getMonthlyExpenseById.mockResolvedValue({
+      id: "550e8400-e29b-41d4-a716-446655440001",
+      isActive: true,
+      category: "familia",
+      expenseType: "variavel",
+    });
+    mocks.createMonthlyExpenseEntry.mockResolvedValue({ id: "entry-linked-1" });
+
+    const formData = buildBaseExpenseFormData("unexpected");
+    formData.set("monthlyExpenseId", "550e8400-e29b-41d4-a716-446655440001");
+
+    const result = await createMonthlyExpenseEntryAction(formData);
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.getMonthlyExpenseById).toHaveBeenCalledWith(
+      "550e8400-e29b-41d4-a716-446655440001"
+    );
+    expect(mocks.createMonthlyExpenseEntry).toHaveBeenCalledWith(
+      expect.objectContaining({
+        monthlyExpenseId: "550e8400-e29b-41d4-a716-446655440001",
+      })
+    );
+  });
+
+  it("rejeita gasto vinculado quando planejamento está inativo", async () => {
+    mocks.getMonthlyExpenseById.mockResolvedValue({
+      id: "550e8400-e29b-41d4-a716-446655440002",
+      isActive: false,
+      category: "familia",
+      expenseType: "variavel",
+    });
+
+    const formData = buildBaseExpenseFormData("unexpected");
+    formData.set("monthlyExpenseId", "550e8400-e29b-41d4-a716-446655440002");
+
+    const result = await createMonthlyExpenseEntryAction(formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("Planejamento não encontrado ou inativo");
+    expect(mocks.createMonthlyExpenseEntry).not.toHaveBeenCalled();
+  });
+
+  it("rejeita gasto vinculado quando categoria não bate com o planejamento", async () => {
+    mocks.getMonthlyExpenseById.mockResolvedValue({
+      id: "550e8400-e29b-41d4-a716-446655440003",
+      isActive: true,
+      category: "saude",
+      expenseType: "variavel",
+    });
+
+    const formData = buildBaseExpenseFormData("unexpected");
+    formData.set("monthlyExpenseId", "550e8400-e29b-41d4-a716-446655440003");
+
+    const result = await createMonthlyExpenseEntryAction(formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("categoria informada");
+    expect(mocks.createMonthlyExpenseEntry).not.toHaveBeenCalled();
+  });
+
   it("cria gasto avulso como unexpected", async () => {
     mocks.createMonthlyExpenseEntry.mockResolvedValue({ id: "entry-1" });
 

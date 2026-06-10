@@ -1,8 +1,9 @@
-import { OneTimeExpenseEntryForm } from "@/components/expense-tracking/OneTimeExpenseEntryForm";
 import { OneTimeIncomeEntryForm } from "@/components/income-tracking/OneTimeIncomeEntryForm";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { StatementExpenseEntryForm } from "@/components/statement/StatementExpenseEntryForm";
 import { getStatementByPeriod } from "@/lib/services/statement.service";
+import { listMonthlyExpenses } from "@/lib/services/monthly-expense.service";
 import {
   getStatementCategoryGroups,
   normalizeStatementCategory,
@@ -10,7 +11,7 @@ import {
   normalizeStatementQuery,
   normalizeStatementType,
 } from "@/lib/statement";
-import { createOneTimeExpenseEntryAction } from "@/app/expenses/tracking/actions";
+import { createMonthlyExpenseEntryAction, createOneTimeExpenseEntryAction } from "@/app/expenses/tracking/actions";
 import { createOneTimeIncomeEntryAction } from "@/app/incomes/tracking/actions";
 import { StatementFilters } from "@/components/statement/StatementFilters";
 import { StatementSummaryCards } from "@/components/statement/StatementSummaryCards";
@@ -34,12 +35,18 @@ export default async function StatementPage({ searchParams }: StatementPageProps
   const selectedCategory = normalizeStatementCategory(params.category);
   const selectedQuery = normalizeStatementQuery(params.q);
 
-  const statement = await getStatementByPeriod({
-    periodMonth: selectedPeriod,
-    type: selectedType,
-    category: selectedCategory,
-    query: selectedQuery,
-  });
+  const [statement, monthlyExpenses] = await Promise.all([
+    getStatementByPeriod({
+      periodMonth: selectedPeriod,
+      type: selectedType,
+      category: selectedCategory,
+      query: selectedQuery,
+    }),
+    listMonthlyExpenses({
+      isActive: "true",
+      sort: "category",
+    }),
+  ]);
 
   return (
     <section className="space-y-6">
@@ -52,9 +59,11 @@ export default async function StatementPage({ searchParams }: StatementPageProps
               periodMonth={statement.periodMonth}
               action={createOneTimeIncomeEntryAction}
             />
-            <OneTimeExpenseEntryForm
+            <StatementExpenseEntryForm
               periodMonth={statement.periodMonth}
-              action={createOneTimeExpenseEntryAction}
+              monthlyExpenses={monthlyExpenses}
+              linkedAction={createMonthlyExpenseEntryAction}
+              oneTimeAction={createOneTimeExpenseEntryAction}
             />
           </>
         }
