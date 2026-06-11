@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  clampCashFlowProjectionYear,
   canClosePeriodMonth,
   calculateCashFlowProjection,
+  getCashFlowProjectionYearBounds,
+  getPeriodMonthRange,
   getYearMonths,
   isMonthBefore,
 } from "@/lib/cash-flow";
@@ -34,6 +37,24 @@ describe("cash flow helpers", () => {
     expect(canClosePeriodMonth("2026-05", "2026-05")).toBe(true);
     expect(canClosePeriodMonth("2026-04", "2026-05")).toBe(true);
     expect(canClosePeriodMonth("2026-06", "2026-05")).toBe(false);
+  });
+
+  it("gera intervalo contínuo de meses atravessando virada de ano", () => {
+    expect(getPeriodMonthRange("2026-11", "2027-02")).toEqual([
+      "2026-11",
+      "2026-12",
+      "2027-01",
+      "2027-02",
+    ]);
+  });
+
+  it("limita o horizonte do fluxo de caixa em cinco anos", () => {
+    const bounds = getCashFlowProjectionYearBounds(new Date(2026, 5, 10));
+
+    expect(bounds).toEqual({ minYear: 2026, maxYear: 2030 });
+    expect(clampCashFlowProjectionYear(2025, new Date(2026, 5, 10))).toBe(2026);
+    expect(clampCashFlowProjectionYear(2027, new Date(2026, 5, 10))).toBe(2027);
+    expect(clampCashFlowProjectionYear(2035, new Date(2026, 5, 10))).toBe(2030);
   });
 });
 
@@ -673,6 +694,64 @@ describe("calculateCashFlowProjection", () => {
     expect(reopened.months[0].incomeUsed).toBe(510000);
     expect(closed.months[0].variableExpensesUsed).toBe(20000);
     expect(reopened.months[0].variableExpensesUsed).toBe(100000);
+  });
+
+  it("mantém continuidade entre dezembro e janeiro ao atravessar o ano", () => {
+    const continuityInput = baseInput({
+      year: 2027,
+      startMonth: "2026-01",
+      initialBalance: 100000,
+      plannedIncomesTotal: 500000,
+      plannedFixedExpensesTotal: 200000,
+      plannedVariableExpensesTotal: 100000,
+    });
+
+    const result2026 = calculateCashFlowProjection({
+      ...continuityInput,
+      year: 2026,
+    });
+    const result2027 = calculateCashFlowProjection(continuityInput);
+
+    const dec2026 = result2026.months.find((month) => month.periodMonth === "2026-12");
+    const jan2027 = result2027.months.find((month) => month.periodMonth === "2027-01");
+
+    expect(dec2026).toBeDefined();
+    expect(jan2027).toBeDefined();
+
+    if (!dec2026 || !jan2027) return;
+
+    expect(dec2026.closingBalance).toBe(2500000);
+    expect(dec2026.partialClosingBalance).toBe(100000);
+    expect(jan2027.openingBalance).toBe(dec2026.closingBalance);
+    expect(jan2027.partialOpeningBalance).toBe(dec2026.partialClosingBalance);
+  });
+
+  it("jan/2028 continua a partir do fechamento de dez/2027", () => {
+    const continuityInput = baseInput({
+      year: 2028,
+      startMonth: "2026-01",
+      initialBalance: 100000,
+      plannedIncomesTotal: 500000,
+      plannedFixedExpensesTotal: 200000,
+      plannedVariableExpensesTotal: 100000,
+    });
+
+    const result2027 = calculateCashFlowProjection({
+      ...continuityInput,
+      year: 2027,
+    });
+    const result2028 = calculateCashFlowProjection(continuityInput);
+
+    const dec2027 = result2027.months.find((month) => month.periodMonth === "2027-12");
+    const jan2028 = result2028.months.find((month) => month.periodMonth === "2028-01");
+
+    expect(dec2027).toBeDefined();
+    expect(jan2028).toBeDefined();
+
+    if (!dec2027 || !jan2028) return;
+
+    expect(jan2028.openingBalance).toBe(dec2027.closingBalance);
+    expect(jan2028.partialOpeningBalance).toBe(dec2027.partialClosingBalance);
   });
 
   it("mês fechado afeta encadeamento do mês seguinte", () => {

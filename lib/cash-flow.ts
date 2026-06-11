@@ -100,6 +100,54 @@ export function getCurrentPeriodMonth(referenceDate: Date = new Date()): string 
   return `${year}-${month}`;
 }
 
+function getNextPeriodMonth(periodMonth: string): string {
+  const [yearText, monthText] = periodMonth.split("-");
+  const year = Number.parseInt(yearText, 10);
+  const month = Number.parseInt(monthText, 10);
+
+  if (Number.isNaN(year) || Number.isNaN(month)) {
+    return periodMonth;
+  }
+
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
+}
+
+export function getPeriodMonthRange(startMonth: string, endMonth: string): string[] {
+  if (!isValidPeriodMonth(startMonth) || !isValidPeriodMonth(endMonth) || startMonth > endMonth) {
+    return [];
+  }
+
+  const months: string[] = [];
+  let current = startMonth;
+
+  while (current <= endMonth) {
+    months.push(current);
+    current = getNextPeriodMonth(current);
+  }
+
+  return months;
+}
+
+export function getCashFlowProjectionYearBounds(
+  referenceDate: Date = new Date()
+): { minYear: number; maxYear: number } {
+  const currentYear = referenceDate.getFullYear();
+  return {
+    minYear: currentYear,
+    maxYear: currentYear + 4,
+  };
+}
+
+export function clampCashFlowProjectionYear(
+  value: number,
+  referenceDate: Date = new Date()
+): number {
+  const { minYear, maxYear } = getCashFlowProjectionYearBounds(referenceDate);
+  return Math.min(maxYear, Math.max(minYear, value));
+}
+
 export function getYearMonths(year: number): string[] {
   return Array.from({ length: 12 }, (_, index) => {
     const month = String(index + 1).padStart(2, "0");
@@ -129,62 +177,21 @@ export function canClosePeriodMonth(
 export function calculateCashFlowProjection(
   input: CashFlowProjectionInput
 ): CashFlowProjection {
-  const monthsOfYear = getYearMonths(input.year);
   const closedMonthsSet = Array.isArray(input.closedMonths)
     ? new Set(input.closedMonths)
     : input.closedMonths;
   const normalizedStartMonth = isValidPeriodMonth(input.startMonth)
     ? input.startMonth
     : getCurrentPeriodMonth();
+  const endMonth = `${input.year}-12`;
+  const computedMonths = getPeriodMonthRange(normalizedStartMonth, endMonth);
+  const computedMonthMap = new Map<string, CashFlowMonth>();
 
-  let hasStarted = false;
   let currentOpeningBalance = input.initialBalance;
   let currentPartialOpeningBalance = input.initialBalance;
+  let hasStarted = false;
 
-  const months: CashFlowMonth[] = monthsOfYear.map((periodMonth) => {
-    const isBeforeStart = isMonthBefore(periodMonth, normalizedStartMonth);
-
-    if (isBeforeStart) {
-      return {
-        periodMonth,
-        monthLabel: getMonthLabel(periodMonth),
-        isBeforeStart: true,
-        isClosed: false,
-        openingBalance: 0,
-        partialOpeningBalance: 0,
-        plannedIncome: input.plannedIncomesTotal,
-        expectedRecurringIncomes: 0,
-        actualLinkedIncome: input.actualLinkedIncomesByMonth[periodMonth] ?? 0,
-        actualOneTimeIncome: input.actualOneTimeIncomesByMonth[periodMonth] ?? 0,
-        futureExpectedIncomes: input.futureExpectedIncomesByMonth[periodMonth] ?? 0,
-        actualIncome:
-          (input.actualLinkedIncomesByMonth[periodMonth] ?? 0) +
-          (input.actualOneTimeIncomesByMonth[periodMonth] ?? 0),
-        incomeUsed: 0,
-        incomeSource: "planejado",
-        plannedFixedExpenses: input.plannedFixedExpensesTotal,
-        actualFixedExpenses: input.actualFixedExpensesByMonth[periodMonth] ?? 0,
-        futureExpectedFixedExpenses:
-          input.futureExpectedFixedExpensesByMonth[periodMonth] ?? 0,
-        fixedExpensesUsed: 0,
-        fixedExpenseSource: "planejado",
-        plannedVariableExpenses: input.plannedVariableExpensesTotal,
-        futureExpectedVariableExpenses:
-          input.futureExpectedVariableExpensesByMonth[periodMonth] ?? 0,
-        variableExpensesUsed: 0,
-        actualVariableExpenses: 0,
-        remainingVariableBudget: 0,
-        hasActualVariableExpenses: false,
-        variableBudgetStatus: "dentro",
-        totalExpenses: 0,
-        partialTotalExpenses: 0,
-        monthlyResult: 0,
-        partialMonthlyResult: 0,
-        closingBalance: 0,
-        partialClosingBalance: 0,
-      };
-    }
-
+  for (const periodMonth of computedMonths) {
     if (!hasStarted) {
       currentOpeningBalance = input.initialBalance;
       currentPartialOpeningBalance = input.initialBalance;
@@ -301,7 +308,93 @@ export function calculateCashFlowProjection(
     currentOpeningBalance = closingBalance;
     currentPartialOpeningBalance = partialClosingBalance;
 
-    return row;
+    computedMonthMap.set(periodMonth, row);
+  }
+
+  const monthsOfYear = getYearMonths(input.year);
+  const months: CashFlowMonth[] = monthsOfYear.map((periodMonth) => {
+    if (isMonthBefore(periodMonth, normalizedStartMonth)) {
+      return {
+        periodMonth,
+        monthLabel: getMonthLabel(periodMonth),
+        isBeforeStart: true,
+        isClosed: false,
+        openingBalance: 0,
+        partialOpeningBalance: 0,
+        plannedIncome: input.plannedIncomesTotal,
+        expectedRecurringIncomes: 0,
+        actualLinkedIncome: input.actualLinkedIncomesByMonth[periodMonth] ?? 0,
+        actualOneTimeIncome: input.actualOneTimeIncomesByMonth[periodMonth] ?? 0,
+        futureExpectedIncomes: input.futureExpectedIncomesByMonth[periodMonth] ?? 0,
+        actualIncome:
+          (input.actualLinkedIncomesByMonth[periodMonth] ?? 0) +
+          (input.actualOneTimeIncomesByMonth[periodMonth] ?? 0),
+        incomeUsed: 0,
+        incomeSource: "planejado",
+        plannedFixedExpenses: input.plannedFixedExpensesTotal,
+        actualFixedExpenses: input.actualFixedExpensesByMonth[periodMonth] ?? 0,
+        futureExpectedFixedExpenses:
+          input.futureExpectedFixedExpensesByMonth[periodMonth] ?? 0,
+        fixedExpensesUsed: 0,
+        fixedExpenseSource: "planejado",
+        plannedVariableExpenses: input.plannedVariableExpensesTotal,
+        futureExpectedVariableExpenses:
+          input.futureExpectedVariableExpensesByMonth[periodMonth] ?? 0,
+        variableExpensesUsed: 0,
+        actualVariableExpenses: 0,
+        remainingVariableBudget: 0,
+        hasActualVariableExpenses: false,
+        variableBudgetStatus: "dentro",
+        totalExpenses: 0,
+        partialTotalExpenses: 0,
+        monthlyResult: 0,
+        partialMonthlyResult: 0,
+        closingBalance: 0,
+        partialClosingBalance: 0,
+      };
+    }
+
+    const computedMonth = computedMonthMap.get(periodMonth);
+    if (computedMonth) {
+      return computedMonth;
+    }
+
+    return {
+      periodMonth,
+      monthLabel: getMonthLabel(periodMonth),
+      isBeforeStart: false,
+      isClosed: false,
+      openingBalance: currentOpeningBalance,
+      partialOpeningBalance: currentPartialOpeningBalance,
+      plannedIncome: input.plannedIncomesTotal,
+      expectedRecurringIncomes: 0,
+      actualLinkedIncome: input.actualLinkedIncomesByMonth[periodMonth] ?? 0,
+      actualOneTimeIncome: input.actualOneTimeIncomesByMonth[periodMonth] ?? 0,
+      futureExpectedIncomes: input.futureExpectedIncomesByMonth[periodMonth] ?? 0,
+      actualIncome:
+        (input.actualLinkedIncomesByMonth[periodMonth] ?? 0) +
+        (input.actualOneTimeIncomesByMonth[periodMonth] ?? 0),
+      incomeUsed: 0,
+      incomeSource: "planejado",
+      plannedFixedExpenses: input.plannedFixedExpensesTotal,
+      actualFixedExpenses: input.actualFixedExpensesByMonth[periodMonth] ?? 0,
+      futureExpectedFixedExpenses: input.futureExpectedFixedExpensesByMonth[periodMonth] ?? 0,
+      fixedExpensesUsed: 0,
+      fixedExpenseSource: "planejado",
+      plannedVariableExpenses: input.plannedVariableExpensesTotal,
+      futureExpectedVariableExpenses: input.futureExpectedVariableExpensesByMonth[periodMonth] ?? 0,
+      variableExpensesUsed: 0,
+      actualVariableExpenses: 0,
+      remainingVariableBudget: 0,
+      hasActualVariableExpenses: false,
+      variableBudgetStatus: "dentro",
+      totalExpenses: 0,
+      partialTotalExpenses: 0,
+      monthlyResult: 0,
+      partialMonthlyResult: 0,
+      closingBalance: 0,
+      partialClosingBalance: 0,
+    };
   });
 
   const activeMonths = months.filter((month) => !month.isBeforeStart);

@@ -4,7 +4,11 @@ import { CashFlowTable } from "@/components/cash-flow/CashFlowTable";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentPeriodMonth } from "@/lib/cash-flow";
+import {
+  clampCashFlowProjectionYear,
+  getCashFlowProjectionYearBounds,
+  getCurrentPeriodMonth,
+} from "@/lib/cash-flow";
 import { getCashFlowProjection } from "@/lib/services/cash-flow.service";
 import {
   closeMonthAction,
@@ -26,16 +30,17 @@ function parseYear(value: string | undefined): number {
   if (!value) return getCurrentYear();
 
   const parsed = Number.parseInt(value, 10);
-  if (Number.isNaN(parsed) || parsed < 1900 || parsed > 3000) {
+  if (Number.isNaN(parsed)) {
     return getCurrentYear();
   }
 
-  return parsed;
+  return clampCashFlowProjectionYear(parsed);
 }
 
 export default async function CashFlowPage({ searchParams }: CashFlowPageProps) {
   const params = searchParams ? await searchParams : {};
   const selectedYear = parseYear(params.year);
+  const { minYear, maxYear } = getCashFlowProjectionYearBounds();
   const projection = await getCashFlowProjection(selectedYear);
 
   return (
@@ -66,8 +71,8 @@ export default async function CashFlowPage({ searchParams }: CashFlowPageProps) 
                 id="year"
                 name="year"
                 type="number"
-                min={1900}
-                max={3000}
+                min={minYear}
+                max={maxYear}
                 defaultValue={selectedYear}
                 className="flex h-9 rounded-lg border border-input bg-background px-3 text-sm"
               />

@@ -1,9 +1,10 @@
 import "server-only";
 
-import { and, asc, eq, like, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import {
   calculateCashFlowProjection,
   getCurrentPeriodMonth,
+  getPeriodMonthRange,
   getYearMonths,
 } from "@/lib/cash-flow";
 import { getDb } from "@/lib/db";
@@ -116,7 +117,11 @@ export async function getCashFlowProjection(
 ): Promise<CashFlowProjectionResult> {
   const db = getDb();
   const settings = await getCashFlowSettings();
-  const yearFilter = `${year}-%`;
+  const projectionStartMonth = settings.startMonth;
+  const projectionEndMonth = `${year}-12`;
+  const projectionMonths = getPeriodMonthRange(projectionStartMonth, projectionEndMonth);
+  const projectionStartDate = `${projectionStartMonth}-01`;
+  const projectionEndDate = `${projectionEndMonth}-31`;
 
   const [
     activeIncomes,
@@ -149,7 +154,8 @@ export async function getCashFlowProjection(
       .innerJoin(monthlyIncomes, eq(monthlyIncomeEntries.monthlyIncomeId, monthlyIncomes.id))
       .where(
         and(
-          like(monthlyIncomeEntries.periodMonth, yearFilter),
+          sql`${monthlyIncomeEntries.periodMonth} >= ${projectionStartMonth}`,
+          sql`${monthlyIncomeEntries.periodMonth} <= ${projectionEndMonth}`,
           eq(monthlyIncomes.isActive, true)
         )
       )
@@ -162,7 +168,8 @@ export async function getCashFlowProjection(
       .from(monthlyIncomeEntries)
       .where(
         and(
-          like(monthlyIncomeEntries.periodMonth, yearFilter),
+          sql`${monthlyIncomeEntries.periodMonth} >= ${projectionStartMonth}`,
+          sql`${monthlyIncomeEntries.periodMonth} <= ${projectionEndMonth}`,
           sql`${monthlyIncomeEntries.monthlyIncomeId} IS NULL`
         )
       )
@@ -176,15 +183,20 @@ export async function getCashFlowProjection(
       .where(
         and(
           eq(futureIncomeReceivables.status, "prevista"),
-          sql`${futureIncomeReceivables.expectedDate} >= make_date(${year}, 1, 1)`,
-          sql`${futureIncomeReceivables.expectedDate} <= make_date(${year}, 12, 31)`
+          sql`${futureIncomeReceivables.expectedDate} >= ${projectionStartDate}`,
+          sql`${futureIncomeReceivables.expectedDate} <= ${projectionEndDate}`
         )
       )
       .groupBy(sql`to_char(${futureIncomeReceivables.expectedDate}, 'YYYY-MM')`),
     db
       .select({ periodMonth: monthlyClosings.periodMonth })
       .from(monthlyClosings)
-      .where(like(monthlyClosings.periodMonth, yearFilter)),
+      .where(
+        and(
+          sql`${monthlyClosings.periodMonth} >= ${projectionStartMonth}`,
+          sql`${monthlyClosings.periodMonth} <= ${projectionEndMonth}`
+        )
+      ),
     db
       .select({
         periodMonth: monthlyExpenseEntries.periodMonth,
@@ -194,7 +206,8 @@ export async function getCashFlowProjection(
       .leftJoin(monthlyExpenses, eq(monthlyExpenseEntries.monthlyExpenseId, monthlyExpenses.id))
       .where(
         and(
-          like(monthlyExpenseEntries.periodMonth, yearFilter),
+          sql`${monthlyExpenseEntries.periodMonth} >= ${projectionStartMonth}`,
+          sql`${monthlyExpenseEntries.periodMonth} <= ${projectionEndMonth}`,
           sql`coalesce(${monthlyExpenses.expenseType}, ${monthlyExpenseEntries.expenseType}) = 'fixo'`
         )
       )
@@ -208,7 +221,8 @@ export async function getCashFlowProjection(
       .leftJoin(monthlyExpenses, eq(monthlyExpenseEntries.monthlyExpenseId, monthlyExpenses.id))
       .where(
         and(
-          like(monthlyExpenseEntries.periodMonth, yearFilter),
+          sql`${monthlyExpenseEntries.periodMonth} >= ${projectionStartMonth}`,
+          sql`${monthlyExpenseEntries.periodMonth} <= ${projectionEndMonth}`,
           sql`coalesce(${monthlyExpenses.expenseType}, ${monthlyExpenseEntries.expenseType}) = 'variavel'`
         )
       )
@@ -223,8 +237,8 @@ export async function getCashFlowProjection(
         and(
           eq(futureExpensePayables.status, "previsto"),
           eq(futureExpensePayables.expenseType, "fixo"),
-          sql`${futureExpensePayables.expectedDate} >= make_date(${year}, 1, 1)`,
-          sql`${futureExpensePayables.expectedDate} <= make_date(${year}, 12, 31)`
+          sql`${futureExpensePayables.expectedDate} >= ${projectionStartDate}`,
+          sql`${futureExpensePayables.expectedDate} <= ${projectionEndDate}`
         )
       )
       .groupBy(sql`to_char(${futureExpensePayables.expectedDate}, 'YYYY-MM')`),
@@ -238,8 +252,8 @@ export async function getCashFlowProjection(
         and(
           eq(futureExpensePayables.status, "previsto"),
           eq(futureExpensePayables.expenseType, "variavel"),
-          sql`${futureExpensePayables.expectedDate} >= make_date(${year}, 1, 1)`,
-          sql`${futureExpensePayables.expectedDate} <= make_date(${year}, 12, 31)`
+          sql`${futureExpensePayables.expectedDate} >= ${projectionStartDate}`,
+          sql`${futureExpensePayables.expectedDate} <= ${projectionEndDate}`
         )
       )
       .groupBy(sql`to_char(${futureExpensePayables.expectedDate}, 'YYYY-MM')`),
@@ -295,7 +309,7 @@ export async function getCashFlowProjection(
   );
 
   const incomePlanItemsByMonth = Object.fromEntries(
-    getYearMonths(year).map((periodMonth) => [
+    (projectionMonths.length > 0 ? projectionMonths : getYearMonths(year)).map((periodMonth) => [
       periodMonth,
       activeIncomes.map((income) => ({
         id: income.id,
