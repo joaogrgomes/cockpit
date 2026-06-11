@@ -1,0 +1,3 @@
+ALTER TABLE "future_expense_payables" ADD COLUMN "cost_analysis_item_id" uuid;--> statement-breakpoint
+ALTER TABLE "future_expense_payables" ADD CONSTRAINT "future_expense_payables_cost_analysis_item_id_cost_analysis_items_id_fk" FOREIGN KEY ("cost_analysis_item_id") REFERENCES "public"."cost_analysis_items"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "idx_future_expense_payables_cost_analysis_item" ON "future_expense_payables" USING btree ("cost_analysis_item_id");
