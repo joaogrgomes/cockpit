@@ -103,6 +103,9 @@ export function FutureExpenseForm({
           {isEditMode && futureExpense?.id ? (
             <input type="hidden" name="id" value={futureExpense.id} />
           ) : null}
+          {futureExpense?.costAnalysisItemId ? (
+            <input type="hidden" name="costAnalysisItemId" value={futureExpense.costAnalysisItemId} />
+          ) : null}
 
           <section className="space-y-4">
             <h3 className="text-sm font-semibold">Campos obrigatórios</h3>

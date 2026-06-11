@@ -3,7 +3,11 @@ import "server-only";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { getCurrentPeriodMonth } from "@/lib/recurrence-period";
 import { getDb } from "@/lib/db";
-import { costAnalyses, costAnalysisItems } from "@/lib/db/schema";
+import {
+  costAnalyses,
+  costAnalysisItems,
+  futureExpensePayables,
+} from "@/lib/db/schema";
 import { listMonthlyIncomes } from "@/lib/services/monthly-income.service";
 import {
   calculateCostAnalysisTotals,
@@ -28,6 +32,7 @@ export type CostAnalysisViewModel = {
   items: CostAnalysisItemView[];
   totals: ReturnType<typeof calculateCostAnalysisTotals>;
   suggestedNetIncomeCents: number;
+  scheduledCountsByItemId: Record<string, number>;
 };
 
 const DEFAULT_CAR_COST_ANALYSIS: NewCostAnalysis = {
@@ -75,11 +80,14 @@ async function seedDefaultCarAnalysisIfNeeded() {
     return existing[0].id;
   }
 
+  const suggestedNetIncomeCents = await getSuggestedNetIncomeCents();
+
   return db.transaction(async (tx) => {
     const insertedAnalysis = await tx
       .insert(costAnalyses)
       .values({
         ...DEFAULT_CAR_COST_ANALYSIS,
+        baseNetIncomeCents: suggestedNetIncomeCents,
       })
       .returning({ id: costAnalyses.id });
 
@@ -97,6 +105,19 @@ async function seedDefaultCarAnalysisIfNeeded() {
 
     return analysisId;
   });
+}
+
+export async function getCostAnalysisItemById(
+  itemId: string
+): Promise<CostAnalysisItem | null> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(costAnalysisItems)
+    .where(eq(costAnalysisItems.id, itemId))
+    .limit(1);
+
+  return rows[0] ?? null;
 }
 
 export async function getCostAnalysisById(
@@ -163,11 +184,27 @@ export async function getDefaultCarCostAnalysis(): Promise<CostAnalysisViewModel
     analysis.baseGrossIncomeCents
   );
 
+  const scheduledCountsRows = await getDb()
+    .select({
+      costAnalysisItemId: futureExpensePayables.costAnalysisItemId,
+      count: sql<number>`count(*)`.as("count"),
+    })
+    .from(futureExpensePayables)
+    .where(sql`${futureExpensePayables.costAnalysisItemId} IS NOT NULL`)
+    .groupBy(futureExpensePayables.costAnalysisItemId);
+
+  const scheduledCountsByItemId = scheduledCountsRows.reduce<Record<string, number>>((acc, row) => {
+    if (!row.costAnalysisItemId) return acc;
+    acc[row.costAnalysisItemId] = Number(row.count ?? 0);
+    return acc;
+  }, {});
+
   return {
     analysis,
     items: totals.items,
     totals,
     suggestedNetIncomeCents,
+    scheduledCountsByItemId,
   };
 }
 

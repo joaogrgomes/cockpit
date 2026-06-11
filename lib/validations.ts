@@ -266,6 +266,7 @@ export const FutureExpensePayableSchema = z.object({
   expectedAmount: z.number().int().positive(),
   expectedDate: z.string().regex(dateRegex),
   status: z.enum(FUTURE_EXPENSE_STATUS_VALUES).default("previsto"),
+  costAnalysisItemId: z.string().uuid().nullish(),
   notes: z.string().trim().min(1).nullish(),
 });
 

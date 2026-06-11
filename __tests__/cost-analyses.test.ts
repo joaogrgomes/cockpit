@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canScheduleFutureExpenseFromCostKind,
   calculateAnnualAmount,
   calculateCostAnalysisTotals,
   getCostAnalysisKindLabel,
@@ -84,6 +85,12 @@ describe("cost analyses helpers", () => {
     expect(getCostAnalysisKindLabel("cash")).toBe("Saída de caixa");
     expect(getCostAnalysisKindLabel("economic")).toBe("Custo econômico");
     expect(getCostAnalysisKindLabel("provision")).toBe("Provisão");
+  });
+
+  it("permite agendar gasto apenas para provisionados", () => {
+    expect(canScheduleFutureExpenseFromCostKind("provision")).toBe(true);
+    expect(canScheduleFutureExpenseFromCostKind("cash")).toBe(false);
+    expect(canScheduleFutureExpenseFromCostKind("economic")).toBe(false);
   });
 
   it("rejeita costKind inválido", () => {

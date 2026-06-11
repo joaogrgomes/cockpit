@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   updateFutureExpensePayable: vi.fn(),
   cancelFutureExpensePayable: vi.fn(),
   markFutureExpenseAsRealized: vi.fn(),
+  getCostAnalysisItemById: vi.fn(),
   revalidatePath: vi.fn(),
 }));
 
@@ -29,6 +30,10 @@ vi.mock("@/lib/services/future-expense.service", () => ({
   updateFutureExpensePayable: mocks.updateFutureExpensePayable,
   cancelFutureExpensePayable: mocks.cancelFutureExpensePayable,
   markFutureExpenseAsRealized: mocks.markFutureExpenseAsRealized,
+}));
+
+vi.mock("@/lib/services/cost-analysis.service", () => ({
+  getCostAnalysisItemById: mocks.getCostAnalysisItemById,
 }));
 
 import {
@@ -235,6 +240,40 @@ describe("expense occurrence actions", () => {
     );
   });
 
+  it("cria gasto futuro vinculado ao item de custo quando informado", async () => {
+    mocks.getCostAnalysisItemById.mockResolvedValue({
+      id: "550e8400-e29b-41d4-a716-446655440010",
+      name: "Manutenção",
+    });
+    mocks.createFutureExpensePayable.mockResolvedValue({ id: "future-linked-1" });
+
+    const formData = buildBaseFutureFormData("planned_one_off");
+    formData.set("costAnalysisItemId", "550e8400-e29b-41d4-a716-446655440010");
+
+    const result = await createFutureExpenseAction(formData);
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.getCostAnalysisItemById).toHaveBeenCalledWith("550e8400-e29b-41d4-a716-446655440010");
+    expect(mocks.createFutureExpensePayable).toHaveBeenCalledWith(
+      expect.objectContaining({
+        costAnalysisItemId: "550e8400-e29b-41d4-a716-446655440010",
+      })
+    );
+  });
+
+  it("rejeita gasto futuro com item de custo inexistente", async () => {
+    mocks.getCostAnalysisItemById.mockResolvedValue(null);
+
+    const formData = buildBaseFutureFormData("planned_one_off");
+    formData.set("costAnalysisItemId", "550e8400-e29b-41d4-a716-446655440011");
+
+    const result = await createFutureExpenseAction(formData);
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("Item da análise de custo não encontrado");
+    expect(mocks.createFutureExpensePayable).not.toHaveBeenCalled();
+  });
+
   it("preserva classificação ao marcar futuro como realizado", async () => {
     mocks.markFutureExpenseAsRealized.mockResolvedValue({ id: "future-1" });
 
@@ -272,6 +311,28 @@ describe("expense occurrence actions", () => {
       "550e8400-e29b-41d4-a716-446655440000",
       expect.objectContaining({
         occurrenceType: "unexpected",
+      })
+    );
+  });
+
+  it("atualiza gasto futuro preservando item de custo quando existente", async () => {
+    mocks.getCostAnalysisItemById.mockResolvedValue({
+      id: "550e8400-e29b-41d4-a716-446655440020",
+      name: "IPVA",
+    });
+    mocks.updateFutureExpensePayable.mockResolvedValue({ id: "future-3" });
+
+    const formData = buildBaseFutureFormData("planned_one_off");
+    formData.set("id", "550e8400-e29b-41d4-a716-446655440000");
+    formData.set("costAnalysisItemId", "550e8400-e29b-41d4-a716-446655440020");
+
+    const result = await updateFutureExpenseAction(formData);
+
+    expect(result).toEqual({ ok: true });
+    expect(mocks.updateFutureExpensePayable).toHaveBeenCalledWith(
+      "550e8400-e29b-41d4-a716-446655440000",
+      expect.objectContaining({
+        costAnalysisItemId: "550e8400-e29b-41d4-a716-446655440020",
       })
     );
   });

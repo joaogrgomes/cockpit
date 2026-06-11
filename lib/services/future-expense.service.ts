@@ -6,6 +6,7 @@ import {
   futureExpensePayables,
   monthlyExpenseEntries,
 } from "@/lib/db/schema";
+import { getCostAnalysisItemById } from "@/lib/services/cost-analysis.service";
 import type {
   FutureExpensePayable,
   NewFutureExpensePayable,
@@ -22,6 +23,7 @@ export type FutureExpensePayableCreateInput = Pick<
   | "category"
   | "expenseType"
   | "occurrenceType"
+  | "costAnalysisItemId"
   | "expectedAmount"
   | "expectedDate"
   | "notes"
@@ -97,6 +99,7 @@ export async function createFutureExpensePayable(
       category: input.category,
       expenseType: input.expenseType,
       occurrenceType: input.occurrenceType ?? "planned_one_off",
+      costAnalysisItemId: input.costAnalysisItemId ?? null,
       expectedAmount: input.expectedAmount,
       expectedDate: input.expectedDate,
       notes: input.notes ?? null,
@@ -123,6 +126,7 @@ export async function updateFutureExpensePayable(
       ...input,
       notes: input.notes ?? null,
       occurrenceType: input.occurrenceType ?? current.occurrenceType,
+      costAnalysisItemId: input.costAnalysisItemId ?? current.costAnalysisItemId,
       updatedAt: sql`now()`,
     })
     .where(eq(futureExpensePayables.id, id))
@@ -167,6 +171,13 @@ export async function markFutureExpenseAsRealized(
     const futureExpense = current[0];
     if (!futureExpense || futureExpense.status !== "previsto") {
       return null;
+    }
+
+    if (futureExpense.costAnalysisItemId) {
+      const linkedItem = await getCostAnalysisItemById(futureExpense.costAnalysisItemId);
+      if (!linkedItem) {
+        return null;
+      }
     }
 
     const realizedEntry = await tx

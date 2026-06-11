@@ -63,7 +63,16 @@ export function FutureExpenseRow({
         {getExpenseTypeLabel(futureExpense.expenseType)}
       </TableCell>
       <TableCell className="py-3 text-sm text-muted-foreground">
-        <Badge variant="secondary">{getExpenseOccurrenceTypeLabel(futureExpense.occurrenceType)}</Badge>
+        <div className="flex flex-col gap-1">
+          <Badge variant="secondary">
+            {getExpenseOccurrenceTypeLabel(futureExpense.occurrenceType)}
+          </Badge>
+          {futureExpense.costAnalysisItemId ? (
+            <Badge variant="outline" className="w-fit">
+              Origem: Análise de Custo
+            </Badge>
+          ) : null}
+        </div>
       </TableCell>
       <TableCell className="py-3 font-medium">{formatBRL(futureExpense.expectedAmount)}</TableCell>
       <TableCell className="py-3">

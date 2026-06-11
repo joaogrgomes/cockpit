@@ -110,3 +110,9 @@ export function getCostAnalysisKindBadgeVariant(
 ): "default" | "secondary" | "outline" {
   return COST_ANALYSIS_KIND_VARIANTS[normalizeCostAnalysisKind(kind)];
 }
+
+export function canScheduleFutureExpenseFromCostKind(
+  kind: CostAnalysisKind | string | null | undefined
+): boolean {
+  return normalizeCostAnalysisKind(kind) === "provision";
+}

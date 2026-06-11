@@ -14,6 +14,7 @@ import {
   updateCostAnalysisBaseIncomeAction,
   updateCostAnalysisItemAction,
 } from "./actions";
+import { createFutureExpenseAction } from "@/app/expenses/future/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -119,7 +120,10 @@ export default async function CostAnalysesPage() {
           <div className="px-4">
             <CostAnalysisItemsTable
               analysisId={analysis.id}
+              analysisName={analysis.name}
               items={viewModel.items}
+              scheduledCountsByItemId={viewModel.scheduledCountsByItemId}
+              createFutureExpenseAction={createFutureExpenseAction}
               updateAction={updateCostAnalysisItemAction}
               deleteAction={deleteCostAnalysisItemAction}
             />

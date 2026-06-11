@@ -597,6 +597,7 @@ describe("FutureExpensePayableSchema", () => {
       category: "lazer",
       expenseType: "variavel",
       occurrenceType: "planned_one_off",
+      costAnalysisItemId: "550e8400-e29b-41d4-a716-446655440999",
       expectedAmount: 300000,
       expectedDate: "2026-08-10",
       notes: null,
@@ -617,6 +618,32 @@ describe("FutureExpensePayableSchema", () => {
 
     expect(result.success).toBe(true);
     expect(result.success ? result.data.occurrenceType : null).toBe("planned_one_off");
+  });
+
+  it("aceita costAnalysisItemId nulo ou ausente", () => {
+    const withNull = FutureExpensePayableSchema.safeParse({
+      name: "Férias",
+      category: "lazer",
+      expenseType: "variavel",
+      occurrenceType: "planned_one_off",
+      costAnalysisItemId: null,
+      expectedAmount: 300000,
+      expectedDate: "2026-08-10",
+      notes: null,
+    });
+
+    const withoutValue = FutureExpensePayableSchema.safeParse({
+      name: "Férias",
+      category: "lazer",
+      expenseType: "variavel",
+      occurrenceType: "planned_one_off",
+      expectedAmount: 300000,
+      expectedDate: "2026-08-10",
+      notes: null,
+    });
+
+    expect(withNull.success).toBe(true);
+    expect(withoutValue.success).toBe(true);
   });
 
   it("aceita gasto futuro com categoria beleza_cuidados", () => {

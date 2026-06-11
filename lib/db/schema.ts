@@ -417,6 +417,9 @@ export const futureExpensePayables = pgTable(
     expectedAmount: integer("expected_amount").notNull(),
     expectedDate: date("expected_date").notNull(),
     status: text("status").notNull().default("previsto"),
+    costAnalysisItemId: uuid("cost_analysis_item_id").references(() => costAnalysisItems.id, {
+      onDelete: "set null",
+    }),
     realizedEntryId: uuid("realized_entry_id").references(() => monthlyExpenseEntries.id, {
       onDelete: "set null",
     }),
@@ -445,6 +448,7 @@ export const futureExpensePayables = pgTable(
     index("idx_future_expense_payables_status_date").on(table.status, table.expectedDate),
     index("idx_future_expense_payables_expected_date").on(table.expectedDate),
     index("idx_future_expense_payables_category").on(table.category),
+    index("idx_future_expense_payables_cost_analysis_item").on(table.costAnalysisItemId),
   ]
 );
 

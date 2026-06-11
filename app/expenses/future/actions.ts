@@ -8,6 +8,7 @@ import {
   markFutureExpenseAsRealized,
   updateFutureExpensePayable,
 } from "@/lib/services/future-expense.service";
+import { getCostAnalysisItemById } from "@/lib/services/cost-analysis.service";
 import {
   FutureExpensePayableSchema,
   MarkFutureExpenseAsRealizedSchema,
@@ -23,6 +24,7 @@ function revalidateFutureExpensePages() {
   revalidatePath("/expenses/tracking");
   revalidatePath("/cash-flow");
   revalidatePath("/expenses");
+  revalidatePath("/cost-analyses");
 }
 
 function parseOptionalText(value: FormDataEntryValue | null): string | undefined {
@@ -56,6 +58,7 @@ function parseFutureExpenseFormData(formData: FormData) {
     category: parseOptionalText(formData.get("category")) ?? "",
     expenseType: parseOptionalText(formData.get("expenseType")) ?? "",
     occurrenceType: parseOptionalText(formData.get("occurrenceType")) ?? "planned_one_off",
+    costAnalysisItemId: parseOptionalTextOrNull(formData.get("costAnalysisItemId")),
     expectedAmount: parseMoneyToCents(formData.get("expectedAmount")) ?? 0,
     expectedDate: parseOptionalText(formData.get("expectedDate")) ?? "",
     status: "previsto" as const,
@@ -85,6 +88,13 @@ export async function createFutureExpenseAction(
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
   }
 
+  if (parsed.data.costAnalysisItemId) {
+    const linkedItem = await getCostAnalysisItemById(parsed.data.costAnalysisItemId);
+    if (!linkedItem) {
+      return { ok: false, error: "Item da análise de custo não encontrado" };
+    }
+  }
+
   await createFutureExpensePayable(parsed.data);
   revalidateFutureExpensePages();
   return { ok: true };
@@ -101,6 +111,13 @@ export async function updateFutureExpenseAction(
   const parsed = parseFutureExpenseFormData(formData);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  if (parsed.data.costAnalysisItemId) {
+    const linkedItem = await getCostAnalysisItemById(parsed.data.costAnalysisItemId);
+    if (!linkedItem) {
+      return { ok: false, error: "Item da análise de custo não encontrado" };
+    }
   }
 
   const updated = await updateFutureExpensePayable(idValue, parsed.data);

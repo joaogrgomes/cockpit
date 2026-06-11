@@ -25,11 +25,13 @@ import {
 } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
 import {
+  canScheduleFutureExpenseFromCostKind,
   getCostAnalysisKindBadgeVariant,
   getCostAnalysisKindLabel,
   type CostAnalysisItemView,
 } from "@/lib/cost-analyses";
 import { CostAnalysisItemForm } from "./CostAnalysisItemForm";
+import { CostAnalysisScheduleExpenseForm } from "./CostAnalysisScheduleExpenseForm";
 
 type CostAnalysisActionResult = {
   ok: boolean;
@@ -38,19 +40,28 @@ type CostAnalysisActionResult = {
 
 type CostAnalysisItemsTableProps = {
   analysisId: string;
+  analysisName: string;
   items: CostAnalysisItemView[];
+  scheduledCountsByItemId: Record<string, number>;
+  createFutureExpenseAction: (formData: FormData) => Promise<CostAnalysisActionResult>;
   updateAction: (formData: FormData) => Promise<CostAnalysisActionResult>;
   deleteAction: (formData: FormData) => Promise<CostAnalysisActionResult>;
 };
 
 function CostAnalysisItemRow({
   analysisId,
+  analysisName,
   item,
+  scheduledCount,
+  createFutureExpenseAction,
   updateAction,
   deleteAction,
 }: {
   analysisId: string;
+  analysisName: string;
   item: CostAnalysisItemView;
+  scheduledCount: number;
+  createFutureExpenseAction: (formData: FormData) => Promise<CostAnalysisActionResult>;
   updateAction: (formData: FormData) => Promise<CostAnalysisActionResult>;
   deleteAction: (formData: FormData) => Promise<CostAnalysisActionResult>;
 }) {
@@ -71,16 +82,40 @@ function CostAnalysisItemRow({
         {formatBRL(item.annualAmountCents)}
       </TableCell>
       <TableCell className="py-3 text-sm text-muted-foreground">
-        {item.notes?.trim() ? item.notes : "—"}
+        <div className="space-y-1">
+          <p>{item.notes?.trim() ? item.notes : "—"}</p>
+          {item.costKind === "provision" ? (
+            <p className="text-xs text-muted-foreground">
+              {scheduledCount > 0 ? `${scheduledCount} agendado(s)` : "Nenhum agendado"}
+            </p>
+          ) : null}
+        </div>
       </TableCell>
       <TableCell className="py-3">
         <div className="flex flex-wrap items-center gap-2">
-          <CostAnalysisItemForm
-            mode="edit"
-            analysisId={analysisId}
-            item={item}
-            action={updateAction}
-          />
+          {canScheduleFutureExpenseFromCostKind(item.costKind) ? (
+            <CostAnalysisScheduleExpenseForm
+              analysisId={analysisId}
+              analysisName={analysisName}
+              item={item}
+              action={createFutureExpenseAction}
+            />
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              title={
+                item.costKind === "cash"
+                  ? "Lançar pelo extrato/acompanhamento."
+                  : "Custo econômico não gera gasto futuro."
+              }
+            >
+              Agendar gasto
+            </Button>
+          )}
+
+          <CostAnalysisItemForm mode="edit" analysisId={analysisId} item={item} action={updateAction} />
 
           <AlertDialog>
             <AlertDialogTrigger
@@ -133,7 +168,10 @@ function CostAnalysisItemRow({
 
 export function CostAnalysisItemsTable({
   analysisId,
+  analysisName,
   items,
+  scheduledCountsByItemId,
+  createFutureExpenseAction,
   updateAction,
   deleteAction,
 }: CostAnalysisItemsTableProps) {
@@ -162,7 +200,10 @@ export function CostAnalysisItemsTable({
               <CostAnalysisItemRow
                 key={item.id}
                 analysisId={analysisId}
+                analysisName={analysisName}
                 item={item}
+                scheduledCount={scheduledCountsByItemId[item.id] ?? 0}
+                createFutureExpenseAction={createFutureExpenseAction}
                 updateAction={updateAction}
                 deleteAction={deleteAction}
               />
