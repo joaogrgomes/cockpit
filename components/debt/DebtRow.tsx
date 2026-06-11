@@ -21,6 +21,7 @@ import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
 import type { Debt, DebtStatus } from "@/types";
 import { DebtForm } from "./DebtForm";
+import { DebtTypeBadge } from "./DebtTypeBadge";
 import { PriorityBadge } from "./PriorityBadge";
 import { ProposalBadge } from "./ProposalBadge";
 import { StatusBadge } from "./StatusBadge";
@@ -76,6 +77,9 @@ export function DebtRow({ debt, updateAction, deleteAction }: DebtRowProps) {
       <TableCell className="py-3 font-medium text-foreground">{debt.name}</TableCell>
       <TableCell className="py-3 text-muted-foreground">{debt.creditor}</TableCell>
       <TableCell className="py-3 text-muted-foreground">{debt.type}</TableCell>
+      <TableCell className="py-3">
+        <DebtTypeBadge debtType={debt.debtType} />
+      </TableCell>
       <TableCell className="py-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={toDebtStatus(debt.status)} />

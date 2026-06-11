@@ -1,13 +1,30 @@
 import "server-only";
 
 import { and, eq, or, sql } from "drizzle-orm";
+import { getDaysUntilExpiry } from "@/lib/services/proposal.service";
 import { getDb } from "@/lib/db";
 import { debtProposals, debts } from "@/lib/db/schema";
 import { buildExcludeClosedDebtStatusesCondition } from "@/lib/debt-status";
-import { buildDecisionItems, type DecisionItem } from "@/lib/decision-labels";
+import {
+  buildDecisionItems,
+  splitDebtsByType,
+  type DecisionBaseDebt,
+  type DecisionItem,
+} from "@/lib/decision-labels";
 
 export type DecisionMetrics = {
-  items: DecisionItem[];
+  payoffItems: DecisionItem[];
+  structuralItems: StructuralDecisionItem[];
+};
+
+export type StructuralDecisionItem = DecisionBaseDebt & {
+  monthlyPayment: number | null;
+  notes: string | null;
+  activeProposal: {
+    proposedValue: number;
+    expiresAt: string | Date | null;
+  } | null;
+  daysUntilProposalExpiry: number | null;
 };
 
 export async function getDecisionMetrics(): Promise<DecisionMetrics> {
@@ -18,9 +35,12 @@ export async function getDecisionMetrics(): Promise<DecisionMetrics> {
       id: debts.id,
       name: debts.name,
       creditor: debts.creditor,
+      debtType: debts.debtType,
       status: debts.status,
       currentValue: debts.currentValue,
       originalValue: debts.originalValue,
+      monthlyPayment: debts.monthlyPayment,
+      notes: debts.notes,
       lastUpdatedAt: debts.lastUpdatedAt,
       priority: debts.priority,
       perceivedRisk: debts.perceivedRisk,
@@ -57,12 +77,28 @@ export async function getDecisionMetrics(): Promise<DecisionMetrics> {
     ])
   );
 
-  const items = buildDecisionItems(
+  const { payoffDebts, structuralDebts } = splitDebtsByType(
     activeDebtRows.map((debt) => ({
       ...debt,
+      debtType: debt.debtType as "payoff" | "structural",
       activeProposal: proposalByDebtId.get(debt.id) ?? null,
     }))
   );
 
-  return { items };
+  const payoffItems = buildDecisionItems(payoffDebts);
+  const structuralItems = structuralDebts
+    .map((debt) => {
+      const activeProposal = proposalByDebtId.get(debt.id) ?? null;
+
+      return {
+        ...debt,
+        activeProposal,
+        daysUntilProposalExpiry: activeProposal?.expiresAt
+          ? getDaysUntilExpiry(activeProposal.expiresAt)
+          : null,
+      };
+    })
+    .sort((a, b) => b.currentValue - a.currentValue);
+
+  return { payoffItems, structuralItems };
 }

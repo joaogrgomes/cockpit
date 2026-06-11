@@ -1,6 +1,7 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   DEBT_STATUS_VALUES,
+  DEBT_TYPE_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
   EXPENSE_OCCURRENCE_TYPE_VALUES,
@@ -55,6 +56,7 @@ export type CashFlowSettings = InferSelectModel<typeof cashFlowSettings>;
 export type NewCashFlowSettings = InferInsertModel<typeof cashFlowSettings>;
 
 export type DebtStatus = (typeof DEBT_STATUS_VALUES)[number];
+export type DebtType = (typeof DEBT_TYPE_VALUES)[number];
 export type DebtProposalStatus = (typeof PROPOSAL_STATUS_VALUES)[number];
 export type ExpenseCategory = (typeof EXPENSE_CATEGORY_VALUES)[number];
 export type ExpenseType = (typeof EXPENSE_TYPE_VALUES)[number];

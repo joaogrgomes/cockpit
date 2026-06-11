@@ -2,6 +2,7 @@ import { calcDiscountPct, calcGrowthPct } from "@/lib/calculations";
 import { normalizeDateOnly } from "@/lib/date-utils";
 import { isClosedDebtStatus } from "@/lib/debt-status";
 import { compareRiskSignals } from "@/lib/dashboard-rankings";
+import type { DebtType } from "@/types";
 
 export type DecisionLabelKey =
   | "melhor_oportunidade_quitacao"
@@ -22,6 +23,7 @@ export type DecisionBaseDebt = {
   id: string;
   name: string;
   creditor: string;
+  debtType: DebtType;
   status: string;
   currentValue: number;
   originalValue: number | null;
@@ -41,6 +43,15 @@ export type DecisionItem = DecisionBaseDebt & {
   daysUntilProposalExpiry: number | null;
   labels: DecisionLabel[];
 };
+
+export function splitDebtsByType<T extends { debtType: DebtType }>(debts: T[]) {
+  return {
+    payoffDebts: debts.filter((debt): debt is T & { debtType: "payoff" } => debt.debtType === "payoff"),
+    structuralDebts: debts.filter(
+      (debt): debt is T & { debtType: "structural" } => debt.debtType === "structural"
+    ),
+  };
+}
 
 function startOfDay(value: Date) {
   return new Date(value.getFullYear(), value.getMonth(), value.getDate());

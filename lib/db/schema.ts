@@ -23,6 +23,8 @@ export const DEBT_STATUS_VALUES = [
   "suspensa",
 ] as const;
 
+export const DEBT_TYPE_VALUES = ["payoff", "structural"] as const;
+
 export const DEBT_CLOSED_STATUS_VALUES = [
   "quitada",
   "aguardando_baixa",
@@ -123,6 +125,7 @@ export const debts = pgTable(
     name: text("name").notNull(),
     creditor: text("creditor").notNull(),
     type: text("type").notNull(),
+    debtType: text("debt_type").notNull().default("payoff"),
     status: text("status").notNull().default("em_aberto"),
     currentValue: integer("current_value").notNull(),
     originalValue: integer("original_value"),
@@ -164,6 +167,7 @@ export const debts = pgTable(
       "debts_status_valid",
       sql`${table.status} IN ('em_aberto','em_atraso','em_negociacao','parcelada','quitada','aguardando_baixa','baixada','arquivada','suspensa')`
     ),
+    check("debts_debt_type_valid", sql`${table.debtType} IN ('payoff','structural')`),
     check(
       "debts_paid_amount_positive",
       sql`${table.paidAmount} IS NULL OR ${table.paidAmount} > 0`
@@ -173,6 +177,7 @@ export const debts = pgTable(
       sql`${table.paymentMethod} IS NULL OR ${table.paymentMethod} IN ('pix','boleto','cartao','debito_em_conta','dinheiro','transferencia','outro')`
     ),
     index("idx_debts_status").on(table.status),
+    index("idx_debts_debt_type").on(table.debtType),
   ]
 );
 

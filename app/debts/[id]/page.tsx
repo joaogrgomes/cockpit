@@ -4,6 +4,7 @@ import { DebtForm } from "@/components/debt/DebtForm";
 import { DebtAttachmentsCard } from "@/components/debt/DebtAttachmentsCard";
 import { DebtLifecycleActions } from "@/components/debt/DebtLifecycleActions";
 import { PriorityBadge } from "@/components/debt/PriorityBadge";
+import { DebtTypeBadge } from "@/components/debt/DebtTypeBadge";
 import { StatusBadge } from "@/components/debt/StatusBadge";
 import { PageHeader } from "@/components/layout/page-header";
 import { ProposalCard } from "@/components/proposal/ProposalCard";
@@ -23,6 +24,7 @@ import {
 import { formatDateOnlyBR } from "@/lib/date-utils";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import { isClosedDebtStatus } from "@/lib/debt-status";
+import { getDebtTypeDescription } from "@/lib/debt-type";
 import { listDebtAttachmentsByDebtId } from "@/lib/services/debt-attachment.service";
 import { getDebtById } from "@/lib/services/debt.service";
 import {
@@ -137,6 +139,7 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
       <div className="flex flex-wrap items-center gap-2">
         <StatusBadge status={toStatus(debt.status)} />
         <PriorityBadge priority={debt.priority} />
+        <DebtTypeBadge debtType={debt.debtType} />
       </div>
 
       {!canNegotiate ? (
@@ -145,6 +148,101 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
           desativadas para preservar o histórico.
         </div>
       ) : null}
+
+      <Card className="border-border/80 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">
+            {debt.debtType === "structural" ? "Estratégia estrutural" : "Foco de quitação"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">{getDebtTypeDescription(debt.debtType)}</p>
+
+            {debt.debtType === "structural" ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Saldo devedor atual</p>
+                  <p className="font-medium">{formatBRL(debt.currentValue)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Parcela atual</p>
+                  <p className="font-medium">
+                    {typeof debt.monthlyPayment === "number" ? formatBRL(debt.monthlyPayment) : "-"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="font-medium">
+                    <StatusBadge status={toStatus(debt.status)} />
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Observações</p>
+                  <p className="font-medium">{debt.notes ?? "-"}</p>
+                </div>
+                {activeProposalView ? (
+                  <div className="sm:col-span-2">
+                    <p className="text-sm text-muted-foreground">Proposta ativa</p>
+                    <p className="font-medium">
+                      {formatBRL(activeProposalView.proposedValue)}
+                      {typeof activeProposalView.daysUntilExpiry === "number"
+                        ? ` • vence em ${activeProposalView.daysUntilExpiry} dia(s)`
+                        : ""}
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Valor atual</p>
+                  <p className="font-medium">{formatBRL(debt.currentValue)}</p>
+                </div>
+                {typeof debt.originalValue === "number" ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Valor original</p>
+                    <p className="font-medium">{formatBRL(debt.originalValue)}</p>
+                  </div>
+                ) : null}
+                {typeof activeProposalView?.proposedValue === "number" ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Melhor proposta à vista</p>
+                    <p className="font-medium">{formatBRL(activeProposalView.proposedValue)}</p>
+                  </div>
+                ) : null}
+                {typeof activeProposalView?.discountPct === "number" ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Desconto / economia</p>
+                    <p className="font-medium">
+                      {activeProposalView.discountPct.toFixed(1)}%
+                      {typeof activeProposalView.discountValue === "number"
+                        ? ` • ${formatBRL(activeProposalView.discountValue)}`
+                        : ""}
+                    </p>
+                  </div>
+                ) : null}
+                {typeof activeProposalView?.daysUntilExpiry === "number" ? (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Vencimento da proposta</p>
+                    <p className="font-medium">
+                      {activeProposalView.daysUntilExpiry >= 0
+                        ? `em ${activeProposalView.daysUntilExpiry} dia(s)`
+                        : `vencida há ${Math.abs(activeProposalView.daysUntilExpiry)} dia(s)`}
+                    </p>
+                  </div>
+                ) : null}
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="font-medium">
+                    <StatusBadge status={toStatus(debt.status)} />
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <Card className="border-border/80 shadow-sm">
         <CardHeader className="pb-3">
@@ -157,8 +255,14 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
               <p className="font-medium">{debt.creditor}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground">Tipo</p>
+              <p className="text-sm text-muted-foreground">Categoria operacional</p>
               <p className="font-medium">{debt.type}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Tipo da dívida</p>
+              <div className="font-medium">
+                <DebtTypeBadge debtType={debt.debtType} />
+              </div>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Valor atual</p>

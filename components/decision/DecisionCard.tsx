@@ -4,6 +4,7 @@ import { StatusBadge } from "@/components/debt/StatusBadge";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DebtTypeBadge } from "@/components/debt/DebtTypeBadge";
 import { formatBRL } from "@/lib/calculations";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ export function DecisionCard({ debt }: DecisionCardProps) {
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={toDebtStatus(debt.status)} />
           <PriorityBadge priority={debt.priority} />
+          <DebtTypeBadge debtType={debt.debtType} />
           {debt.perceivedRisk ? (
             <Badge variant="outline" className="h-6 rounded-md px-2.5 text-[11px] font-semibold">
               Risco: {debt.perceivedRisk}

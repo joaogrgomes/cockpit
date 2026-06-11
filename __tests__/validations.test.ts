@@ -24,6 +24,7 @@ describe("DebtSchema", () => {
       name: "Cartão Nubank",
       creditor: "Nubank",
       type: "cartao_credito",
+      debtType: "payoff",
       status: "em_aberto",
       currentValue: 120000,
     });
@@ -31,11 +32,25 @@ describe("DebtSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("define payoff como tipo padrão quando debtType não é informado", () => {
+    const result = DebtSchema.safeParse({
+      name: "Cartão Nubank",
+      creditor: "Nubank",
+      type: "cartao_credito",
+      status: "em_aberto",
+      currentValue: 120000,
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.debtType).toBe("payoff");
+  });
+
   it("rejeita currentValue <= 0", () => {
     const result = DebtSchema.safeParse({
       name: "Cartão",
       creditor: "Banco",
       type: "cartao_credito",
+      debtType: "payoff",
       status: "em_aberto",
       currentValue: 0,
     });
@@ -48,7 +63,21 @@ describe("DebtSchema", () => {
       name: "Cartão",
       creditor: "Banco",
       type: "cartao_credito",
+      debtType: "payoff",
       status: "com_proposta",
+      currentValue: 1000,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita debtType inválido", () => {
+    const result = DebtSchema.safeParse({
+      name: "Cartão",
+      creditor: "Banco",
+      type: "cartao_credito",
+      debtType: "invalido",
+      status: "em_aberto",
       currentValue: 1000,
     });
 
@@ -60,6 +89,7 @@ describe("DebtSchema", () => {
       name: "Financiamento",
       creditor: "Banco",
       type: "financiamento",
+      debtType: "payoff",
       status: "parcelada",
       currentValue: 50000,
       totalInstallments: 10,
@@ -74,6 +104,7 @@ describe("DebtSchema", () => {
       name: "Cartão",
       creditor: "Banco",
       type: "cartao_credito",
+      debtType: "payoff",
       status: "em_aberto",
       currentValue: 1000,
       perceivedRisk: "nao_sei",
@@ -83,6 +114,7 @@ describe("DebtSchema", () => {
       name: "Cartão",
       creditor: "Banco",
       type: "cartao_credito",
+      debtType: "payoff",
       status: "em_aberto",
       currentValue: 1000,
       perceivedRisk: null,
@@ -110,6 +142,7 @@ describe("DebtSchema", () => {
       name: "Cartão",
       creditor: "Banco",
       type: "cartao_credito",
+      debtType: "payoff",
       status: "aguardando_baixa",
       currentValue: 1000,
     });
@@ -118,6 +151,7 @@ describe("DebtSchema", () => {
       name: "Cartão",
       creditor: "Banco",
       type: "cartao_credito",
+      debtType: "payoff",
       status: "arquivada",
       currentValue: 1000,
     });

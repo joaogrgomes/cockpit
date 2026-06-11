@@ -17,9 +17,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { formatBRL } from "@/lib/calculations";
 import { normalizeDateOnly } from "@/lib/date-utils";
+import { DEBT_TYPE_OPTIONS, getDebtTypeDescription } from "@/lib/debt-type";
 import type { Debt } from "@/types";
 
-const DEBT_TYPE_OPTIONS = [
+const DEBT_CATEGORY_OPTIONS = [
   { value: "cartao_credito", label: "Cartão de crédito" },
   { value: "emprestimo", label: "Empréstimo" },
   { value: "financiamento", label: "Financiamento" },
@@ -145,11 +146,30 @@ export function DebtForm({ mode, action, debt }: DebtFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="type">Tipo</Label>
+                <Label htmlFor="type">Categoria operacional</Label>
                 <select
                   id="type"
                   name="type"
                   defaultValue={debt?.type ?? "cartao_credito"}
+                  className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
+                  required
+                >
+                  {DEBT_CATEGORY_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  Categoria operacional da dívida, como cartão, empréstimo ou loja.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="debtType">Tipo da dívida</Label>
+                <select
+                  id="debtType"
+                  name="debtType"
+                  defaultValue={debt?.debtType ?? "payoff"}
                   className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
                   required
                 >
@@ -159,6 +179,7 @@ export function DebtForm({ mode, action, debt }: DebtFormProps) {
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-muted-foreground">{getDebtTypeDescription(debt?.debtType)}</p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>

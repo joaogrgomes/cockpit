@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { parseBRL } from "@/lib/calculations";
-import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
+import { DEBT_STATUS_VALUES, DEBT_TYPE_VALUES } from "@/lib/db/schema";
 import { createDebt, deleteDebt, updateDebt } from "@/lib/services/debt.service";
 import {
   archiveDebt,
@@ -114,6 +114,7 @@ function parseOptionalAttachmentType(
 
 function parseDebtFormData(formData: FormData, mode: "create" | "update") {
   const status = parseOptionalText(formData.get("status"));
+  const debtTypeValue = parseOptionalText(formData.get("debtType"));
   const perceivedRisk =
     mode === "update"
       ? parseOptionalTextOrNullForUpdate(formData.get("perceivedRisk"))
@@ -123,6 +124,10 @@ function parseDebtFormData(formData: FormData, mode: "create" | "update") {
     name: parseOptionalText(formData.get("name")) ?? "",
     creditor: parseOptionalText(formData.get("creditor")) ?? "",
     type: parseOptionalText(formData.get("type")) ?? "",
+    debtType:
+      debtTypeValue && DEBT_TYPE_VALUES.includes(debtTypeValue as (typeof DEBT_TYPE_VALUES)[number])
+        ? debtTypeValue
+        : "payoff",
     status: status && DEBT_STATUS_VALUES.includes(status as (typeof DEBT_STATUS_VALUES)[number])
       ? status
       : "em_aberto",
@@ -152,6 +157,7 @@ export async function createDebtAction(formData: FormData): Promise<DebtActionRe
 
   await createDebt(parsed.data);
   revalidatePath("/debts");
+  revalidatePath("/decision");
 
   return { ok: true };
 }
@@ -176,6 +182,7 @@ export async function updateDebtAction(formData: FormData): Promise<DebtActionRe
 
   revalidatePath("/debts");
   revalidatePath(`/debts/${idValue}`);
+  revalidatePath("/decision");
 
   return { ok: true };
 }

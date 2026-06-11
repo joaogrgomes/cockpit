@@ -4,6 +4,7 @@ import { validatePeriod } from "@/lib/recurrence-period";
 import {
   DEBT_ATTACHMENT_TYPE_VALUES,
   DEBT_STATUS_VALUES,
+  DEBT_TYPE_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_OCCURRENCE_TYPE_VALUES,
   EXPENSE_TYPE_VALUES,
@@ -38,6 +39,7 @@ export const DebtSchema = z
     name: z.string().min(2),
     creditor: z.string().min(2),
     type: z.string().min(1),
+    debtType: z.enum(DEBT_TYPE_VALUES).default("payoff"),
     status: z.enum(DEBT_STATUS_VALUES),
     currentValue: z.number().int().positive(),
     originalValue: optionalPositiveInt,

@@ -3,6 +3,7 @@ import { DebtRow } from "@/components/debt/DebtRow";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DEBT_TYPE_OPTIONS as DEBT_CLASSIFICATION_OPTIONS } from "@/lib/debt-type";
 import {
   Table,
   TableBody,
@@ -42,6 +43,7 @@ type DebtsPageProps = {
   searchParams?: Promise<{
     status?: string;
     type?: string;
+    debtType?: string;
     sort?: "current_desc" | "current_asc";
     showArchived?: string;
   }>;
@@ -52,6 +54,7 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
   const filters = {
     status: params.status ?? "",
     type: params.type ?? "",
+    debtType: params.debtType ?? "",
     sort: params.sort ?? "current_desc",
     showArchived: params.showArchived === "true",
   };
@@ -59,6 +62,7 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
   const debts = await listDebts({
     status: filters.status || undefined,
     type: filters.type || undefined,
+    debtType: filters.debtType || undefined,
     sort: filters.sort,
     showArchived: filters.showArchived,
   });
@@ -97,7 +101,7 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
 
             <div className="space-y-1">
               <label className="text-sm font-medium" htmlFor="type">
-                Tipo
+                Categoria operacional
               </label>
               <select
                 id="type"
@@ -107,6 +111,25 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
               >
                 {DEBT_TYPE_OPTIONS.map((option) => (
                   <option key={option.value || "all"} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium" htmlFor="debtType">
+                Tipo da dívida
+              </label>
+              <select
+                id="debtType"
+                name="debtType"
+                defaultValue={filters.debtType}
+                className="flex h-9 rounded-lg border border-input bg-background px-3 text-sm"
+              >
+                <option value="">Todas as classificações</option>
+                {DEBT_CLASSIFICATION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
                 ))}
@@ -160,7 +183,8 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
                 <TableRow>
                   <TableHead>Nome</TableHead>
                   <TableHead>Credor</TableHead>
-                  <TableHead>Tipo</TableHead>
+                  <TableHead>Categoria operacional</TableHead>
+                  <TableHead>Tipo da dívida</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Valor atual</TableHead>
                   <TableHead>Acréscimos</TableHead>
@@ -173,7 +197,7 @@ export default async function DebtsPage({ searchParams }: DebtsPageProps) {
               <TableBody>
                 {debts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
                       Nenhuma dívida encontrada.
                     </TableCell>
                   </TableRow>

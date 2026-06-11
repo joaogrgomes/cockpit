@@ -9,6 +9,7 @@ import { buildExcludeArchivedDebtStatusesCondition } from "@/lib/debt-status";
 export type DebtListFilters = {
   status?: string;
   type?: string;
+  debtType?: string;
   sort?: "current_desc" | "current_asc";
   showArchived?: boolean;
 };
@@ -27,6 +28,10 @@ export async function listDebts(filters: DebtListFilters = {}): Promise<DebtList
 
   if (filters.type) {
     whereConditions.push(eq(debts.type, filters.type));
+  }
+
+  if (filters.debtType) {
+    whereConditions.push(eq(debts.debtType, filters.debtType));
   }
 
   if (!filters.status && !filters.showArchived) {
