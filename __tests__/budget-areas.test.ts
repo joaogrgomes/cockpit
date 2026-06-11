@@ -7,6 +7,18 @@ import {
 } from "@/lib/budget-areas";
 
 describe("budget areas helpers", () => {
+  it("usa o modelo padrão com 60/20/10/10", () => {
+    const model = getDefaultBudgetAreaModel();
+
+    expect(model.name).toBe("Reorganização atual");
+    expect(model.allocations).toHaveLength(4);
+    expect(model.allocations.reduce((sum, allocation) => sum + allocation.percentage, 0)).toBe(100);
+    expect(model.allocations.find((allocation) => allocation.areaKey === "necessidades_basicas")?.percentage).toBe(60);
+    expect(model.allocations.find((allocation) => allocation.areaKey === "dividas")?.percentage).toBe(20);
+    expect(model.allocations.find((allocation) => allocation.areaKey === "reserva")?.percentage).toBe(10);
+    expect(model.allocations.find((allocation) => allocation.areaKey === "compras_lazer")?.percentage).toBe(10);
+  });
+
   it("calcula o ideal por percentual", () => {
     const analysis = calculateBudgetAreasAnalysis({
       referenceMonth: "2026-06",
@@ -17,7 +29,7 @@ describe("budget areas helpers", () => {
 
     const necessidades = analysis.rows.find((row) => row.areaKey === "necessidades_basicas");
 
-    expect(necessidades?.idealAmountCents).toBe(500_000);
+    expect(necessidades?.idealAmountCents).toBe(600_000);
     expect(analysis.totalIdealDistributedCents).toBe(1_000_000);
   });
 
@@ -64,6 +76,15 @@ describe("budget areas helpers", () => {
         },
         {
           id: "5",
+          name: "Doação",
+          category: "doacoes",
+          expenseType: "variavel",
+          amount: 100_000,
+          startMonth: "2026-01",
+          endMonth: null,
+        },
+        {
+          id: "6",
           name: "BB",
           category: "dividas",
           expenseType: "fixo",
@@ -77,11 +98,13 @@ describe("budget areas helpers", () => {
 
     const necessidades = analysis.rows.find((row) => row.areaKey === "necessidades_basicas");
     const dividas = analysis.rows.find((row) => row.areaKey === "dividas");
-    const educacao = analysis.rows.find((row) => row.areaKey === "educacao");
+    const reserva = analysis.rows.find((row) => row.areaKey === "reserva");
+    const lazer = analysis.rows.find((row) => row.areaKey === "compras_lazer");
 
-    expect(necessidades?.actualPlannedAmountCents).toBe(600_000);
+    expect(necessidades?.actualPlannedAmountCents).toBe(700_000);
     expect(dividas?.actualPlannedAmountCents).toBe(300_000);
-    expect(educacao?.actualPlannedAmountCents).toBe(0);
+    expect(reserva?.actualPlannedAmountCents).toBe(0);
+    expect(lazer?.actualPlannedAmountCents).toBe(0);
   });
 
   it("calcula a diferença entre ideal e real", () => {
@@ -212,7 +235,13 @@ describe("budget areas helpers", () => {
     expect(mapExpenseCategoryToBudgetArea("moradia")).toBe("necessidades_basicas");
     expect(mapExpenseCategoryToBudgetArea("educacao")).toBe("necessidades_basicas");
     expect(mapExpenseCategoryToBudgetArea("familia")).toBe("necessidades_basicas");
+    expect(mapExpenseCategoryToBudgetArea("doacoes")).toBe("necessidades_basicas");
     expect(mapExpenseCategoryToBudgetArea("dividas")).toBe("dividas");
-    expect(mapExpenseCategoryToBudgetArea("doacoes")).toBe("doacoes");
+    expect(mapExpenseCategoryToBudgetArea("reserva")).toBe("reserva");
+    expect(mapExpenseCategoryToBudgetArea("compras")).toBe("compras_lazer");
+    expect(mapExpenseCategoryToBudgetArea("lazer")).toBe("compras_lazer");
+    expect(mapExpenseCategoryToBudgetArea("beleza_cuidados")).toBe("compras_lazer");
+    expect(mapExpenseCategoryToBudgetArea("esportes")).toBe("compras_lazer");
+    expect(mapExpenseCategoryToBudgetArea("outros")).toBe("compras_lazer");
   });
 });

@@ -74,62 +74,51 @@ export type BudgetAreasAnalysis = {
 
 const DEFAULT_MODEL: BudgetAreaModel = {
   id: "reorganizacao",
-  name: "Reorganização",
+  name: "Reorganização atual",
   allocations: [
     {
       areaKey: "necessidades_basicas",
-      label: "Necessidades básicas",
-      percentage: 50,
+      label: "Necessidades essenciais",
+      percentage: 60,
       categories: [
         "moradia",
         "alimentacao",
         "transporte",
         "saude",
+        "educacao",
+        "familia",
         "servicos",
         "assinaturas",
         "impostos",
-        "educacao",
-        "familia",
+        "doacoes",
       ],
     },
     {
       areaKey: "dividas",
-      label: "Dívidas",
+      label: "Pagamento agressivo das dívidas",
       percentage: 20,
       categories: ["dividas"],
     },
     {
       areaKey: "reserva",
-      label: "Reserva",
+      label: "Reserva de emergência",
       percentage: 10,
       categories: ["reserva"],
     },
     {
       areaKey: "compras_lazer",
-      label: "Compras e lazer",
+      label: "Lazer básico / flexível",
       percentage: 10,
       categories: ["compras", "lazer", "beleza_cuidados", "esportes", "outros"],
-    },
-    {
-      areaKey: "educacao",
-      label: "Educação",
-      percentage: 5,
-      categories: [],
-    },
-    {
-      areaKey: "doacoes",
-      label: "Doações",
-      percentage: 5,
-      categories: ["doacoes"],
     },
   ],
 };
 
 const AREA_LABELS: Record<BudgetAreaKey, string> = {
-  necessidades_basicas: "Necessidades básicas",
-  dividas: "Dívidas",
-  reserva: "Reserva",
-  compras_lazer: "Compras e lazer",
+  necessidades_basicas: "Necessidades essenciais",
+  dividas: "Pagamento agressivo das dívidas",
+  reserva: "Reserva de emergência",
+  compras_lazer: "Lazer básico / flexível",
   educacao: "Educação",
   doacoes: "Doações",
   nao_classificado: "Não classificado",
@@ -152,7 +141,7 @@ const CATEGORY_TO_AREA_KEY: Record<string, BudgetAreaKey> = {
   outros: "compras_lazer",
   educacao: "necessidades_basicas",
   familia: "necessidades_basicas",
-  doacoes: "doacoes",
+  doacoes: "necessidades_basicas",
 };
 
 function formatAreaItemPeriodLabel(startMonth: string, endMonth: string | null) {
