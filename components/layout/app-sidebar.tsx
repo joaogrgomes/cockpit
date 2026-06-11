@@ -6,6 +6,7 @@ import type { ComponentType } from "react";
 import {
   BarChart3Icon,
   CalculatorIcon,
+  CalendarClockIcon,
   FileTextIcon,
   GaugeIcon,
   HandCoinsIcon,
@@ -45,6 +46,10 @@ const BUDGET_NAV_ITEMS = [
 
 const ANALYSIS_NAV_ITEMS = [
   { href: "/cost-analyses", label: "Análises de Custo", icon: CalculatorIcon, exact: true },
+];
+
+const AGENDA_NAV_ITEMS = [
+  { href: "/payment-agenda", label: "Agenda de Pagamentos", icon: CalendarClockIcon, exact: true },
 ];
 
 const DEBT_NAV_ITEMS = [
@@ -116,6 +121,7 @@ export function AppSidebar() {
         {renderGroup("Entradas", INCOME_NAV_ITEMS)}
         {renderGroup("Planejamento", BUDGET_NAV_ITEMS)}
         {renderGroup("Análises", ANALYSIS_NAV_ITEMS)}
+        {renderGroup("Agenda", AGENDA_NAV_ITEMS)}
         {renderGroup("Gastos", EXPENSE_NAV_ITEMS)}
         {renderGroup("Fluxo", CASH_FLOW_NAV_ITEMS)}
         {renderGroup("Dívidas", DEBT_NAV_ITEMS)}

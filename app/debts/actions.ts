@@ -158,6 +158,7 @@ export async function createDebtAction(formData: FormData): Promise<DebtActionRe
   await createDebt(parsed.data);
   revalidatePath("/debts");
   revalidatePath("/decision");
+  revalidatePath("/payment-agenda");
 
   return { ok: true };
 }
@@ -183,6 +184,7 @@ export async function updateDebtAction(formData: FormData): Promise<DebtActionRe
   revalidatePath("/debts");
   revalidatePath(`/debts/${idValue}`);
   revalidatePath("/decision");
+  revalidatePath("/payment-agenda");
 
   return { ok: true };
 }
@@ -201,6 +203,7 @@ export async function deleteDebtAction(formData: FormData): Promise<DebtActionRe
   }
 
   revalidatePath("/debts");
+  revalidatePath("/payment-agenda");
 
   return { ok: true };
 }
@@ -263,6 +266,7 @@ export async function markDebtAsPaidAction(formData: FormData): Promise<DebtActi
   revalidatePath(`/debts/${parsed.data.debtId}`);
   revalidatePath("/dashboard");
   revalidatePath("/decision");
+  revalidatePath("/payment-agenda");
 
   return { ok: true };
 }
@@ -322,6 +326,7 @@ export async function confirmDebtClearanceAction(formData: FormData): Promise<De
   revalidatePath(`/debts/${parsed.data.debtId}`);
   revalidatePath("/dashboard");
   revalidatePath("/decision");
+  revalidatePath("/payment-agenda");
 
   return { ok: true };
 }
@@ -343,6 +348,7 @@ export async function archiveDebtAction(formData: FormData): Promise<DebtActionR
   revalidatePath(`/debts/${idValue}`);
   revalidatePath("/dashboard");
   revalidatePath("/decision");
+  revalidatePath("/payment-agenda");
 
   return { ok: true };
 }
@@ -435,6 +441,7 @@ export async function createProposalAction(formData: FormData): Promise<DebtActi
   revalidatePath("/debts");
   revalidatePath(`/debts/${parsed.data.debtId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/payment-agenda");
 
   return { ok: true };
 }
@@ -470,6 +477,7 @@ export async function createValueUpdateAction(
   revalidatePath("/debts");
   revalidatePath(`/debts/${parsed.data.debtId}`);
   revalidatePath("/dashboard");
+  revalidatePath("/payment-agenda");
 
   return { ok: true };
 }

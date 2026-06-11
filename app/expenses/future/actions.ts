@@ -25,6 +25,7 @@ function revalidateFutureExpensePages() {
   revalidatePath("/cash-flow");
   revalidatePath("/expenses");
   revalidatePath("/cost-analyses");
+  revalidatePath("/payment-agenda");
 }
 
 function parseOptionalText(value: FormDataEntryValue | null): string | undefined {
