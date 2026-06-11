@@ -9,6 +9,7 @@ import {
   text,
   timestamp,
   uuid,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const DEBT_STATUS_VALUES = [
@@ -117,6 +118,12 @@ export const EXPENSE_OCCURRENCE_TYPE_VALUES = [
 ] as const;
 
 export const MONTHLY_CLOSING_STATUS_VALUES = ["closed"] as const;
+
+export const COST_ANALYSIS_KIND_VALUES = [
+  "cash",
+  "economic",
+  "provision",
+] as const;
 
 export const debts = pgTable(
   "debts",
@@ -251,6 +258,50 @@ export const debtAttachments = pgTable(
     ),
     check("debt_attachments_size_bytes_positive", sql`${table.sizeBytes} IS NULL OR ${table.sizeBytes} > 0`),
     index("idx_debt_attachments_debt_created").on(table.debtId, table.createdAt),
+  ]
+);
+
+export const costAnalyses = pgTable(
+  "cost_analyses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
+    description: text("description"),
+    baseNetIncomeCents: integer("base_net_income_cents").notNull().default(0),
+    baseGrossIncomeCents: integer("base_gross_income_cents").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("cost_analyses_base_net_income_non_negative", sql`${table.baseNetIncomeCents} >= 0`),
+    check("cost_analyses_base_gross_income_non_negative", sql`${table.baseGrossIncomeCents} >= 0`),
+    uniqueIndex("ux_cost_analyses_slug").on(table.slug),
+  ]
+);
+
+export const costAnalysisItems = pgTable(
+  "cost_analysis_items",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    costAnalysisId: uuid("cost_analysis_id")
+      .notNull()
+      .references(() => costAnalyses.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    monthlyAmountCents: integer("monthly_amount_cents").notNull().default(0),
+    costKind: text("cost_kind").notNull(),
+    notes: text("notes"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("cost_analysis_items_monthly_amount_non_negative", sql`${table.monthlyAmountCents} >= 0`),
+    check(
+      "cost_analysis_items_cost_kind_valid",
+      sql`${table.costKind} IN ('cash','economic','provision')`
+    ),
+    index("idx_cost_analysis_items_analysis_sort").on(table.costAnalysisId, table.sortOrder),
   ]
 );
 

@@ -2,6 +2,7 @@ import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import {
   DEBT_STATUS_VALUES,
   DEBT_TYPE_VALUES,
+  COST_ANALYSIS_KIND_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
   EXPENSE_OCCURRENCE_TYPE_VALUES,
@@ -25,6 +26,8 @@ import {
   debtAttachments,
   debtProposals,
   debtValueUpdates,
+  costAnalyses,
+  costAnalysisItems,
 } from "@/lib/db/schema";
 
 export type Debt = InferSelectModel<typeof debts>;
@@ -37,6 +40,11 @@ export type DebtValueUpdate = InferSelectModel<typeof debtValueUpdates>;
 export type NewDebtValueUpdate = InferInsertModel<typeof debtValueUpdates>;
 export type DebtAttachment = InferSelectModel<typeof debtAttachments>;
 export type NewDebtAttachment = InferInsertModel<typeof debtAttachments>;
+
+export type CostAnalysis = InferSelectModel<typeof costAnalyses>;
+export type NewCostAnalysis = InferInsertModel<typeof costAnalyses>;
+export type CostAnalysisItem = InferSelectModel<typeof costAnalysisItems>;
+export type NewCostAnalysisItem = InferInsertModel<typeof costAnalysisItems>;
 
 export type MonthlyExpense = InferSelectModel<typeof monthlyExpenses>;
 export type NewMonthlyExpense = InferInsertModel<typeof monthlyExpenses>;
@@ -68,3 +76,4 @@ export type FutureIncomeStatus = (typeof FUTURE_INCOME_STATUS_VALUES)[number];
 export type MonthlyClosingStatus = (typeof MONTHLY_CLOSING_STATUS_VALUES)[number];
 export type ExpenseOccurrenceType = (typeof EXPENSE_OCCURRENCE_TYPE_VALUES)[number];
 export type DebtAttachmentType = (typeof DEBT_ATTACHMENT_TYPE_VALUES)[number];
+export type CostAnalysisKind = (typeof COST_ANALYSIS_KIND_VALUES)[number];

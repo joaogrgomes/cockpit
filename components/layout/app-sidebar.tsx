@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import type { ComponentType } from "react";
 import {
   BarChart3Icon,
+  CalculatorIcon,
   FileTextIcon,
   GaugeIcon,
   HandCoinsIcon,
@@ -40,6 +41,10 @@ const INCOME_NAV_ITEMS = [
 
 const BUDGET_NAV_ITEMS = [
   { href: "/budget-areas", label: "Planejamento por Áreas", icon: LayoutGridIcon, exact: true },
+];
+
+const ANALYSIS_NAV_ITEMS = [
+  { href: "/cost-analyses", label: "Análises de Custo", icon: CalculatorIcon, exact: true },
 ];
 
 const DEBT_NAV_ITEMS = [
@@ -110,6 +115,7 @@ export function AppSidebar() {
         {renderGroup("Operação", STATEMENT_NAV_ITEMS)}
         {renderGroup("Entradas", INCOME_NAV_ITEMS)}
         {renderGroup("Planejamento", BUDGET_NAV_ITEMS)}
+        {renderGroup("Análises", ANALYSIS_NAV_ITEMS)}
         {renderGroup("Gastos", EXPENSE_NAV_ITEMS)}
         {renderGroup("Fluxo", CASH_FLOW_NAV_ITEMS)}
         {renderGroup("Dívidas", DEBT_NAV_ITEMS)}

@@ -5,6 +5,7 @@ import {
   DEBT_ATTACHMENT_TYPE_VALUES,
   DEBT_STATUS_VALUES,
   DEBT_TYPE_VALUES,
+  COST_ANALYSIS_KIND_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_OCCURRENCE_TYPE_VALUES,
   EXPENSE_TYPE_VALUES,
@@ -20,6 +21,7 @@ const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const periodMonthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 const optionalPositiveInt = z.number().int().positive().optional();
+const nonNegativeInt = z.number().int().nonnegative();
 const PERCEIVED_RISK_VALUES = [
   "baixo",
   "medio",
@@ -159,6 +161,21 @@ export const DebtClearanceSchema = z
 export const DebtAttachmentSchema = z.object({
   debtId: z.string().uuid(),
   type: z.enum(DEBT_ATTACHMENT_TYPE_VALUES),
+  notes: z.string().trim().min(1).nullish(),
+});
+
+export const CostAnalysisBaseIncomeSchema = z.object({
+  analysisId: z.string().uuid(),
+  baseNetIncomeCents: nonNegativeInt,
+  baseGrossIncomeCents: nonNegativeInt,
+});
+
+export const CostAnalysisItemSchema = z.object({
+  analysisId: z.string().uuid(),
+  itemId: z.string().uuid().nullish(),
+  name: z.string().trim().min(2),
+  monthlyAmountCents: nonNegativeInt,
+  costKind: z.enum(COST_ANALYSIS_KIND_VALUES),
   notes: z.string().trim().min(1).nullish(),
 });
 
