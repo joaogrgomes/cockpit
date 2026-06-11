@@ -46,6 +46,24 @@ describe("budget areas helpers", () => {
         },
         {
           id: "3",
+          name: "Escola Tito",
+          category: "educacao",
+          expenseType: "fixo",
+          amount: 160_000,
+          startMonth: "2026-01",
+          endMonth: null,
+        },
+        {
+          id: "4",
+          name: "Família",
+          category: "familia",
+          expenseType: "variavel",
+          amount: 40_000,
+          startMonth: "2026-01",
+          endMonth: null,
+        },
+        {
+          id: "5",
           name: "BB",
           category: "dividas",
           expenseType: "fixo",
@@ -59,9 +77,11 @@ describe("budget areas helpers", () => {
 
     const necessidades = analysis.rows.find((row) => row.areaKey === "necessidades_basicas");
     const dividas = analysis.rows.find((row) => row.areaKey === "dividas");
+    const educacao = analysis.rows.find((row) => row.areaKey === "educacao");
 
-    expect(necessidades?.actualPlannedAmountCents).toBe(400_000);
+    expect(necessidades?.actualPlannedAmountCents).toBe(600_000);
     expect(dividas?.actualPlannedAmountCents).toBe(300_000);
+    expect(educacao?.actualPlannedAmountCents).toBe(0);
   });
 
   it("calcula a diferença entre ideal e real", () => {
@@ -137,8 +157,8 @@ describe("budget areas helpers", () => {
       model: getDefaultBudgetAreaModel(),
     });
 
-    expect(beforeStart.rows.find((row) => row.areaKey === "educacao")?.actualPlannedAmountCents).toBe(0);
-    expect(atStart.rows.find((row) => row.areaKey === "educacao")?.actualPlannedAmountCents).toBe(160_000);
+    expect(beforeStart.rows.find((row) => row.areaKey === "necessidades_basicas")?.actualPlannedAmountCents).toBe(0);
+    expect(atStart.rows.find((row) => row.areaKey === "necessidades_basicas")?.actualPlannedAmountCents).toBe(160_000);
   });
 
   it("impede planejamento após o término", () => {
@@ -159,7 +179,7 @@ describe("budget areas helpers", () => {
       model: getDefaultBudgetAreaModel(),
     });
 
-    expect(afterEnd.rows.find((row) => row.areaKey === "educacao")?.actualPlannedAmountCents).toBe(0);
+    expect(afterEnd.rows.find((row) => row.areaKey === "necessidades_basicas")?.actualPlannedAmountCents).toBe(0);
   });
 
   it("soma a renda base considerando vigência", () => {
@@ -190,6 +210,8 @@ describe("budget areas helpers", () => {
 
   it("mapeia categorias conhecidas para áreas", () => {
     expect(mapExpenseCategoryToBudgetArea("moradia")).toBe("necessidades_basicas");
+    expect(mapExpenseCategoryToBudgetArea("educacao")).toBe("necessidades_basicas");
+    expect(mapExpenseCategoryToBudgetArea("familia")).toBe("necessidades_basicas");
     expect(mapExpenseCategoryToBudgetArea("dividas")).toBe("dividas");
     expect(mapExpenseCategoryToBudgetArea("doacoes")).toBe("doacoes");
   });

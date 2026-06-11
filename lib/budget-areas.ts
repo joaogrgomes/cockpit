@@ -88,6 +88,8 @@ const DEFAULT_MODEL: BudgetAreaModel = {
         "servicos",
         "assinaturas",
         "impostos",
+        "educacao",
+        "familia",
       ],
     },
     {
@@ -112,7 +114,7 @@ const DEFAULT_MODEL: BudgetAreaModel = {
       areaKey: "educacao",
       label: "Educação",
       percentage: 5,
-      categories: ["educacao", "familia"],
+      categories: [],
     },
     {
       areaKey: "doacoes",
@@ -148,8 +150,8 @@ const CATEGORY_TO_AREA_KEY: Record<string, BudgetAreaKey> = {
   beleza_cuidados: "compras_lazer",
   esportes: "compras_lazer",
   outros: "compras_lazer",
-  educacao: "educacao",
-  familia: "educacao",
+  educacao: "necessidades_basicas",
+  familia: "necessidades_basicas",
   doacoes: "doacoes",
 };
 
