@@ -94,30 +94,18 @@ describe("income tracking aggregations", () => {
     const byCategory = buildIncomeTrackingSummaryByCategory([
       {
         category: "salario",
-        expectedDay: 5,
         plannedAmount: 500000,
         actualAmount: 500000,
-        remainingAmount: 0,
-        abovePlannedAmount: 0,
-        status: "recebido",
       },
       {
         category: "freela",
-        expectedDay: 15,
         plannedAmount: 100000,
         actualAmount: 120000,
-        remainingAmount: -20000,
-        abovePlannedAmount: 20000,
-        status: "recebido",
       },
       {
         category: "freela",
-        expectedDay: 15,
         plannedAmount: 50000,
         actualAmount: 0,
-        remainingAmount: 50000,
-        abovePlannedAmount: 0,
-        status: "pendente",
       },
     ]);
 

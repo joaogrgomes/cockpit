@@ -18,6 +18,7 @@ import {
   monthlyIncomeEntries,
   monthlyIncomes,
 } from "@/lib/db/schema";
+import { isMonthWithinPeriod } from "@/lib/recurrence-period";
 import type { CashFlowSettings } from "@/types";
 
 export type CashFlowSettingsInput = {
@@ -137,11 +138,22 @@ export async function getCashFlowProjection(
   ] =
     await Promise.all([
     db
-      .select({ id: monthlyIncomes.id, name: monthlyIncomes.name, amount: monthlyIncomes.amount })
+      .select({
+        id: monthlyIncomes.id,
+        name: monthlyIncomes.name,
+        amount: monthlyIncomes.amount,
+        startMonth: monthlyIncomes.startMonth,
+        endMonth: monthlyIncomes.endMonth,
+      })
       .from(monthlyIncomes)
       .where(eq(monthlyIncomes.isActive, true)),
     db
-      .select({ amount: monthlyExpenses.amount, expenseType: monthlyExpenses.expenseType })
+      .select({
+        amount: monthlyExpenses.amount,
+        expenseType: monthlyExpenses.expenseType,
+        startMonth: monthlyExpenses.startMonth,
+        endMonth: monthlyExpenses.endMonth,
+      })
       .from(monthlyExpenses)
       .where(eq(monthlyExpenses.isActive, true)),
     db
@@ -308,33 +320,59 @@ export async function getCashFlowProjection(
     futureExpectedVariableExpenseRows.map((row) => [row.periodMonth, toNumber(row.totalAmount)])
   );
 
-  const incomePlanItemsByMonth = Object.fromEntries(
-    (projectionMonths.length > 0 ? projectionMonths : getYearMonths(year)).map((periodMonth) => [
-      periodMonth,
-      activeIncomes.map((income) => ({
-        id: income.id,
-        name: income.name,
-        plannedAmount: income.amount,
-        realizedAmount:
-          incomeRealizedByMonthAndIncomeId.get(`${periodMonth}:${income.id}`) ?? 0,
-      })),
-    ])
-  );
+  const plannedRecurringIncomesByMonth: Record<string, number> = {};
+  const plannedFixedExpensesByMonth: Record<string, number> = {};
+  const plannedVariableExpensesByMonth: Record<string, number> = {};
+  const incomePlanItemsByMonth: Record<
+    string,
+    { id: string; name: string; plannedAmount: number; realizedAmount: number }[]
+  > = {};
+
+  for (const periodMonth of projectionMonths.length > 0 ? projectionMonths : getYearMonths(year)) {
+    const activeIncomesInMonth = activeIncomes.filter((income) =>
+      isMonthWithinPeriod(periodMonth, income.startMonth, income.endMonth)
+    );
+    const activeExpensesInMonth = activeExpenses.filter((expense) =>
+      isMonthWithinPeriod(periodMonth, expense.startMonth, expense.endMonth)
+    );
+
+    plannedRecurringIncomesByMonth[periodMonth] = activeIncomesInMonth.reduce(
+      (acc, income) => acc + income.amount,
+      0
+    );
+    incomePlanItemsByMonth[periodMonth] = activeIncomesInMonth.map((income) => ({
+      id: income.id,
+      name: income.name,
+      plannedAmount: income.amount,
+      realizedAmount:
+        incomeRealizedByMonthAndIncomeId.get(`${periodMonth}:${income.id}`) ?? 0,
+    }));
+
+    plannedFixedExpensesByMonth[periodMonth] = activeExpensesInMonth
+      .filter((expense) => expense.expenseType === "fixo")
+      .reduce((acc, expense) => acc + expense.amount, 0);
+    plannedVariableExpensesByMonth[periodMonth] = activeExpensesInMonth
+      .filter((expense) => expense.expenseType === "variavel")
+      .reduce((acc, expense) => acc + expense.amount, 0);
+  }
 
   const projection = calculateCashFlowProjection({
     year,
     startMonth: settings.startMonth,
     initialBalance: settings.initialBalance,
     plannedIncomesTotal,
+    plannedRecurringIncomesByMonth,
     actualLinkedIncomesByMonth,
     actualOneTimeIncomesByMonth,
     futureExpectedIncomesByMonth,
     incomePlanItemsByMonth,
     closedMonths: new Set(closingRows.map((row) => row.periodMonth)),
     plannedFixedExpensesTotal,
+    plannedFixedExpensesByMonth,
     actualFixedExpensesByMonth,
     futureExpectedFixedExpensesByMonth,
     plannedVariableExpensesTotal,
+    plannedVariableExpensesByMonth,
     actualVariableExpensesByMonth,
     futureExpectedVariableExpensesByMonth,
   });

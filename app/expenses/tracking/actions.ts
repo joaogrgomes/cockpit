@@ -7,6 +7,7 @@ import {
   createMonthlyExpenseEntry,
   deleteMonthlyExpenseEntry,
 } from "@/lib/services/monthly-expense-entry.service";
+import { isMonthWithinPeriod } from "@/lib/recurrence-period";
 import { MonthlyExpenseEntrySchema } from "@/lib/validations";
 
 type ExpenseEntryActionResult = {
@@ -66,6 +67,7 @@ function revalidateExpensePages() {
 
 async function validateLinkedMonthlyExpense(
   monthlyExpenseId: string,
+  periodMonth: string,
   category: string | null,
   expenseType: string | null
 ): Promise<{ ok: true } | { ok: false; error: string }> {
@@ -89,6 +91,13 @@ async function validateLinkedMonthlyExpense(
     };
   }
 
+  if (!isMonthWithinPeriod(periodMonth, monthlyExpense.startMonth, monthlyExpense.endMonth)) {
+    return {
+      ok: false,
+      error: "O planejamento selecionado não está vigente no mês informado",
+    };
+  }
+
   return { ok: true };
 }
 
@@ -103,6 +112,7 @@ export async function createMonthlyExpenseEntryAction(
   if (parsed.data.monthlyExpenseId) {
     const linkedValidation = await validateLinkedMonthlyExpense(
       parsed.data.monthlyExpenseId,
+      parsed.data.periodMonth,
       parsed.data.category ?? null,
       parsed.data.expenseType ?? null
     );

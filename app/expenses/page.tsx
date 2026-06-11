@@ -212,6 +212,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                   <TableHead>Descrição</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Tipo</TableHead>
+                  <TableHead>Vigência</TableHead>
                   <TableHead>Valor</TableHead>
                   <TableHead>Pagamento</TableHead>
                   <TableHead>Ações</TableHead>
@@ -220,7 +221,7 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
               <TableBody>
                 {expenses.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                       Nenhum gasto encontrado.
                     </TableCell>
                   </TableRow>

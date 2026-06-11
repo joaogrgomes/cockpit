@@ -65,6 +65,8 @@ function parseExpenseFormData(formData: FormData) {
     category: parseOptionalText(formData.get("category")) ?? "",
     amount: parseMoneyToCents(formData.get("amount")) ?? 0,
     expenseType: parseOptionalText(formData.get("expenseType")) ?? "",
+    startMonth: parseOptionalText(formData.get("startMonth")) ?? "",
+    endMonth: parseOptionalTextOrNull(formData.get("endMonth")),
     paymentMethod: parseOptionalTextOrNull(formData.get("paymentMethod")),
     dueDay: parseOptionalIntegerOrNull(formData.get("dueDay")),
     dueLabel: parseOptionalTextOrNull(formData.get("dueLabel")),

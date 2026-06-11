@@ -76,6 +76,8 @@ describe("expense occurrence actions", () => {
       isActive: true,
       category: "familia",
       expenseType: "variavel",
+      startMonth: "2026-01",
+      endMonth: null,
     });
     mocks.createMonthlyExpenseEntry.mockResolvedValue({ id: "entry-linked-1" });
 
@@ -101,6 +103,8 @@ describe("expense occurrence actions", () => {
       isActive: true,
       category: "familia",
       expenseType: "variavel",
+      startMonth: "2026-01",
+      endMonth: null,
     });
     mocks.createMonthlyExpenseEntry.mockResolvedValue({ id: "entry-linked-11" });
 
@@ -131,6 +135,8 @@ describe("expense occurrence actions", () => {
       isActive: false,
       category: "familia",
       expenseType: "variavel",
+      startMonth: "2026-01",
+      endMonth: null,
     });
 
     const formData = buildBaseExpenseFormData("unexpected");
@@ -149,6 +155,8 @@ describe("expense occurrence actions", () => {
       isActive: true,
       category: "saude",
       expenseType: "variavel",
+      startMonth: "2026-01",
+      endMonth: null,
     });
 
     const formData = buildBaseExpenseFormData("unexpected");

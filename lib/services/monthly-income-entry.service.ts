@@ -4,6 +4,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/date-utils";
 import { monthlyIncomeEntries, monthlyIncomes } from "@/lib/db/schema";
+import { isMonthWithinPeriod } from "@/lib/recurrence-period";
 import {
   buildIncomeTrackingSummary,
   buildIncomeTrackingSummaryByCategory,
@@ -141,7 +142,15 @@ export async function getIncomeTrackingByPeriod(
 
   const [activeIncomes, periodEntries] = await Promise.all([
     db
-      .select()
+      .select({
+        id: monthlyIncomes.id,
+        name: monthlyIncomes.name,
+        category: monthlyIncomes.category,
+        expectedDay: monthlyIncomes.expectedDay,
+        amount: monthlyIncomes.amount,
+        startMonth: monthlyIncomes.startMonth,
+        endMonth: monthlyIncomes.endMonth,
+      })
       .from(monthlyIncomes)
       .where(eq(monthlyIncomes.isActive, true))
       .orderBy(
@@ -151,6 +160,10 @@ export async function getIncomeTrackingByPeriod(
       ),
     listIncomeEntriesByPeriod(periodMonth),
   ]);
+
+  const activeIncomesInPeriod = activeIncomes.filter((income) =>
+    isMonthWithinPeriod(periodMonth, income.startMonth, income.endMonth)
+  );
 
   const entriesByIncomeId = new Map<string, IncomeTrackingEntryView[]>();
   const oneTimeEntries: OneTimeIncomeEntryView[] = [];
@@ -182,7 +195,7 @@ export async function getIncomeTrackingByPeriod(
     });
   }
 
-  const items: IncomeTrackingItemView[] = activeIncomes.map((income) => {
+  const items: IncomeTrackingItemView[] = activeIncomesInPeriod.map((income) => {
     const entries = entriesByIncomeId.get(income.id) ?? [];
     const actualAmount = sumIncomeEntryAmounts(entries);
     const plannedAmount = income.amount;

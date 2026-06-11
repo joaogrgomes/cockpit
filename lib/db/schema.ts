@@ -257,6 +257,8 @@ export const monthlyExpenses = pgTable(
     category: text("category").notNull(),
     amount: integer("amount").notNull(),
     expenseType: text("expense_type").notNull(),
+    startMonth: text("start_month").notNull(),
+    endMonth: text("end_month"),
     paymentMethod: text("payment_method"),
     dueDay: integer("due_day"),
     dueLabel: text("due_label"),
@@ -273,6 +275,14 @@ export const monthlyExpenses = pgTable(
       sql`${table.expenseType} IN ('fixo','variavel')`
     ),
     check(
+      "monthly_expenses_start_month_valid",
+      sql`${table.startMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
+    ),
+    check(
+      "monthly_expenses_end_month_valid",
+      sql`${table.endMonth} IS NULL OR (${table.endMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$' AND ${table.endMonth} >= ${table.startMonth})`
+    ),
+    check(
       "monthly_expenses_category_valid",
       sql`${table.category} IN ('moradia','dividas','transporte','alimentacao','esportes','beleza_cuidados','reserva','doacoes','lazer','educacao','saude','compras','servicos','assinaturas','familia','impostos','outros')`
     ),
@@ -282,6 +292,7 @@ export const monthlyExpenses = pgTable(
     ),
     index("idx_monthly_expenses_active_due_day").on(table.isActive, table.dueDay),
     index("idx_monthly_expenses_category_type").on(table.category, table.expenseType),
+    index("idx_monthly_expenses_period").on(table.startMonth, table.endMonth),
   ]
 );
 
@@ -389,6 +400,8 @@ export const monthlyIncomes = pgTable(
     category: text("category").notNull(),
     amount: integer("amount").notNull(),
     expectedDay: integer("expected_day"),
+    startMonth: text("start_month").notNull(),
+    endMonth: text("end_month"),
     paymentMethod: text("payment_method"),
     notes: text("notes"),
     isActive: boolean("is_active").notNull().default(true),
@@ -406,11 +419,20 @@ export const monthlyIncomes = pgTable(
       sql`${table.category} IN ('salario','freela','reembolso','beneficio','venda','rendimento','presente','outros')`
     ),
     check(
+      "monthly_incomes_start_month_valid",
+      sql`${table.startMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
+    ),
+    check(
+      "monthly_incomes_end_month_valid",
+      sql`${table.endMonth} IS NULL OR (${table.endMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$' AND ${table.endMonth} >= ${table.startMonth})`
+    ),
+    check(
       "monthly_incomes_payment_method_valid",
       sql`${table.paymentMethod} IS NULL OR ${table.paymentMethod} IN ('pix','transferencia','deposito','dinheiro','outro')`
     ),
     index("idx_monthly_incomes_active_expected_day").on(table.isActive, table.expectedDay),
     index("idx_monthly_incomes_category").on(table.category),
+    index("idx_monthly_incomes_period").on(table.startMonth, table.endMonth),
   ]
 );
 

@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
 import { getIncomePaymentMethodLabel } from "@/lib/incomes";
+import { formatRecurrencePeriodLabel } from "@/lib/recurrence-period";
 import type { MonthlyIncome } from "@/types";
 import { IncomeCategoryBadge } from "./IncomeCategoryBadge";
 import { IncomeStatusBadge } from "./IncomeStatusBadge";
@@ -60,6 +61,9 @@ export function MonthlyIncomeRow({
       <TableCell className="py-3 font-medium text-foreground">{income.name}</TableCell>
       <TableCell className="py-3">
         <IncomeCategoryBadge category={income.category} />
+      </TableCell>
+      <TableCell className="py-3 text-sm text-muted-foreground">
+        {formatRecurrencePeriodLabel(income.startMonth, income.endMonth)}
       </TableCell>
       <TableCell className="py-3 font-medium">{formatBRL(income.amount)}</TableCell>
       <TableCell className="py-3 text-sm text-muted-foreground">

@@ -35,11 +35,29 @@ describe("tracking aggregations", () => {
   it("encontra planejamento compatível por categoria e tipo", () => {
     const compatible = findCompatibleMonthlyExpense(
       [
-        { id: "a", category: "alimentacao", expenseType: "variavel", isActive: true },
-        { id: "b", category: "alimentacao", expenseType: "fixo", isActive: true },
-        { id: "c", category: "alimentacao", expenseType: "variavel", isActive: false },
+        {
+          id: "a",
+          category: "alimentacao",
+          expenseType: "variavel",
+          isActive: true,
+          startMonth: "2026-01",
+        },
+        {
+          id: "b",
+          category: "alimentacao",
+          expenseType: "fixo",
+          isActive: true,
+          startMonth: "2026-01",
+        },
+        {
+          id: "c",
+          category: "alimentacao",
+          expenseType: "variavel",
+          isActive: false,
+          startMonth: "2026-01",
+        },
       ],
-      { category: "alimentacao", expenseType: "variavel" }
+      { periodMonth: "2026-05", category: "alimentacao", expenseType: "variavel" }
     );
 
     expect(compatible).toMatchObject({
@@ -47,6 +65,55 @@ describe("tracking aggregations", () => {
       category: "alimentacao",
       expenseType: "variavel",
     });
+  });
+
+  it("respeita vigência ao encontrar planejamento compatível", () => {
+    expect(
+      findCompatibleMonthlyExpense(
+        [
+          {
+            id: "a",
+            category: "alimentacao",
+            expenseType: "variavel",
+            isActive: true,
+            startMonth: "2026-08",
+          },
+        ],
+        { periodMonth: "2026-07", category: "alimentacao", expenseType: "variavel" }
+      )
+    ).toBeNull();
+
+    expect(
+      findCompatibleMonthlyExpense(
+        [
+          {
+            id: "a",
+            category: "alimentacao",
+            expenseType: "variavel",
+            isActive: true,
+            startMonth: "2026-08",
+            endMonth: "2026-08",
+          },
+        ],
+        { periodMonth: "2026-08", category: "alimentacao", expenseType: "variavel" }
+      )
+    ).toMatchObject({ id: "a" });
+
+    expect(
+      findCompatibleMonthlyExpense(
+        [
+          {
+            id: "a",
+            category: "alimentacao",
+            expenseType: "variavel",
+            isActive: true,
+            startMonth: "2026-08",
+            endMonth: "2026-08",
+          },
+        ],
+        { periodMonth: "2026-09", category: "alimentacao", expenseType: "variavel" }
+      )
+    ).toBeNull();
   });
 
   it("expõe label correto para beleza_cuidados", () => {
@@ -61,8 +128,16 @@ describe("tracking aggregations", () => {
   it("não encontra planejamento quando categoria ou tipo não batem", () => {
     expect(
       findCompatibleMonthlyExpense(
-        [{ id: "a", category: "alimentacao", expenseType: "variavel", isActive: true }],
-        { category: "lazer", expenseType: "variavel" }
+        [
+          {
+            id: "a",
+            category: "alimentacao",
+            expenseType: "variavel",
+            isActive: true,
+            startMonth: "2026-01",
+          },
+        ],
+        { periodMonth: "2026-05", category: "lazer", expenseType: "variavel" }
       )
     ).toBeNull();
   });
@@ -234,28 +309,19 @@ describe("tracking aggregations", () => {
   it("monta resumo por categoria", () => {
     const byCategory = buildTrackingSummaryByCategory([
       {
-        expenseType: "fixo",
         category: "moradia",
         plannedAmount: 100000,
         actualAmount: 70000,
-        remainingAmount: 30000,
-        status: "parcial",
       },
       {
-        expenseType: "fixo",
         category: "moradia",
         plannedAmount: 50000,
         actualAmount: 50000,
-        remainingAmount: 0,
-        status: "concluido",
       },
       {
-        expenseType: "variavel",
         category: "alimentacao",
         plannedAmount: 80000,
         actualAmount: 90000,
-        remainingAmount: -10000,
-        status: "estourado",
       },
     ]);
 

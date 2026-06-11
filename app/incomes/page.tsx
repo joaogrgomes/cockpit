@@ -182,6 +182,7 @@ export default async function IncomesPage({ searchParams }: IncomesPageProps) {
                   <TableHead>Previsão</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Categoria</TableHead>
+                  <TableHead>Vigência</TableHead>
                   <TableHead>Valor previsto</TableHead>
                   <TableHead>Recebimento</TableHead>
                   <TableHead>Status</TableHead>
@@ -191,7 +192,7 @@ export default async function IncomesPage({ searchParams }: IncomesPageProps) {
               <TableBody>
                 {incomes.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="py-8 text-center text-muted-foreground">
                       Nenhuma entrada encontrada.
                     </TableCell>
                   </TableRow>

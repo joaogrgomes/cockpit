@@ -6,6 +6,8 @@ import {
   createMonthlyIncomeEntry,
   deleteMonthlyIncomeEntry,
 } from "@/lib/services/monthly-income-entry.service";
+import { getMonthlyIncomeById } from "@/lib/services/monthly-income.service";
+import { isMonthWithinPeriod } from "@/lib/recurrence-period";
 import { MonthlyIncomeEntrySchema } from "@/lib/validations";
 
 type IncomeEntryActionResult = {
@@ -38,6 +40,26 @@ function parseMoneyToCents(value: FormDataEntryValue | null): number | undefined
   return parseBRL(trimmed);
 }
 
+async function validateLinkedMonthlyIncome(
+  monthlyIncomeId: string,
+  periodMonth: string
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const monthlyIncome = await getMonthlyIncomeById(monthlyIncomeId);
+
+  if (!monthlyIncome || !monthlyIncome.isActive) {
+    return { ok: false, error: "Planejamento não encontrado ou inativo" };
+  }
+
+  if (!isMonthWithinPeriod(periodMonth, monthlyIncome.startMonth, monthlyIncome.endMonth)) {
+    return {
+      ok: false,
+      error: "O planejamento selecionado não está vigente no mês informado",
+    };
+  }
+
+  return { ok: true };
+}
+
 function parseEntryFormData(formData: FormData) {
   const payload = {
     monthlyIncomeId: parseOptionalText(formData.get("monthlyIncomeId")) ?? null,
@@ -66,6 +88,17 @@ export async function createMonthlyIncomeEntryAction(
   const parsed = parseEntryFormData(formData);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  if (parsed.data.monthlyIncomeId) {
+    const linkedValidation = await validateLinkedMonthlyIncome(
+      parsed.data.monthlyIncomeId,
+      parsed.data.periodMonth
+    );
+
+    if (!linkedValidation.ok) {
+      return linkedValidation;
+    }
   }
 
   await createMonthlyIncomeEntry(parsed.data);

@@ -268,6 +268,7 @@ describe("MonthlyExpenseSchema", () => {
       category: "moradia",
       amount: 250000,
       expenseType: "fixo",
+      startMonth: "2026-01",
       isActive: true,
     });
 
@@ -280,6 +281,7 @@ describe("MonthlyExpenseSchema", () => {
       category: "servicos",
       amount: 0,
       expenseType: "variavel",
+      startMonth: "2026-01",
       isActive: true,
     });
 
@@ -292,6 +294,7 @@ describe("MonthlyExpenseSchema", () => {
       category: "categoria_invalida",
       amount: 1000,
       expenseType: "fixo",
+      startMonth: "2026-01",
       isActive: true,
     });
 
@@ -304,6 +307,7 @@ describe("MonthlyExpenseSchema", () => {
       category: "beleza_cuidados",
       amount: 8500,
       expenseType: "variavel",
+      startMonth: "2026-01",
       isActive: true,
     });
 
@@ -316,6 +320,7 @@ describe("MonthlyExpenseSchema", () => {
       category: "esportes",
       amount: 18000,
       expenseType: "fixo",
+      startMonth: "2026-01",
       dueDay: null,
       paymentMethod: null,
       isActive: true,
@@ -330,6 +335,7 @@ describe("MonthlyExpenseSchema", () => {
       category: "servicos",
       amount: 12000,
       expenseType: "fixo",
+      startMonth: "2026-01",
       dueDay: null,
       paymentMethod: null,
       dueLabel: null,
@@ -346,10 +352,39 @@ describe("MonthlyExpenseSchema", () => {
       category: "esportes",
       amount: 22000,
       expenseType: "fixo",
+      startMonth: "2026-01",
       isActive: true,
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("aceita endMonth igual a startMonth", () => {
+    const result = MonthlyExpenseSchema.safeParse({
+      name: "Aluguel",
+      category: "moradia",
+      amount: 250000,
+      expenseType: "fixo",
+      startMonth: "2026-05",
+      endMonth: "2026-05",
+      isActive: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita endMonth menor que startMonth", () => {
+    const result = MonthlyExpenseSchema.safeParse({
+      name: "Aluguel",
+      category: "moradia",
+      amount: 250000,
+      expenseType: "fixo",
+      startMonth: "2026-05",
+      endMonth: "2026-04",
+      isActive: true,
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 
@@ -610,6 +645,7 @@ describe("MonthlyIncomeSchema", () => {
       name: "Salário CLT",
       category: "salario",
       amount: 650000,
+      startMonth: "2026-01",
       isActive: true,
     });
 
@@ -621,6 +657,7 @@ describe("MonthlyIncomeSchema", () => {
       name: "Freela",
       category: "freela",
       amount: 0,
+      startMonth: "2026-01",
       isActive: true,
     });
 
@@ -632,6 +669,7 @@ describe("MonthlyIncomeSchema", () => {
       name: "Entrada X",
       category: "categoria_invalida",
       amount: 10000,
+      startMonth: "2026-01",
       isActive: true,
     });
 
@@ -644,6 +682,7 @@ describe("MonthlyIncomeSchema", () => {
       category: "rendimento",
       amount: 30000,
       expectedDay: null,
+      startMonth: "2026-01",
       paymentMethod: null,
       isActive: true,
     });
@@ -656,11 +695,38 @@ describe("MonthlyIncomeSchema", () => {
       name: "Reembolso",
       category: "reembolso",
       amount: 10000,
+      startMonth: "2026-01",
       paymentMethod: null,
       isActive: true,
     });
 
     expect(result.success).toBe(true);
+  });
+
+  it("aceita endMonth igual a startMonth", () => {
+    const result = MonthlyIncomeSchema.safeParse({
+      name: "Salário CLT",
+      category: "salario",
+      amount: 650000,
+      startMonth: "2026-05",
+      endMonth: "2026-05",
+      isActive: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita endMonth menor que startMonth", () => {
+    const result = MonthlyIncomeSchema.safeParse({
+      name: "Salário CLT",
+      category: "salario",
+      amount: 650000,
+      startMonth: "2026-05",
+      endMonth: "2026-04",
+      isActive: true,
+    });
+
+    expect(result.success).toBe(false);
   });
 });
 

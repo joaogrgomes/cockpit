@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
 import { getPaymentMethodLabel } from "@/lib/expenses";
+import { formatRecurrencePeriodLabel } from "@/lib/recurrence-period";
 import type { MonthlyExpense } from "@/types";
 import { ExpenseCategoryBadge } from "./ExpenseCategoryBadge";
 import { ExpenseTypeBadge } from "./ExpenseTypeBadge";
@@ -72,6 +73,9 @@ export function MonthlyExpenseRow({
       </TableCell>
       <TableCell className="py-3">
         <ExpenseTypeBadge expenseType={expense.expenseType} />
+      </TableCell>
+      <TableCell className="py-3 text-sm text-muted-foreground">
+        {formatRecurrencePeriodLabel(expense.startMonth, expense.endMonth)}
       </TableCell>
       <TableCell className="py-3 font-medium">{formatBRL(expense.amount)}</TableCell>
       <TableCell className="py-3 text-sm text-muted-foreground">

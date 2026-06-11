@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "@/lib/calculations";
+import { getCurrentPeriodMonth } from "@/lib/recurrence-period";
 import {
   INCOME_CATEGORY_VALUES,
   INCOME_PAYMENT_METHOD_VALUES,
@@ -119,6 +120,32 @@ export function MonthlyIncomeForm({ mode, action, income }: MonthlyIncomeFormPro
                   defaultValue={moneyToInput(income?.amount)}
                   required
                 />
+              </div>
+
+              <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="startMonth">Começa em</Label>
+                  <Input
+                    id="startMonth"
+                    name="startMonth"
+                    type="month"
+                    defaultValue={income?.startMonth ?? getCurrentPeriodMonth()}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endMonth">Termina em</Label>
+                  <Input
+                    id="endMonth"
+                    name="endMonth"
+                    type="month"
+                    defaultValue={income?.endMonth ?? ""}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Deixe em branco para manter recorrente sem data de fim.
+                  </p>
+                </div>
               </div>
             </div>
           </section>

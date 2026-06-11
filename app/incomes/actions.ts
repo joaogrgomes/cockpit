@@ -65,6 +65,8 @@ function parseIncomeFormData(formData: FormData) {
     category: parseOptionalText(formData.get("category")) ?? "",
     amount: parseMoneyToCents(formData.get("amount")) ?? 0,
     expectedDay: parseOptionalIntegerOrNull(formData.get("expectedDay")),
+    startMonth: parseOptionalText(formData.get("startMonth")) ?? "",
+    endMonth: parseOptionalTextOrNull(formData.get("endMonth")),
     paymentMethod: parseOptionalTextOrNull(formData.get("paymentMethod")),
     notes: parseOptionalTextOrNull(formData.get("notes")),
     isActive: parseOptionalBoolean(formData.get("isActive")) ?? true,

@@ -10,6 +10,7 @@ export type MonthlyIncomeFilters = {
   isActive?: "true" | "false";
   paymentMethod?: string;
   sort?: "expected_day" | "amount_desc" | "category";
+  periodMonth?: string;
 };
 
 export type MonthlyIncomeSummaryRow = {
@@ -30,7 +31,15 @@ export type MonthlyIncomeSummary = {
 
 export type MonthlyIncomeCreateInput = Pick<
   NewMonthlyIncome,
-  "name" | "category" | "amount" | "expectedDay" | "paymentMethod" | "notes" | "isActive"
+  | "name"
+  | "category"
+  | "amount"
+  | "expectedDay"
+  | "startMonth"
+  | "endMonth"
+  | "paymentMethod"
+  | "notes"
+  | "isActive"
 >;
 
 export type MonthlyIncomeUpdateInput = Partial<MonthlyIncomeCreateInput>;
@@ -47,6 +56,13 @@ export async function listMonthlyIncomes(
 
   if (filters.paymentMethod) {
     whereConditions.push(eq(monthlyIncomes.paymentMethod, filters.paymentMethod));
+  }
+
+  if (filters.periodMonth) {
+    whereConditions.push(sql`${monthlyIncomes.startMonth} <= ${filters.periodMonth}`);
+    whereConditions.push(
+      sql`${monthlyIncomes.endMonth} IS NULL OR ${monthlyIncomes.endMonth} >= ${filters.periodMonth}`
+    );
   }
 
   if (filters.isActive === "true") {
@@ -122,6 +138,8 @@ export async function createMonthlyIncome(
       category: input.category,
       amount: input.amount,
       expectedDay: input.expectedDay ?? null,
+      startMonth: input.startMonth,
+      endMonth: input.endMonth ?? null,
       paymentMethod: input.paymentMethod ?? null,
       notes: input.notes ?? null,
       isActive: input.isActive ?? true,
@@ -140,6 +158,7 @@ export async function updateMonthlyIncome(
     .update(monthlyIncomes)
     .set({
       ...input,
+      endMonth: input.endMonth ?? null,
       updatedAt: sql`now()`,
     })
     .where(eq(monthlyIncomes.id, id))

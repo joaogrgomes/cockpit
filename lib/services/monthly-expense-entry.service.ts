@@ -4,6 +4,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/date-utils";
 import { monthlyExpenseEntries, monthlyExpenses } from "@/lib/db/schema";
+import { isMonthWithinPeriod } from "@/lib/recurrence-period";
 import {
   buildTrackingSummary,
   buildTrackingSummaryByCategory,
@@ -166,12 +167,15 @@ export async function createSmartMonthlyExpenseEntry(
       category: monthlyExpenses.category,
       expenseType: monthlyExpenses.expenseType,
       isActive: monthlyExpenses.isActive,
+      startMonth: monthlyExpenses.startMonth,
+      endMonth: monthlyExpenses.endMonth,
     })
     .from(monthlyExpenses)
     .where(eq(monthlyExpenses.isActive, true))
     .orderBy(asc(monthlyExpenses.dueDay), asc(monthlyExpenses.name));
 
   const compatibleExpense = findCompatibleMonthlyExpense(compatibleExpenses, {
+    periodMonth: input.periodMonth,
     category: input.category,
     expenseType: input.expenseType,
   });
@@ -203,7 +207,16 @@ export async function getExpenseTrackingByPeriod(
 
   const [activeExpenses, periodEntries] = await Promise.all([
     db
-      .select()
+      .select({
+        id: monthlyExpenses.id,
+        name: monthlyExpenses.name,
+        category: monthlyExpenses.category,
+        expenseType: monthlyExpenses.expenseType,
+        dueDay: monthlyExpenses.dueDay,
+        amount: monthlyExpenses.amount,
+        startMonth: monthlyExpenses.startMonth,
+        endMonth: monthlyExpenses.endMonth,
+      })
       .from(monthlyExpenses)
       .where(eq(monthlyExpenses.isActive, true))
       .orderBy(
@@ -213,6 +226,10 @@ export async function getExpenseTrackingByPeriod(
       ),
     listEntriesByPeriod(periodMonth),
   ]);
+
+  const activeExpensesInPeriod = activeExpenses.filter((expense) =>
+    isMonthWithinPeriod(periodMonth, expense.startMonth, expense.endMonth)
+  );
 
   const entriesByExpenseId = new Map<string, ExpenseTrackingEntryView[]>();
   const oneTimeEntries: ExpenseTrackingOneTimeEntryView[] = [];
@@ -247,7 +264,7 @@ export async function getExpenseTrackingByPeriod(
     });
   }
 
-  const items: ExpenseTrackingItemView[] = activeExpenses.map((expense) => {
+  const items: ExpenseTrackingItemView[] = activeExpensesInPeriod.map((expense) => {
     const entries = entriesByExpenseId.get(expense.id) ?? [];
     const actualAmount = sumEntryAmounts(entries);
     const plannedAmount = expense.amount;

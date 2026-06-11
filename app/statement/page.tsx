@@ -45,6 +45,7 @@ export default async function StatementPage({ searchParams }: StatementPageProps
     listMonthlyExpenses({
       isActive: "true",
       sort: "category",
+      periodMonth: selectedPeriod,
     }),
   ]);
 

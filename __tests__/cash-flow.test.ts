@@ -190,6 +190,46 @@ describe("calculateCashFlowProjection", () => {
     expect(result.months[0].variableExpensesUsed).toBe(90000);
   });
 
+  it("planejamento recorrente respeita start_month ao projetar meses do ano", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        plannedIncomesTotal: 0,
+        plannedFixedExpensesTotal: 0,
+        plannedVariableExpensesTotal: 0,
+        plannedRecurringIncomesByMonth: {
+          "2026-08": 300000,
+          "2026-09": 300000,
+        },
+        plannedFixedExpensesByMonth: {
+          "2026-08": 120000,
+          "2026-09": 120000,
+        },
+        plannedVariableExpensesByMonth: {
+          "2026-08": 80000,
+          "2026-09": 80000,
+        },
+        initialBalance: 0,
+      })
+    );
+
+    const june = result.months.find((month) => month.periodMonth === "2026-06");
+    const july = result.months.find((month) => month.periodMonth === "2026-07");
+    const august = result.months.find((month) => month.periodMonth === "2026-08");
+    const september = result.months.find((month) => month.periodMonth === "2026-09");
+
+    expect(june?.incomeUsed).toBe(0);
+    expect(july?.incomeUsed).toBe(0);
+    expect(august?.incomeUsed).toBe(300000);
+    expect(september?.incomeUsed).toBe(300000);
+
+    expect(june?.monthlyResult).toBe(0);
+    expect(july?.monthlyResult).toBe(0);
+    expect(august?.monthlyResult).toBe(100000);
+    expect(september?.monthlyResult).toBe(100000);
+    expect(august?.fixedExpensesUsed).toBe(120000);
+    expect(august?.variableExpensesUsed).toBe(80000);
+  });
+
   it("calcula entradas previstas por item planejado no mês aberto", () => {
     const result = calculateCashFlowProjection(
       baseInput({

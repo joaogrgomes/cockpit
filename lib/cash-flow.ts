@@ -56,15 +56,18 @@ export type CashFlowProjectionInput = {
   startMonth: string;
   initialBalance: number;
   plannedIncomesTotal: number;
+  plannedRecurringIncomesByMonth?: Record<string, number>;
   actualLinkedIncomesByMonth: Record<string, number>;
   actualOneTimeIncomesByMonth: Record<string, number>;
   futureExpectedIncomesByMonth: Record<string, number>;
   incomePlanItemsByMonth?: Record<string, CashFlowIncomePlanItem[]>;
   closedMonths: Set<string> | string[];
   plannedFixedExpensesTotal: number;
+  plannedFixedExpensesByMonth?: Record<string, number>;
   actualFixedExpensesByMonth: Record<string, number>;
   futureExpectedFixedExpensesByMonth: Record<string, number>;
   plannedVariableExpensesTotal: number;
+  plannedVariableExpensesByMonth?: Record<string, number>;
   actualVariableExpensesByMonth: Record<string, number>;
   futureExpectedVariableExpensesByMonth: Record<string, number>;
 };
@@ -198,7 +201,8 @@ export function calculateCashFlowProjection(
       hasStarted = true;
     }
 
-    const plannedIncome = input.plannedIncomesTotal;
+    const plannedIncome =
+      input.plannedRecurringIncomesByMonth?.[periodMonth] ?? input.plannedIncomesTotal;
     const isClosed = closedMonthsSet.has(periodMonth);
     const actualLinkedIncome = input.actualLinkedIncomesByMonth[periodMonth] ?? 0;
     const actualOneTimeIncome = input.actualOneTimeIncomesByMonth[periodMonth] ?? 0;
@@ -231,6 +235,8 @@ export function calculateCashFlowProjection(
       : expectedRecurringIncomes + actualOneTimeIncome + futureExpectedIncomes;
 
     const plannedFixedExpenses = input.plannedFixedExpensesTotal;
+    const plannedFixedExpensesForMonth =
+      input.plannedFixedExpensesByMonth?.[periodMonth] ?? plannedFixedExpenses;
     const actualFixedExpenses = input.actualFixedExpensesByMonth[periodMonth] ?? 0;
     const futureExpectedFixedExpenses = isClosed
       ? 0
@@ -242,22 +248,23 @@ export function calculateCashFlowProjection(
       : "planejado";
     const projectedFixedExpenses = isClosed
       ? actualFixedExpenses
-      : Math.max(plannedFixedExpenses, actualFixedExpenses);
+      : Math.max(plannedFixedExpensesForMonth, actualFixedExpenses);
     const fixedExpensesUsed = projectedFixedExpenses + futureExpectedFixedExpenses;
 
     const actualVariableExpenses = input.actualVariableExpensesByMonth[periodMonth] ?? 0;
+    const plannedVariableExpenses =
+      input.plannedVariableExpensesByMonth?.[periodMonth] ?? input.plannedVariableExpensesTotal;
     const futureExpectedVariableExpenses = isClosed
       ? 0
       : input.futureExpectedVariableExpensesByMonth[periodMonth] ?? 0;
     const projectedVariableExpenses = isClosed
       ? actualVariableExpenses
-      : Math.max(input.plannedVariableExpensesTotal, actualVariableExpenses);
+      : Math.max(plannedVariableExpenses, actualVariableExpenses);
     const variableExpensesUsed = projectedVariableExpenses + futureExpectedVariableExpenses;
-    const remainingVariableBudget =
-      input.plannedVariableExpensesTotal - actualVariableExpenses;
+    const remainingVariableBudget = plannedVariableExpenses - actualVariableExpenses;
     const hasActualVariableExpenses = actualVariableExpenses > 0;
     const variableBudgetStatus =
-      actualVariableExpenses > input.plannedVariableExpensesTotal ? "estourado" : "dentro";
+      actualVariableExpenses > plannedVariableExpenses ? "estourado" : "dentro";
 
     const totalExpenses = fixedExpensesUsed + variableExpensesUsed;
     const monthlyResult = incomeUsed - totalExpenses;
@@ -285,12 +292,12 @@ export function calculateCashFlowProjection(
       actualIncome,
       incomeUsed,
       incomeSource,
-      plannedFixedExpenses,
+      plannedFixedExpenses: plannedFixedExpensesForMonth,
       actualFixedExpenses,
       futureExpectedFixedExpenses,
       fixedExpensesUsed,
       fixedExpenseSource,
-      plannedVariableExpenses: input.plannedVariableExpensesTotal,
+      plannedVariableExpenses,
       futureExpectedVariableExpenses,
       variableExpensesUsed,
       actualVariableExpenses,
@@ -317,11 +324,11 @@ export function calculateCashFlowProjection(
       return {
         periodMonth,
         monthLabel: getMonthLabel(periodMonth),
-        isBeforeStart: true,
-        isClosed: false,
-        openingBalance: 0,
-        partialOpeningBalance: 0,
-        plannedIncome: input.plannedIncomesTotal,
+      isBeforeStart: true,
+      isClosed: false,
+      openingBalance: 0,
+      partialOpeningBalance: 0,
+        plannedIncome: input.plannedRecurringIncomesByMonth?.[periodMonth] ?? input.plannedIncomesTotal,
         expectedRecurringIncomes: 0,
         actualLinkedIncome: input.actualLinkedIncomesByMonth[periodMonth] ?? 0,
         actualOneTimeIncome: input.actualOneTimeIncomesByMonth[periodMonth] ?? 0,
@@ -331,13 +338,15 @@ export function calculateCashFlowProjection(
           (input.actualOneTimeIncomesByMonth[periodMonth] ?? 0),
         incomeUsed: 0,
         incomeSource: "planejado",
-        plannedFixedExpenses: input.plannedFixedExpensesTotal,
+        plannedFixedExpenses:
+          input.plannedFixedExpensesByMonth?.[periodMonth] ?? input.plannedFixedExpensesTotal,
         actualFixedExpenses: input.actualFixedExpensesByMonth[periodMonth] ?? 0,
         futureExpectedFixedExpenses:
           input.futureExpectedFixedExpensesByMonth[periodMonth] ?? 0,
         fixedExpensesUsed: 0,
         fixedExpenseSource: "planejado",
-        plannedVariableExpenses: input.plannedVariableExpensesTotal,
+        plannedVariableExpenses:
+          input.plannedVariableExpensesByMonth?.[periodMonth] ?? input.plannedVariableExpensesTotal,
         futureExpectedVariableExpenses:
           input.futureExpectedVariableExpensesByMonth[periodMonth] ?? 0,
         variableExpensesUsed: 0,
@@ -366,7 +375,7 @@ export function calculateCashFlowProjection(
       isClosed: false,
       openingBalance: currentOpeningBalance,
       partialOpeningBalance: currentPartialOpeningBalance,
-      plannedIncome: input.plannedIncomesTotal,
+      plannedIncome: input.plannedRecurringIncomesByMonth?.[periodMonth] ?? input.plannedIncomesTotal,
       expectedRecurringIncomes: 0,
       actualLinkedIncome: input.actualLinkedIncomesByMonth[periodMonth] ?? 0,
       actualOneTimeIncome: input.actualOneTimeIncomesByMonth[periodMonth] ?? 0,
@@ -376,12 +385,14 @@ export function calculateCashFlowProjection(
         (input.actualOneTimeIncomesByMonth[periodMonth] ?? 0),
       incomeUsed: 0,
       incomeSource: "planejado",
-      plannedFixedExpenses: input.plannedFixedExpensesTotal,
+      plannedFixedExpenses:
+        input.plannedFixedExpensesByMonth?.[periodMonth] ?? input.plannedFixedExpensesTotal,
       actualFixedExpenses: input.actualFixedExpensesByMonth[periodMonth] ?? 0,
       futureExpectedFixedExpenses: input.futureExpectedFixedExpensesByMonth[periodMonth] ?? 0,
       fixedExpensesUsed: 0,
       fixedExpenseSource: "planejado",
-      plannedVariableExpenses: input.plannedVariableExpensesTotal,
+      plannedVariableExpenses:
+        input.plannedVariableExpensesByMonth?.[periodMonth] ?? input.plannedVariableExpensesTotal,
       futureExpectedVariableExpenses: input.futureExpectedVariableExpensesByMonth[periodMonth] ?? 0,
       variableExpensesUsed: 0,
       actualVariableExpenses: 0,

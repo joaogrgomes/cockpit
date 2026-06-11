@@ -9,6 +9,7 @@ import {
   GaugeIcon,
   HandCoinsIcon,
   LandmarkIcon,
+  LayoutGridIcon,
   ListChecksIcon,
   WalletCardsIcon,
 } from "lucide-react";
@@ -35,6 +36,10 @@ const INCOME_NAV_ITEMS = [
   { href: "/incomes", label: "Planejamento", icon: LandmarkIcon, exact: true },
   { href: "/incomes/tracking", label: "Acompanhamento", icon: LandmarkIcon },
   { href: "/incomes/future", label: "Futuras", icon: LandmarkIcon },
+];
+
+const BUDGET_NAV_ITEMS = [
+  { href: "/budget-areas", label: "Planejamento por Áreas", icon: LayoutGridIcon, exact: true },
 ];
 
 const DEBT_NAV_ITEMS = [
@@ -104,6 +109,7 @@ export function AppSidebar() {
       <SidebarContent className="px-2 py-3">
         {renderGroup("Operação", STATEMENT_NAV_ITEMS)}
         {renderGroup("Entradas", INCOME_NAV_ITEMS)}
+        {renderGroup("Planejamento", BUDGET_NAV_ITEMS)}
         {renderGroup("Gastos", EXPENSE_NAV_ITEMS)}
         {renderGroup("Fluxo", CASH_FLOW_NAV_ITEMS)}
         {renderGroup("Dívidas", DEBT_NAV_ITEMS)}

@@ -28,10 +28,9 @@ import {
   getExpenseTypeLabel,
   getPaymentMethodLabel,
 } from "@/lib/expenses";
-import {
-  getEffectiveStatementExpenseMode,
-  shouldShowStatementExpenseOccurrenceTypeField,
-} from "@/lib/statement-expense-entry";
+import { formatRecurrencePeriodLabel } from "@/lib/recurrence-period";
+import { isMonthWithinPeriod } from "@/lib/recurrence-period";
+import { shouldShowStatementExpenseOccurrenceTypeField } from "@/lib/statement-expense-entry";
 import type { MonthlyExpense, ExpenseCategory, ExpenseOccurrenceType, ExpenseType } from "@/types";
 
 type ExpenseEntryActionResult = {
@@ -53,6 +52,7 @@ function formatPlanLabel(expense: MonthlyExpense): string {
     expense.name,
     getExpenseCategoryLabel(expense.category),
     getExpenseTypeLabel(expense.expenseType),
+    formatRecurrencePeriodLabel(expense.startMonth, expense.endMonth),
     formatBRL(expense.amount),
   ].join(" · ");
 }
@@ -80,18 +80,24 @@ export function StatementExpenseEntryForm({
       monthlyExpenses.filter(
         (expense) =>
           expense.isActive &&
+          isMonthWithinPeriod(periodMonth, expense.startMonth, expense.endMonth) &&
           expense.category === category &&
           expense.expenseType === expenseType
       ),
-    [category, expenseType, monthlyExpenses]
+    [category, expenseType, monthlyExpenses, periodMonth]
   );
 
   const hasCompatiblePlanning = compatibleMonthlyExpenses.length > 0;
-  const effectiveMode = getEffectiveStatementExpenseMode(hasCompatiblePlanning, mode);
+  const selectedMode: EntryMode = hasCompatiblePlanning
+    ? modeTouched
+      ? mode
+      : "linked"
+    : "one_time";
   const effectiveIsOneTime = shouldShowStatementExpenseOccurrenceTypeField(
     hasCompatiblePlanning,
-    mode
+    selectedMode
   );
+  const effectiveMode = selectedMode;
   const isLinkedMode = effectiveMode === "linked";
 
   const selectedLinkedExpense = useMemo(
@@ -118,23 +124,16 @@ export function StatementExpenseEntryForm({
       return;
     }
 
-    if (!modeTouched) {
-      if (mode !== "linked") {
-        setMode("linked");
-      }
-    } else if (mode === "linked") {
-      if (
-        !selectedMonthlyExpenseId ||
-        !compatibleMonthlyExpenses.some((expense) => expense.id === selectedMonthlyExpenseId)
-      ) {
-        setSelectedMonthlyExpenseId(compatibleMonthlyExpenses[0]?.id ?? "");
-      }
+    if (
+      !selectedMonthlyExpenseId ||
+      !compatibleMonthlyExpenses.some((expense) => expense.id === selectedMonthlyExpenseId)
+    ) {
+      setSelectedMonthlyExpenseId(compatibleMonthlyExpenses[0]?.id ?? "");
     }
   }, [
     compatibleMonthlyExpenses,
     hasCompatiblePlanning,
     mode,
-    modeTouched,
     selectedMonthlyExpenseId,
   ]);
 

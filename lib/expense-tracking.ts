@@ -1,3 +1,5 @@
+import { isMonthWithinPeriod } from "@/lib/recurrence-period";
+
 export type ExpenseTrackingStatus =
   | "pendente"
   | "parcial"
@@ -20,6 +22,8 @@ export type CompatibleExpensePlanCandidate = {
   category: string;
   expenseType: string;
   isActive: boolean;
+  startMonth?: string;
+  endMonth?: string | null;
 };
 
 export type ExpenseTrackingItemLike = {
@@ -221,7 +225,11 @@ export function splitItemsByExpenseType<T extends { expenseType: string }>(items
 
 export function findCompatibleMonthlyExpense(
   expenses: CompatibleExpensePlanCandidate[],
-  input: { category: string | null | undefined; expenseType: string | null | undefined }
+  input: {
+    periodMonth: string;
+    category: string | null | undefined;
+    expenseType: string | null | undefined;
+  }
 ): CompatibleExpensePlanCandidate | null {
   if (!input.category || !input.expenseType) {
     return null;
@@ -231,6 +239,7 @@ export function findCompatibleMonthlyExpense(
     expenses.find(
       (expense) =>
         expense.isActive &&
+        isMonthWithinPeriod(input.periodMonth, expense.startMonth ?? "0000-01", expense.endMonth) &&
         expense.category === input.category &&
         expense.expenseType === input.expenseType
     ) ?? null

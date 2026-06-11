@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { getLocalDateInputValue } from "@/lib/date-utils";
+import { validatePeriod } from "@/lib/recurrence-period";
 import {
   DEBT_ATTACHMENT_TYPE_VALUES,
   DEBT_STATUS_VALUES,
@@ -164,11 +165,21 @@ export const MonthlyExpenseSchema = z.object({
   category: z.enum(EXPENSE_CATEGORY_VALUES),
   amount: z.number().int().positive(),
   expenseType: z.enum(EXPENSE_TYPE_VALUES),
+  startMonth: z.string().regex(periodMonthRegex),
+  endMonth: z.string().regex(periodMonthRegex).nullish(),
   paymentMethod: z.enum(PAYMENT_METHOD_VALUES).nullish(),
   dueDay: z.number().int().min(1).max(31).nullish(),
   dueLabel: z.string().trim().min(1).nullish(),
   notes: z.string().trim().min(1).nullish(),
   isActive: z.boolean().default(true),
+}).superRefine((data, ctx) => {
+  if (!validatePeriod(data.startMonth, data.endMonth)) {
+    ctx.addIssue({
+      code: "custom",
+      message: "endMonth não pode ser menor que startMonth",
+      path: ["endMonth"],
+    });
+  }
 });
 
 export const MonthlyExpenseEntrySchema = z
@@ -262,9 +273,19 @@ export const MonthlyIncomeSchema = z.object({
   category: z.enum(INCOME_CATEGORY_VALUES),
   amount: z.number().int().positive(),
   expectedDay: z.number().int().min(1).max(31).nullish(),
+  startMonth: z.string().regex(periodMonthRegex),
+  endMonth: z.string().regex(periodMonthRegex).nullish(),
   paymentMethod: z.enum(INCOME_PAYMENT_METHOD_VALUES).nullish(),
   notes: z.string().trim().min(1).nullish(),
   isActive: z.boolean().default(true),
+}).superRefine((data, ctx) => {
+  if (!validatePeriod(data.startMonth, data.endMonth)) {
+    ctx.addIssue({
+      code: "custom",
+      message: "endMonth não pode ser menor que startMonth",
+      path: ["endMonth"],
+    });
+  }
 });
 
 export const MonthlyIncomeEntrySchema = z

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { formatBRL } from "@/lib/calculations";
+import { getCurrentPeriodMonth } from "@/lib/recurrence-period";
 import {
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
@@ -139,6 +140,32 @@ export function MonthlyExpenseForm({ mode, action, expense }: MonthlyExpenseForm
                   defaultValue={moneyToInput(expense?.amount)}
                   required
                 />
+              </div>
+
+              <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="startMonth">Começa em</Label>
+                  <Input
+                    id="startMonth"
+                    name="startMonth"
+                    type="month"
+                    defaultValue={expense?.startMonth ?? getCurrentPeriodMonth()}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="endMonth">Termina em</Label>
+                  <Input
+                    id="endMonth"
+                    name="endMonth"
+                    type="month"
+                    defaultValue={expense?.endMonth ?? ""}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Deixe em branco para manter recorrente sem data de fim.
+                  </p>
+                </div>
               </div>
             </div>
           </section>

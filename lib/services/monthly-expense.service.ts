@@ -11,6 +11,7 @@ export type MonthlyExpenseFilters = {
   isActive?: "true" | "false";
   paymentMethod?: string;
   sort?: "due_day" | "amount_desc" | "category";
+  periodMonth?: string;
 };
 
 export type MonthlyExpenseSummaryRow = {
@@ -35,7 +36,17 @@ export type MonthlyExpenseSummary = {
 
 export type MonthlyExpenseCreateInput = Pick<
   NewMonthlyExpense,
-  "name" | "category" | "amount" | "expenseType" | "paymentMethod" | "dueDay" | "dueLabel" | "notes" | "isActive"
+  | "name"
+  | "category"
+  | "amount"
+  | "expenseType"
+  | "startMonth"
+  | "endMonth"
+  | "paymentMethod"
+  | "dueDay"
+  | "dueLabel"
+  | "notes"
+  | "isActive"
 >;
 
 export type MonthlyExpenseUpdateInput = Partial<MonthlyExpenseCreateInput>;
@@ -56,6 +67,13 @@ export async function listMonthlyExpenses(
 
   if (filters.paymentMethod) {
     whereConditions.push(eq(monthlyExpenses.paymentMethod, filters.paymentMethod));
+  }
+
+  if (filters.periodMonth) {
+    whereConditions.push(sql`${monthlyExpenses.startMonth} <= ${filters.periodMonth}`);
+    whereConditions.push(
+      sql`${monthlyExpenses.endMonth} IS NULL OR ${monthlyExpenses.endMonth} >= ${filters.periodMonth}`
+    );
   }
 
   if (filters.isActive === "true") {
@@ -132,6 +150,8 @@ export async function createMonthlyExpense(
       category: input.category,
       amount: input.amount,
       expenseType: input.expenseType,
+      startMonth: input.startMonth,
+      endMonth: input.endMonth ?? null,
       paymentMethod: input.paymentMethod ?? null,
       dueDay: input.dueDay ?? null,
       dueLabel: input.dueLabel ?? null,
@@ -153,6 +173,7 @@ export async function updateMonthlyExpense(
     .update(monthlyExpenses)
     .set({
       ...input,
+      endMonth: input.endMonth ?? null,
       updatedAt: sql`now()`,
     })
     .where(eq(monthlyExpenses.id, id))
