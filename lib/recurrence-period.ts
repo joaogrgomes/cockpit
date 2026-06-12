@@ -34,6 +34,30 @@ function parsePeriodMonth(value: string): { year: number; month: number } | null
   return { year, month };
 }
 
+export function getPeriodMonthDateRange(
+  periodMonth: string
+): { startDate: string; endDateExclusive: string } | null {
+  const parsed = parsePeriodMonth(periodMonth);
+  if (!parsed) return null;
+
+  const nextMonth = parsed.month === 12 ? 1 : parsed.month + 1;
+  const nextYear = parsed.month === 12 ? parsed.year + 1 : parsed.year;
+
+  return {
+    startDate: `${periodMonth}-01`,
+    endDateExclusive: `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`,
+  };
+}
+
+export function isDateWithinPeriodMonth(date: string, periodMonth: string): boolean {
+  const dateRange = getPeriodMonthDateRange(periodMonth);
+  if (!dateRange || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return false;
+  }
+
+  return date >= dateRange.startDate && date < dateRange.endDateExclusive;
+}
+
 export function isMonthWithinPeriod(
   month: string,
   startMonth: string,

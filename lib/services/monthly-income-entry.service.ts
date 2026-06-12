@@ -4,7 +4,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/date-utils";
 import { monthlyIncomeEntries, monthlyIncomes } from "@/lib/db/schema";
-import { isMonthWithinPeriod } from "@/lib/recurrence-period";
+import { getPeriodMonthDateRange, isMonthWithinPeriod } from "@/lib/recurrence-period";
 import {
   buildIncomeTrackingSummary,
   buildIncomeTrackingSummaryByCategory,
@@ -80,10 +80,21 @@ export async function listIncomeEntriesByPeriod(
   periodMonth: string
 ): Promise<MonthlyIncomeEntry[]> {
   const db = getDb();
+  const dateRange = getPeriodMonthDateRange(periodMonth);
+
+  if (!dateRange) {
+    return [];
+  }
+
   return db
     .select()
     .from(monthlyIncomeEntries)
-    .where(eq(monthlyIncomeEntries.periodMonth, periodMonth))
+    .where(
+      and(
+        sql`${monthlyIncomeEntries.receivedAt} >= ${dateRange.startDate}`,
+        sql`${monthlyIncomeEntries.receivedAt} < ${dateRange.endDateExclusive}`
+      )
+    )
     .orderBy(asc(monthlyIncomeEntries.receivedAt), asc(monthlyIncomeEntries.createdAt));
 }
 
@@ -92,13 +103,20 @@ export async function listIncomeEntriesByIncomeAndPeriod(
   periodMonth: string
 ): Promise<MonthlyIncomeEntry[]> {
   const db = getDb();
+  const dateRange = getPeriodMonthDateRange(periodMonth);
+
+  if (!dateRange) {
+    return [];
+  }
+
   return db
     .select()
     .from(monthlyIncomeEntries)
     .where(
       and(
         eq(monthlyIncomeEntries.monthlyIncomeId, monthlyIncomeId),
-        eq(monthlyIncomeEntries.periodMonth, periodMonth)
+        sql`${monthlyIncomeEntries.receivedAt} >= ${dateRange.startDate}`,
+        sql`${monthlyIncomeEntries.receivedAt} < ${dateRange.endDateExclusive}`
       )
     )
     .orderBy(asc(monthlyIncomeEntries.receivedAt), asc(monthlyIncomeEntries.createdAt));

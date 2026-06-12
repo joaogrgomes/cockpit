@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   formatRecurrencePeriodLabel,
+  getPeriodMonthDateRange,
   isMonthWithinPeriod,
+  isDateWithinPeriodMonth,
   validatePeriod,
 } from "@/lib/recurrence-period";
 
@@ -28,6 +30,25 @@ describe("recurrence period helpers", () => {
 
   it("rejeita fim menor que o início", () => {
     expect(validatePeriod("2026-08", "2026-07")).toBe(false);
+  });
+
+  it("gera intervalo half-open mensal correto", () => {
+    expect(getPeriodMonthDateRange("2026-05")).toEqual({
+      startDate: "2026-05-01",
+      endDateExclusive: "2026-06-01",
+    });
+
+    expect(getPeriodMonthDateRange("2026-06")).toEqual({
+      startDate: "2026-06-01",
+      endDateExclusive: "2026-07-01",
+    });
+  });
+
+  it("considera apenas datas dentro do intervalo half-open do mês", () => {
+    expect(isDateWithinPeriodMonth("2026-06-01", "2026-05")).toBe(false);
+    expect(isDateWithinPeriodMonth("2026-05-31", "2026-05")).toBe(true);
+    expect(isDateWithinPeriodMonth("2026-05-01", "2026-05")).toBe(true);
+    expect(isDateWithinPeriodMonth("2026-06-01", "2026-06")).toBe(true);
   });
 
   it("formata vigência sem fim", () => {
