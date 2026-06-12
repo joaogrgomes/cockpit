@@ -14,6 +14,7 @@ import {
 import { normalizeDateOnly } from "@/lib/date-utils";
 import { getExpenseCategoryLabel } from "@/lib/expenses";
 import { getIncomeCategoryLabel } from "@/lib/incomes";
+import { getPreviousPeriodMonth } from "@/lib/cash-flow";
 import {
   buildReconciliationSummary,
   getReconciliationItemHref,
@@ -22,6 +23,8 @@ import {
   type ReconciliationSummary,
 } from "@/lib/reconciliation";
 import { getCashFlowSettings } from "@/lib/services/cash-flow.service";
+import { getMonthlyClosing } from "@/lib/services/monthly-closing.service";
+import { getStatementOpeningBalance } from "@/lib/services/statement.service";
 
 type ReconciliationIncomeRow = {
   id: string;
@@ -154,21 +157,14 @@ export async function getReconciliationSummary(
   const periodMonth = normalizeReconciliationPeriodMonth(input.periodMonth);
   const cutoffDate = normalizeReconciliationCutoffDate(input.cutoffDate);
   const bankBalanceCents = input.bankBalanceCents ?? null;
-
-  const openingBalanceSourceLabel =
-    periodMonth === settings.startMonth ? "Configuração inicial" : "Carry-over do mês anterior";
-
-  if (periodMonth < settings.startMonth) {
-    return buildReconciliationSummary({
-      periodMonth,
-      cutoffDate,
-      bankBalanceCents,
-      openingBalanceCents: settings.initialBalance,
-      items: [],
-      allItems: [],
-      openingBalanceSourceLabel,
-    });
-  }
+  const previousMonth = getPreviousPeriodMonth(periodMonth);
+  const previousMonthIsClosed = previousMonth ? Boolean(await getMonthlyClosing(previousMonth)) : false;
+  const openingBalanceSourceLabel = previousMonthIsClosed
+    ? "Carry-over do mês anterior"
+    : periodMonth === settings.startMonth
+    ? "Configuração inicial"
+    : "Carry-over do mês anterior";
+  const openingBalanceCents = await getStatementOpeningBalance(periodMonth);
 
   const [incomeRows, expenseRows] = await Promise.all([
     db
@@ -264,15 +260,6 @@ export async function getReconciliationSummary(
 
       return right.id.localeCompare(left.id);
     });
-
-  const priorIncomeCents = allItems
-    .filter((item) => item.type === "income" && item.periodMonth < periodMonth)
-    .reduce((sum, item) => sum + item.amountCents, 0);
-  const priorExpenseCents = allItems
-    .filter((item) => item.type === "expense" && item.periodMonth < periodMonth)
-    .reduce((sum, item) => sum + item.amountCents, 0);
-
-  const openingBalanceCents = settings.initialBalance + priorIncomeCents - priorExpenseCents;
 
   return buildReconciliationSummary({
     periodMonth,

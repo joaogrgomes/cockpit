@@ -14,10 +14,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { formatBRL, parseBRL } from "@/lib/calculations";
+import { calculateDailyRunningBalances, getMonthDateRange } from "@/lib/daily-balance";
 import { getLocalDateInputValue, formatDateOnlyBR } from "@/lib/date-utils";
 import { getCurrentPeriodMonth } from "@/lib/cash-flow";
 import { getReconciliationDifferenceMessage } from "@/lib/reconciliation";
 import { getReconciliationSummary } from "@/lib/services/reconciliation.service";
+import type { StatementItem } from "@/lib/statement";
 import { SearchIcon } from "lucide-react";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +89,35 @@ export default async function ReconciliationPage({ searchParams }: Reconciliatio
     periodMonth: selectedPeriodMonth,
     cutoffDate: selectedCutoffDate,
     bankBalanceCents,
+  });
+  const reconciliationDailyItems: StatementItem[] = reconciliation.items.map((item) => ({
+    id: item.id,
+    kind: item.type,
+    source:
+      item.originType === "monthly_income_entry_linked" ||
+      item.originType === "monthly_expense_entry_linked"
+        ? "linked"
+        : "one_time",
+    date: item.date,
+    periodMonth: item.periodMonth,
+    description: item.title,
+    category: item.category,
+    categoryLabel: item.categoryLabel,
+    amount: item.amountCents,
+    signedAmount: item.type === "income" ? item.amountCents : -item.amountCents,
+    paymentMethod: null,
+    notes: item.notes ?? null,
+    originId: item.id,
+    originType:
+      item.type === "income" ? "monthly_income_entry" : "monthly_expense_entry",
+    createdAt: item.createdAt ?? null,
+  }));
+  const { startDate, endDate } = getMonthDateRange(reconciliation.periodMonth);
+  const dailyBalances = calculateDailyRunningBalances({
+    openingBalanceCents: reconciliation.openingBalanceCents,
+    items: reconciliationDailyItems,
+    startDate,
+    endDate,
   });
 
   return (
@@ -213,6 +244,55 @@ export default async function ReconciliationPage({ searchParams }: Reconciliatio
           </p>
           <div className="rounded-xl border border-border/70 bg-muted/20 p-4 text-sm text-foreground">
             {getReconciliationDifferenceMessage(reconciliation.differenceCents)}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/80 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Conciliação diária</CardTitle>
+          <CardDescription>
+            Use esta visão para descobrir em qual dia o saldo começou a divergir do banco.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="px-0">
+          <div className="overflow-x-auto px-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Resultado Cockpit</TableHead>
+                  <TableHead>Saldo Cockpit</TableHead>
+                  <TableHead>Saldo Banco</TableHead>
+                  <TableHead>Diferença</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dailyBalances.map((day) => (
+                  <TableRow key={day.date} className="border-border/70 hover:bg-muted/20">
+                    <TableCell className="text-sm text-muted-foreground">
+                      {formatDateOnlyBR(day.date)}
+                    </TableCell>
+                    <TableCell
+                      className={`font-medium ${
+                        day.dailyResultCents > 0
+                          ? "text-emerald-600"
+                          : day.dailyResultCents < 0
+                          ? "text-destructive"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {formatSignedBRL(day.dailyResultCents)}
+                    </TableCell>
+                    <TableCell className="font-medium">{formatBRL(day.closingBalanceCents)}</TableCell>
+                    <TableCell className="text-muted-foreground">—</TableCell>
+                    <TableCell className="text-muted-foreground">—</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">Saldo diário calculado</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
