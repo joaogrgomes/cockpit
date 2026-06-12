@@ -25,6 +25,11 @@ export type StatementDailyBalanceRange = {
   isFutureMonth: boolean;
 };
 
+export type StatementDailyRunningBalancesInput = Omit<DailyBalanceInput, "startDate" | "endDate"> & {
+  periodMonth: string;
+  referenceDate?: Date;
+};
+
 export function getMonthDateRange(periodMonth: string): { startDate: string; endDate: string } {
   const normalized = /^\d{4}-(0[1-9]|1[0-2])$/.test(periodMonth)
     ? periodMonth
@@ -184,10 +189,7 @@ export function calculateDailyRunningBalances(
 }
 
 export function getStatementDailyRunningBalances(
-  input: DailyBalanceInput & {
-    periodMonth: string;
-    referenceDate?: Date;
-  }
+  input: StatementDailyRunningBalancesInput
 ): { balances: DailyBalance[]; isFutureMonth: boolean; startDate: string; endDate: string | null } {
   const { periodMonth, referenceDate, openingBalanceCents, items } = input;
   const range = getStatementMonthDateRange(periodMonth, referenceDate);
