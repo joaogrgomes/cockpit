@@ -3,6 +3,7 @@ import "server-only";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { normalizeDateOnly } from "@/lib/date-utils";
 import {
+  buildMonthlyExpenseAgendaItem,
   computeDebtNextDueDate,
   getPaymentAgendaCategoryLabel,
   getPaymentAgendaItemHref,
@@ -13,6 +14,8 @@ import {
 } from "@/lib/payment-agenda";
 import { getDb } from "@/lib/db";
 import { debtProposals, debts, futureExpensePayables } from "@/lib/db/schema";
+import { listMonthlyExpenses } from "@/lib/services/monthly-expense.service";
+import { listEntriesByPeriod } from "@/lib/services/monthly-expense-entry.service";
 
 type FutureExpenseAgendaRow = {
   id: string;
@@ -157,8 +160,9 @@ function mapDebtRowToItem(
 export async function getPaymentAgenda(): Promise<PaymentAgendaViewModel> {
   const db = getDb();
   const referenceDate = getPaymentAgendaReferenceDate();
+  const referencePeriodMonth = referenceDate.slice(0, 7);
 
-  const [futureExpenseRows, debtProposalRows, debtRows] = await Promise.all([
+  const [futureExpenseRows, debtProposalRows, debtRows, monthlyExpenseRows, periodExpenseEntries] = await Promise.all([
     db
       .select({
         id: futureExpensePayables.id,
@@ -233,10 +237,40 @@ export async function getPaymentAgenda(): Promise<PaymentAgendaViewModel> {
         ])
       )
       .orderBy(asc(debts.status), asc(debts.dueDate), asc(debts.createdAt)),
+    listMonthlyExpenses({
+      periodMonth: referencePeriodMonth,
+      isActive: "true",
+      sort: "due_day",
+    }),
+    listEntriesByPeriod(referencePeriodMonth),
   ]);
+
+  const realizedMonthlyExpenseIds = new Set(
+    periodExpenseEntries
+      .filter((entry) => entry.monthlyExpenseId !== null)
+      .map((entry) => entry.monthlyExpenseId as string)
+  );
 
   const items = [
     ...futureExpenseRows.map(mapFutureExpenseRowToItem),
+    ...monthlyExpenseRows
+      .filter((expense) => !realizedMonthlyExpenseIds.has(expense.id))
+      .map((expense) =>
+        buildMonthlyExpenseAgendaItem({
+          monthlyExpenseId: expense.id,
+          name: expense.name,
+          category: expense.category,
+          expenseType: expense.expenseType,
+          dueDay: expense.dueDay,
+          amount: expense.amount,
+          startMonth: expense.startMonth,
+          endMonth: expense.endMonth,
+          isActive: expense.isActive,
+          periodMonth: referencePeriodMonth,
+          actualAmount: 0,
+          referenceDate,
+        })
+      ),
     ...debtProposalRows.map(mapDebtProposalRowToItem),
     ...debtRows.map((row) => mapDebtRowToItem(row, referenceDate)),
   ].filter((item): item is PaymentAgendaItem => Boolean(item));

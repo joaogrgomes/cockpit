@@ -8,6 +8,7 @@ import {
   mapExpenseEntryRowToStatementItem,
   mapIncomeEntryRowToDetail,
   mapIncomeEntryRowToStatementItem,
+  sortStatementItems,
 } from "@/lib/statement";
 
 describe("statement mapping", () => {
@@ -379,10 +380,10 @@ describe("buildStatementResult", () => {
     });
 
     expect(result.items.map((item) => item.id)).toEqual([
-      "expense-1",
       "income-1",
-      "expense-2",
+      "expense-1",
       "income-2",
+      "expense-2",
     ]);
     expect(result.summary).toMatchObject({
       totalIncome: 600000,
@@ -636,5 +637,60 @@ describe("groupStatementItemsByDate", () => {
     ]);
 
     expect(groups[0].dailyBalance).toBe(0);
+  });
+
+  it("preserva a ordem de criação dos lançamentos dentro do mesmo dia", () => {
+    const sorted = sortStatementItems([
+      mapExpenseEntryRowToStatementItem({
+        id: "expense-3",
+        monthlyExpenseId: null,
+        entryName: "Banca de revista",
+        entryCategory: "lazer",
+        entryExpenseType: "variavel",
+        monthlyExpenseName: null,
+        monthlyExpenseCategory: null,
+        monthlyExpenseType: null,
+        periodMonth: "2026-06",
+        amount: 1000,
+        paidAt: "2026-06-12",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-06-12T12:00:00.000Z",
+      }),
+      mapExpenseEntryRowToStatementItem({
+        id: "expense-1",
+        monthlyExpenseId: null,
+        entryName: "Padaria",
+        entryCategory: "alimentacao",
+        entryExpenseType: "variavel",
+        monthlyExpenseName: null,
+        monthlyExpenseCategory: null,
+        monthlyExpenseType: null,
+        periodMonth: "2026-06",
+        amount: 1500,
+        paidAt: "2026-06-12",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-06-12T08:00:00.000Z",
+      }),
+      mapExpenseEntryRowToStatementItem({
+        id: "expense-2",
+        monthlyExpenseId: null,
+        entryName: "Supermercado",
+        entryCategory: "alimentacao",
+        entryExpenseType: "variavel",
+        monthlyExpenseName: null,
+        monthlyExpenseCategory: null,
+        monthlyExpenseType: null,
+        periodMonth: "2026-06",
+        amount: 2000,
+        paidAt: "2026-06-12",
+        paymentMethod: "pix",
+        notes: null,
+        createdAt: "2026-06-12T10:00:00.000Z",
+      }),
+    ]);
+
+    expect(sorted.map((item) => item.id)).toEqual(["expense-1", "expense-2", "expense-3"]);
   });
 });

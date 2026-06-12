@@ -1,9 +1,12 @@
 import { normalizeDateOnly } from "@/lib/date-utils";
 import { getDebtTypeLabel } from "@/lib/debt-type";
 import { getExpenseCategoryLabel } from "@/lib/expenses";
+import { getDueDateFromPeriodMonth } from "@/lib/expense-tracking";
+import { isMonthWithinPeriod } from "@/lib/recurrence-period";
 
 export const PAYMENT_AGENDA_SOURCE_TYPES = [
   "future_expense",
+  "monthly_expense",
   "debt_proposal",
   "debt_due",
   "debt_clearance",
@@ -47,6 +50,7 @@ export type PaymentAgendaViewModel = {
 
 const PAYMENT_AGENDA_SOURCE_LABELS: Record<PaymentAgendaSourceType, string> = {
   future_expense: "Gasto futuro",
+  monthly_expense: "Despesa mensal",
   debt_proposal: "Proposta de dívida",
   debt_due: "Dívida a pagar",
   debt_clearance: "Aguardando baixa",
@@ -54,6 +58,7 @@ const PAYMENT_AGENDA_SOURCE_LABELS: Record<PaymentAgendaSourceType, string> = {
 
 const PAYMENT_AGENDA_SOURCE_ACTION_LABELS: Record<PaymentAgendaSourceType, string> = {
   future_expense: "Abrir gastos futuros",
+  monthly_expense: "Abrir acompanhamento",
   debt_proposal: "Abrir dívida",
   debt_due: "Abrir dívida",
   debt_clearance: "Abrir dívida",
@@ -91,6 +96,13 @@ const PROPOSAL_STATUS_LABELS: Record<string, string> = {
   recusada: "Recusada",
   aceita: "Aceita",
   substituida: "Substituída",
+};
+
+const MONTHLY_EXPENSE_STATUS_LABELS: Record<string, string> = {
+  atrasado: "Atrasado",
+  hoje: "Hoje",
+  esta_semana: "Esta semana",
+  proximo: "Próximo",
 };
 
 function toLocalDate(value: string | Date): Date {
@@ -143,6 +155,10 @@ export function getPaymentAgendaStatusLabel(
     return PROPOSAL_STATUS_LABELS[status] ?? status;
   }
 
+  if (sourceType === "monthly_expense") {
+    return MONTHLY_EXPENSE_STATUS_LABELS[status] ?? status;
+  }
+
   if (sourceType === "future_expense") {
     if (status === "previsto") return "Previsto";
     if (status === "realizado") return "Realizado";
@@ -160,6 +176,13 @@ export function getPaymentAgendaStatusBadgeVariant(
   if (sourceType === "future_expense") {
     if (status === "cancelado") return "destructive";
     if (status === "realizado") return "secondary";
+    return "outline";
+  }
+
+  if (sourceType === "monthly_expense") {
+    if (status === "atrasado") return "destructive";
+    if (status === "hoje") return "default";
+    if (status === "esta_semana") return "secondary";
     return "outline";
   }
 
@@ -256,15 +279,94 @@ export function getPaymentAgendaItemHref(sourceType: PaymentAgendaSourceType, id
     return "/expenses/future";
   }
 
+  if (sourceType === "monthly_expense") {
+    return `/expenses/tracking?month=${id}`;
+  }
+
   return `/debts/${id}`;
+}
+
+export type MonthlyExpenseAgendaCandidate = {
+  monthlyExpenseId: string;
+  name: string;
+  category: string;
+  expenseType: string;
+  dueDay: number | null;
+  amount: number;
+  startMonth: string;
+  endMonth: string | null;
+  isActive: boolean;
+};
+
+export function getMonthlyExpenseAgendaDueDate(
+  periodMonth: string,
+  dueDay: number | null
+): string | null {
+  if (typeof dueDay !== "number") {
+    return null;
+  }
+
+  const dueDate = getDueDateFromPeriodMonth(periodMonth, dueDay);
+  return dueDate ? normalizeDateOnly(dueDate) : null;
+}
+
+export function buildMonthlyExpenseAgendaItem(
+  input: MonthlyExpenseAgendaCandidate & {
+    periodMonth: string;
+    actualAmount: number;
+    referenceDate?: string;
+  }
+): PaymentAgendaItem | null {
+  if (!input.isActive) {
+    return null;
+  }
+
+  if (!isMonthWithinPeriod(input.periodMonth, input.startMonth, input.endMonth)) {
+    return null;
+  }
+
+  if (input.actualAmount > 0) {
+    return null;
+  }
+
+  const dueDate = getMonthlyExpenseAgendaDueDate(input.periodMonth, input.dueDay);
+  if (!dueDate) {
+    return null;
+  }
+
+  const referenceDate = input.referenceDate ?? getPaymentAgendaReferenceDate();
+  const bucketKey = getPaymentAgendaItemBucketKey(dueDate, referenceDate);
+  const status =
+    dueDate < referenceDate
+      ? "atrasado"
+      : dueDate === referenceDate
+        ? "hoje"
+        : bucketKey === "tomorrow" || bucketKey === "week"
+          ? "esta_semana"
+          : "proximo";
+
+  return {
+    id: input.monthlyExpenseId,
+    sourceType: "monthly_expense",
+    title: input.name,
+    amountCents: input.amount,
+    dueDate,
+    status,
+    category: getPaymentAgendaCategoryLabel("monthly_expense", input.category),
+    paymentMethod: null,
+    paymentCode: null,
+    notes: `Despesa mensal planejada${input.expenseType ? ` • ${input.expenseType}` : ""}`,
+    href: getPaymentAgendaItemHref("monthly_expense", input.periodMonth),
+  };
 }
 
 export function sortPaymentAgendaItems(items: PaymentAgendaItem[]): PaymentAgendaItem[] {
   const sourcePriority: Record<PaymentAgendaSourceType, number> = {
     future_expense: 0,
-    debt_clearance: 1,
-    debt_due: 2,
-    debt_proposal: 3,
+    monthly_expense: 1,
+    debt_clearance: 2,
+    debt_due: 3,
+    debt_proposal: 4,
   };
 
   return [...items].sort((left, right) => {
@@ -343,7 +445,7 @@ export function getPaymentAgendaCategoryLabel(
   sourceType: PaymentAgendaSourceType,
   category: string
 ): string {
-  if (sourceType === "future_expense") {
+  if (sourceType === "future_expense" || sourceType === "monthly_expense") {
     return getExpenseCategoryLabel(category);
   }
 

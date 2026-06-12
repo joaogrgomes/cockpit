@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildMonthlyExpenseAgendaItem,
   computeDebtNextDueDate,
+  getMonthlyExpenseAgendaDueDate,
   getPaymentAgendaSourceActionLabel,
   getPaymentAgendaSourceLabel,
   getPaymentAgendaStatusBadgeVariant,
@@ -89,12 +91,117 @@ describe("payment agenda helpers", () => {
     expect(computeDebtNextDueDate(10, "2026-06-11")).toBe("2026-07-10");
   });
 
+  it("calcula e agrupa despesas mensais planejadas pendentes", () => {
+    const today = "2026-06-12";
+
+    const dueToday = buildMonthlyExpenseAgendaItem({
+      monthlyExpenseId: "expense-1",
+      name: "ChatGPT",
+      category: "assinaturas",
+      expenseType: "fixo",
+      dueDay: 12,
+      amount: 11000,
+      startMonth: "2026-01",
+      endMonth: null,
+      isActive: true,
+      periodMonth: "2026-06",
+      actualAmount: 0,
+      referenceDate: today,
+    });
+
+    const overdue = buildMonthlyExpenseAgendaItem({
+      monthlyExpenseId: "expense-2",
+      name: "Pilates da Poli",
+      category: "saude",
+      expenseType: "fixo",
+      dueDay: 5,
+      amount: 18000,
+      startMonth: "2026-01",
+      endMonth: null,
+      isActive: true,
+      periodMonth: "2026-06",
+      actualAmount: 0,
+      referenceDate: today,
+    });
+
+    const realized = buildMonthlyExpenseAgendaItem({
+      monthlyExpenseId: "expense-3",
+      name: "Realizado",
+      category: "saude",
+      expenseType: "fixo",
+      dueDay: 12,
+      amount: 18000,
+      startMonth: "2026-01",
+      endMonth: null,
+      isActive: true,
+      periodMonth: "2026-06",
+      actualAmount: 5000,
+      referenceDate: today,
+    });
+
+    const futureWeek = buildMonthlyExpenseAgendaItem({
+      monthlyExpenseId: "expense-4",
+      name: "Academia",
+      category: "saude",
+      expenseType: "fixo",
+      dueDay: 14,
+      amount: 9000,
+      startMonth: "2026-01",
+      endMonth: null,
+      isActive: true,
+      periodMonth: "2026-06",
+      actualAmount: 0,
+      referenceDate: today,
+    });
+
+    const outOfPeriod = buildMonthlyExpenseAgendaItem({
+      monthlyExpenseId: "expense-5",
+      name: "Futuro",
+      category: "saude",
+      expenseType: "fixo",
+      dueDay: 12,
+      amount: 9000,
+      startMonth: "2026-08",
+      endMonth: null,
+      isActive: true,
+      periodMonth: "2026-06",
+      actualAmount: 0,
+      referenceDate: today,
+    });
+
+    expect(dueToday?.dueDate).toBe("2026-06-12");
+    expect(dueToday?.status).toBe("hoje");
+    expect(overdue?.status).toBe("atrasado");
+    expect(realized).toBeNull();
+    expect(futureWeek?.status).toBe("esta_semana");
+    expect(outOfPeriod).toBeNull();
+
+    const agenda = groupPaymentAgendaItems(
+      [dueToday, overdue, futureWeek].filter((item): item is PaymentAgendaItem => Boolean(item)),
+      today
+    );
+
+    expect(agenda.buckets.today.items.map((item) => item.title)).toEqual([
+      "Pilates da Poli",
+      "ChatGPT",
+    ]);
+    expect(agenda.buckets.today.count).toBe(2);
+    expect(agenda.buckets.week.items.map((item) => item.title)).toEqual(["Academia"]);
+  });
+
+  it("calcula vencimento mensal com corte no fim do mês", () => {
+    expect(getMonthlyExpenseAgendaDueDate("2026-02", 31)).toBe("2026-02-28");
+  });
+
   it("expõe rótulos e badges da agenda", () => {
     expect(getPaymentAgendaSourceLabel("future_expense")).toBe("Gasto futuro");
+    expect(getPaymentAgendaSourceLabel("monthly_expense")).toBe("Despesa mensal");
     expect(getPaymentAgendaSourceActionLabel("debt_proposal")).toBe("Abrir dívida");
+    expect(getPaymentAgendaSourceActionLabel("monthly_expense")).toBe("Abrir acompanhamento");
     expect(getPaymentAgendaStatusLabel("future_expense", "previsto")).toBe("Previsto");
     expect(getPaymentAgendaStatusLabel("debt_proposal", "ativa")).toBe("Ativa");
+    expect(getPaymentAgendaStatusLabel("monthly_expense", "atrasado")).toBe("Atrasado");
     expect(getPaymentAgendaStatusBadgeVariant("debt_due", "em_atraso")).toBe("destructive");
+    expect(getPaymentAgendaStatusBadgeVariant("monthly_expense", "hoje")).toBe("default");
   });
 });
-

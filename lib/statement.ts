@@ -260,12 +260,24 @@ function compareStatementItems(a: StatementItem, b: StatementItem): number {
     return dateA < dateB ? 1 : -1;
   }
 
-  const createdAtDiff = getTimestampMs(b.createdAt) - getTimestampMs(a.createdAt);
-  if (createdAtDiff !== 0) {
-    return createdAtDiff;
+  const aCreatedAt = a.createdAt ? getTimestampMs(a.createdAt) : null;
+  const bCreatedAt = b.createdAt ? getTimestampMs(b.createdAt) : null;
+
+  if (aCreatedAt !== null || bCreatedAt !== null) {
+    if (aCreatedAt === null) {
+      return 1;
+    }
+
+    if (bCreatedAt === null) {
+      return -1;
+    }
+
+    if (aCreatedAt !== bCreatedAt) {
+      return aCreatedAt - bCreatedAt;
+    }
   }
 
-  return b.id.localeCompare(a.id);
+  return a.id.localeCompare(b.id);
 }
 
 export function sortStatementItems(items: StatementItem[]): StatementItem[] {
