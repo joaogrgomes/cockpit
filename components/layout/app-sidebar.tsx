@@ -13,6 +13,7 @@ import {
   LandmarkIcon,
   LayoutGridIcon,
   ListChecksIcon,
+  SearchIcon,
   WalletCardsIcon,
 } from "lucide-react";
 import {
@@ -46,6 +47,10 @@ const BUDGET_NAV_ITEMS = [
 
 const ANALYSIS_NAV_ITEMS = [
   { href: "/cost-analyses", label: "Análises de Custo", icon: CalculatorIcon, exact: true },
+];
+
+const RECONCILIATION_NAV_ITEMS = [
+  { href: "/reconciliation", label: "Conciliação", icon: SearchIcon, exact: true },
 ];
 
 const AGENDA_NAV_ITEMS = [
@@ -121,6 +126,7 @@ export function AppSidebar() {
         {renderGroup("Entradas", INCOME_NAV_ITEMS)}
         {renderGroup("Planejamento", BUDGET_NAV_ITEMS)}
         {renderGroup("Análises", ANALYSIS_NAV_ITEMS)}
+        {renderGroup("Auditoria", RECONCILIATION_NAV_ITEMS)}
         {renderGroup("Agenda", AGENDA_NAV_ITEMS)}
         {renderGroup("Gastos", EXPENSE_NAV_ITEMS)}
         {renderGroup("Fluxo", CASH_FLOW_NAV_ITEMS)}
