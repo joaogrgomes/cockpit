@@ -237,6 +237,25 @@ export function getPaymentAgendaItemBucketKey(
   return "next";
 }
 
+export function getPaymentAgendaWindow(
+  referenceDate: string = getPaymentAgendaReferenceDate()
+): { startDate: string; endDate: string } {
+  const endDate = addDaysDateOnly(referenceDate, 7) ?? referenceDate;
+
+  return {
+    startDate: referenceDate,
+    endDate,
+  };
+}
+
+export function filterPaymentAgendaItemsByWindow(
+  items: PaymentAgendaItem[],
+  referenceDate: string = getPaymentAgendaReferenceDate()
+): PaymentAgendaItem[] {
+  const { endDate } = getPaymentAgendaWindow(referenceDate);
+  return items.filter((item) => compareDateOnly(item.dueDate, endDate) <= 0);
+}
+
 export function getEndOfWeekDateOnly(referenceDate: string = getPaymentAgendaReferenceDate()): string | null {
   const normalized = normalizeDateOnly(referenceDate);
   if (!normalized) return null;
@@ -312,16 +331,28 @@ export function getMonthlyExpenseAgendaDueDate(
 
 export function buildMonthlyExpenseAgendaItem(
   input: MonthlyExpenseAgendaCandidate & {
-    periodMonth: string;
+    periodMonth?: string;
     actualAmount: number;
     referenceDate?: string;
+    dueDate?: string;
   }
 ): PaymentAgendaItem | null {
   if (!input.isActive) {
     return null;
   }
 
-  if (!isMonthWithinPeriod(input.periodMonth, input.startMonth, input.endMonth)) {
+  const referenceDate = input.referenceDate ?? getPaymentAgendaReferenceDate();
+  const dueDate = input.dueDate
+    ? normalizeDateOnly(input.dueDate)
+    : typeof input.dueDay === "number"
+      ? getMonthlyExpenseAgendaDueDate(input.periodMonth ?? referenceDate.slice(0, 7), input.dueDay)
+      : null;
+
+  if (!dueDate) {
+    return null;
+  }
+
+  if (!isMonthWithinPeriod(dueDate.slice(0, 7), input.startMonth, input.endMonth)) {
     return null;
   }
 
@@ -329,12 +360,6 @@ export function buildMonthlyExpenseAgendaItem(
     return null;
   }
 
-  const dueDate = getMonthlyExpenseAgendaDueDate(input.periodMonth, input.dueDay);
-  if (!dueDate) {
-    return null;
-  }
-
-  const referenceDate = input.referenceDate ?? getPaymentAgendaReferenceDate();
   const bucketKey = getPaymentAgendaItemBucketKey(dueDate, referenceDate);
   const status =
     dueDate < referenceDate
@@ -356,7 +381,7 @@ export function buildMonthlyExpenseAgendaItem(
     paymentMethod: null,
     paymentCode: null,
     notes: `Despesa mensal planejada${input.expenseType ? ` • ${input.expenseType}` : ""}`,
-    href: getPaymentAgendaItemHref("monthly_expense", input.periodMonth),
+    href: getPaymentAgendaItemHref("monthly_expense", dueDate.slice(0, 7)),
   };
 }
 

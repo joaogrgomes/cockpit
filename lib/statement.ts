@@ -275,6 +275,8 @@ function compareStatementItems(a: StatementItem, b: StatementItem): number {
     if (aCreatedAt !== bCreatedAt) {
       return aCreatedAt - bCreatedAt;
     }
+
+    return 0;
   }
 
   return a.id.localeCompare(b.id);
@@ -518,7 +520,7 @@ export function buildStatementResult(params: {
     return true;
   });
 
-  const items = sortStatementItems(filtered).map(({ createdAt: _createdAt, ...item }) => item);
+  const items = sortStatementItems(filtered);
 
   return {
     periodMonth: params.periodMonth,

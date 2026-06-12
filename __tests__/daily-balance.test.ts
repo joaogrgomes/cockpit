@@ -275,6 +275,46 @@ describe("daily balance helper", () => {
     expect(timeline.balances.map((day) => day.date)).not.toContain("2026-06-30");
   });
 
+  it("preserva a ordem de criação dos lançamentos dentro do dia na timeline", () => {
+    const timeline = getStatementDailyRunningBalances({
+      periodMonth: "2026-06",
+      referenceDate: new Date(2026, 5, 12),
+      openingBalanceCents: 10_000,
+      items: [
+        buildStatementItem({
+          id: "later",
+          kind: "expense",
+          date: "2026-06-12",
+          periodMonth: "2026-06",
+          description: "Depois",
+          amount: 300,
+          signedAmount: -300,
+          category: "alimentacao",
+          categoryLabel: "Alimentação",
+          originId: "later",
+          originType: "monthly_expense_entry",
+          createdAt: new Date(2026, 5, 12, 12, 0, 0),
+        }),
+        buildStatementItem({
+          id: "first",
+          kind: "expense",
+          date: "2026-06-12",
+          periodMonth: "2026-06",
+          description: "Antes",
+          amount: 200,
+          signedAmount: -200,
+          category: "alimentacao",
+          categoryLabel: "Alimentação",
+          originId: "first",
+          originType: "monthly_expense_entry",
+          createdAt: new Date(2026, 5, 12, 8, 0, 0),
+        }),
+      ],
+    });
+
+    expect(timeline.balances[0]?.items.map((item) => item.id)).toEqual(["first", "later"]);
+  });
+
   it("mostra saldo do dia como closingBalance", () => {
     const timeline = getStatementDailyRunningBalances({
       periodMonth: "2026-06",

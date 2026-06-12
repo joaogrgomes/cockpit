@@ -391,6 +391,7 @@ describe("buildStatementResult", () => {
       balance: 455000,
       count: 4,
     });
+    expect(result.items[0]?.createdAt).toBeDefined();
   });
 
   it("filtra por tipo", () => {

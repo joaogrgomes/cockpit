@@ -5,6 +5,8 @@ import { normalizeDateOnly } from "@/lib/date-utils";
 import {
   buildMonthlyExpenseAgendaItem,
   computeDebtNextDueDate,
+  filterPaymentAgendaItemsByWindow,
+  getMonthlyExpenseAgendaDueDate,
   getPaymentAgendaCategoryLabel,
   getPaymentAgendaItemHref,
   getPaymentAgendaReferenceDate,
@@ -69,6 +71,20 @@ type DebtAgendaRow = {
 function formatNotes(parts: Array<string | null | undefined>): string | null {
   const cleaned = parts.map((part) => (typeof part === "string" ? part.trim() : "")).filter(Boolean);
   return cleaned.length > 0 ? cleaned.join(" • ") : null;
+}
+
+function getNextPeriodMonth(periodMonth: string): string {
+  const [yearText, monthText] = periodMonth.split("-");
+  const year = Number.parseInt(yearText, 10);
+  const month = Number.parseInt(monthText, 10);
+
+  if (Number.isNaN(year) || Number.isNaN(month)) {
+    return periodMonth;
+  }
+
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  return `${nextYear}-${String(nextMonth).padStart(2, "0")}`;
 }
 
 function mapFutureExpenseRowToItem(row: FutureExpenseAgendaRow): PaymentAgendaItem | null {
@@ -161,8 +177,9 @@ export async function getPaymentAgenda(): Promise<PaymentAgendaViewModel> {
   const db = getDb();
   const referenceDate = getPaymentAgendaReferenceDate();
   const referencePeriodMonth = referenceDate.slice(0, 7);
+  const nextPeriodMonth = getNextPeriodMonth(referencePeriodMonth);
 
-  const [futureExpenseRows, debtProposalRows, debtRows, monthlyExpenseRows, periodExpenseEntries] = await Promise.all([
+  const [futureExpenseRows, debtProposalRows, debtRows, monthlyExpenseRows, currentMonthEntries, nextMonthEntries] = await Promise.all([
     db
       .select({
         id: futureExpensePayables.id,
@@ -238,42 +255,72 @@ export async function getPaymentAgenda(): Promise<PaymentAgendaViewModel> {
       )
       .orderBy(asc(debts.status), asc(debts.dueDate), asc(debts.createdAt)),
     listMonthlyExpenses({
-      periodMonth: referencePeriodMonth,
       isActive: "true",
       sort: "due_day",
     }),
     listEntriesByPeriod(referencePeriodMonth),
+    nextPeriodMonth !== referencePeriodMonth ? listEntriesByPeriod(nextPeriodMonth) : Promise.resolve([]),
   ]);
 
-  const realizedMonthlyExpenseIds = new Set(
-    periodExpenseEntries
-      .filter((entry) => entry.monthlyExpenseId !== null)
-      .map((entry) => entry.monthlyExpenseId as string)
-  );
+  const realizedMonthlyExpensePeriods = new Map<string, Set<string>>();
+  const allMonthlyExpenseEntries = [...currentMonthEntries, ...nextMonthEntries];
+  for (const entry of allMonthlyExpenseEntries) {
+    if (!entry.monthlyExpenseId) {
+      continue;
+    }
+
+    const periodSet = realizedMonthlyExpensePeriods.get(entry.monthlyExpenseId) ?? new Set<string>();
+    periodSet.add(entry.periodMonth);
+    realizedMonthlyExpensePeriods.set(entry.monthlyExpenseId, periodSet);
+  }
 
   const items = [
     ...futureExpenseRows.map(mapFutureExpenseRowToItem),
-    ...monthlyExpenseRows
-      .filter((expense) => !realizedMonthlyExpenseIds.has(expense.id))
-      .map((expense) =>
-        buildMonthlyExpenseAgendaItem({
-          monthlyExpenseId: expense.id,
-          name: expense.name,
-          category: expense.category,
-          expenseType: expense.expenseType,
-          dueDay: expense.dueDay,
-          amount: expense.amount,
-          startMonth: expense.startMonth,
-          endMonth: expense.endMonth,
-          isActive: expense.isActive,
-          periodMonth: referencePeriodMonth,
-          actualAmount: 0,
-          referenceDate,
-        })
-      ),
+    ...monthlyExpenseRows.map((expense) => {
+      const currentDueDate = getMonthlyExpenseAgendaDueDate(referencePeriodMonth, expense.dueDay);
+      if (!currentDueDate) {
+        return null;
+      }
+
+      const realizedMonths = realizedMonthlyExpensePeriods.get(expense.id);
+      const hasCurrentMonthEntry = realizedMonths?.has(referencePeriodMonth) ?? false;
+      const dueDate = hasCurrentMonthEntry
+        ? getMonthlyExpenseAgendaDueDate(nextPeriodMonth, expense.dueDay)
+        : currentDueDate;
+
+      if (!dueDate) {
+        return null;
+      }
+
+      const item = buildMonthlyExpenseAgendaItem({
+        monthlyExpenseId: expense.id,
+        name: expense.name,
+        category: expense.category,
+        expenseType: expense.expenseType,
+        dueDay: expense.dueDay,
+        amount: expense.amount,
+        startMonth: expense.startMonth,
+        endMonth: expense.endMonth,
+        isActive: expense.isActive,
+        actualAmount: 0,
+        referenceDate,
+        dueDate,
+      });
+
+      if (!item) {
+        return null;
+      }
+
+      const duePeriodMonth = item.dueDate.slice(0, 7);
+      if (realizedMonths?.has(duePeriodMonth)) {
+        return null;
+      }
+
+      return item;
+    }),
     ...debtProposalRows.map(mapDebtProposalRowToItem),
     ...debtRows.map((row) => mapDebtRowToItem(row, referenceDate)),
   ].filter((item): item is PaymentAgendaItem => Boolean(item));
 
-  return groupPaymentAgendaItems(items, referenceDate);
+  return groupPaymentAgendaItems(filterPaymentAgendaItemsByWindow(items, referenceDate), referenceDate);
 }

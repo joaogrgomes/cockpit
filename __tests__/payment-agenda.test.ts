@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildMonthlyExpenseAgendaItem,
   computeDebtNextDueDate,
+  filterPaymentAgendaItemsByWindow,
   getMonthlyExpenseAgendaDueDate,
+  getPaymentAgendaWindow,
   getPaymentAgendaSourceActionLabel,
   getPaymentAgendaSourceLabel,
   getPaymentAgendaStatusBadgeVariant,
@@ -93,6 +95,7 @@ describe("payment agenda helpers", () => {
 
   it("calcula e agrupa despesas mensais planejadas pendentes", () => {
     const today = "2026-06-12";
+    const window = getPaymentAgendaWindow(today);
 
     const dueToday = buildMonthlyExpenseAgendaItem({
       monthlyExpenseId: "expense-1",
@@ -139,12 +142,12 @@ describe("payment agenda helpers", () => {
       referenceDate: today,
     });
 
-    const futureWeek = buildMonthlyExpenseAgendaItem({
+    const futureSeven = buildMonthlyExpenseAgendaItem({
       monthlyExpenseId: "expense-4",
       name: "Academia",
       category: "saude",
       expenseType: "fixo",
-      dueDay: 14,
+      dueDay: 19,
       amount: 9000,
       startMonth: "2026-01",
       endMonth: null,
@@ -154,14 +157,14 @@ describe("payment agenda helpers", () => {
       referenceDate: today,
     });
 
-    const outOfPeriod = buildMonthlyExpenseAgendaItem({
+    const futureEight = buildMonthlyExpenseAgendaItem({
       monthlyExpenseId: "expense-5",
-      name: "Futuro",
-      category: "saude",
+      name: "Curso",
+      category: "educacao",
       expenseType: "fixo",
-      dueDay: 12,
-      amount: 9000,
-      startMonth: "2026-08",
+      dueDay: 20,
+      amount: 45000,
+      startMonth: "2026-01",
       endMonth: null,
       isActive: true,
       periodMonth: "2026-06",
@@ -173,20 +176,43 @@ describe("payment agenda helpers", () => {
     expect(dueToday?.status).toBe("hoje");
     expect(overdue?.status).toBe("atrasado");
     expect(realized).toBeNull();
-    expect(futureWeek?.status).toBe("esta_semana");
-    expect(outOfPeriod).toBeNull();
+    expect(futureSeven?.status).toBe("proximo");
+    expect(futureEight?.status).toBe("proximo");
 
-    const agenda = groupPaymentAgendaItems(
-      [dueToday, overdue, futureWeek].filter((item): item is PaymentAgendaItem => Boolean(item)),
+    const filtered = filterPaymentAgendaItemsByWindow(
+      [dueToday, overdue, futureSeven, futureEight].filter(
+        (item): item is PaymentAgendaItem => Boolean(item)
+      ),
       today
     );
 
+    expect(window).toEqual({
+      startDate: "2026-06-12",
+      endDate: "2026-06-19",
+    });
+    expect(filtered.map((item) => item.title)).toEqual([
+      "ChatGPT",
+      "Pilates da Poli",
+      "Academia",
+    ]);
+    expect(filtered.some((item) => item.title === "Curso")).toBe(false);
+
+    const agenda = groupPaymentAgendaItems(
+      filtered,
+      today
+    );
+
+    expect(agenda.totalCount).toBe(3);
+    expect(agenda.items.map((item) => item.title)).toEqual([
+      "Pilates da Poli",
+      "ChatGPT",
+      "Academia",
+    ]);
     expect(agenda.buckets.today.items.map((item) => item.title)).toEqual([
       "Pilates da Poli",
       "ChatGPT",
     ]);
     expect(agenda.buckets.today.count).toBe(2);
-    expect(agenda.buckets.week.items.map((item) => item.title)).toEqual(["Academia"]);
   });
 
   it("calcula vencimento mensal com corte no fim do mês", () => {
