@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { calculateDailyRunningBalances, getMonthDateRange } from "@/lib/daily-balance";
+import {
+  calculateDailyRunningBalances,
+  getMonthDateRange,
+  getStatementDailyRunningBalances,
+  getStatementMonthDateRange,
+} from "@/lib/daily-balance";
 import type { StatementItem } from "@/lib/statement";
 import { buildReconciliationSummary, type ReconciliationItem } from "@/lib/reconciliation";
 
@@ -60,6 +65,28 @@ describe("daily balance helper", () => {
     expect(getMonthDateRange("2026-06")).toEqual({
       startDate: "2026-06-01",
       endDate: "2026-06-30",
+    });
+  });
+
+  it("corta o mês atual em hoje e esconde meses futuros", () => {
+    const referenceDate = new Date(2026, 5, 12);
+
+    expect(getStatementMonthDateRange("2026-06", referenceDate)).toEqual({
+      startDate: "2026-06-01",
+      endDate: "2026-06-12",
+      isFutureMonth: false,
+    });
+
+    expect(getStatementMonthDateRange("2026-05", referenceDate)).toEqual({
+      startDate: "2026-05-01",
+      endDate: "2026-05-31",
+      isFutureMonth: false,
+    });
+
+    expect(getStatementMonthDateRange("2026-07", referenceDate)).toEqual({
+      startDate: "2026-07-01",
+      endDate: null,
+      isFutureMonth: true,
     });
   });
 
@@ -204,6 +231,77 @@ describe("daily balance helper", () => {
 
     expect(balances[0]?.closingBalanceCents).toBe(9_500);
     expect(balances[1]?.closingBalanceCents).toBe(10_500);
+  });
+
+  it("monta a timeline do statement em ordem decrescente e sem dias futuros", () => {
+    const timeline = getStatementDailyRunningBalances({
+      periodMonth: "2026-06",
+      referenceDate: new Date(2026, 5, 12),
+      openingBalanceCents: 10_000,
+      items: [
+        buildStatementItem({
+          id: "day-01",
+          kind: "expense",
+          date: "2026-06-01",
+          periodMonth: "2026-06",
+          description: "Gasto do dia 1",
+          amount: 500,
+          signedAmount: -500,
+          category: "alimentacao",
+          categoryLabel: "Alimentação",
+          originId: "day-01",
+          originType: "monthly_expense_entry",
+        }),
+        buildStatementItem({
+          id: "day-12",
+          kind: "income",
+          date: "2026-06-12",
+          periodMonth: "2026-06",
+          description: "Entrada do dia 12",
+          amount: 1_000,
+          signedAmount: 1_000,
+          category: "salario",
+          categoryLabel: "Salário",
+          originId: "day-12",
+          originType: "monthly_income_entry",
+        }),
+      ],
+    });
+
+    expect(timeline.isFutureMonth).toBe(false);
+    expect(timeline.balances[0]?.date).toBe("2026-06-12");
+    expect(timeline.balances[timeline.balances.length - 1]?.date).toBe("2026-06-01");
+    expect(timeline.balances.map((day) => day.date)).not.toContain("2026-06-13");
+    expect(timeline.balances.map((day) => day.date)).not.toContain("2026-06-30");
+  });
+
+  it("mostra saldo do dia como closingBalance", () => {
+    const timeline = getStatementDailyRunningBalances({
+      periodMonth: "2026-06",
+      referenceDate: new Date(2026, 5, 12),
+      openingBalanceCents: 10_000,
+      items: [
+        buildStatementItem({
+          id: "day-01",
+          kind: "expense",
+          date: "2026-06-01",
+          periodMonth: "2026-06",
+          description: "Gasto do dia 1",
+          amount: 500,
+          signedAmount: -500,
+          category: "alimentacao",
+          categoryLabel: "Alimentação",
+          originId: "day-01",
+          originType: "monthly_expense_entry",
+        }),
+      ],
+    });
+
+    const firstDay = timeline.balances.find((day) => day.date === "2026-06-01");
+
+    expect(firstDay?.dailyResultCents).toBe(-500);
+    expect(firstDay?.closingBalanceCents).toBe(9_500);
+    expect(firstDay?.openingBalanceCents).toBe(10_000);
   });
 
   it("integra com reconciliation sem mudar a diferença final", () => {

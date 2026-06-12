@@ -19,6 +19,12 @@ export type DailyBalanceInput = {
   endDate: string;
 };
 
+export type StatementDailyBalanceRange = {
+  startDate: string;
+  endDate: string | null;
+  isFutureMonth: boolean;
+};
+
 export function getMonthDateRange(periodMonth: string): { startDate: string; endDate: string } {
   const normalized = /^\d{4}-(0[1-9]|1[0-2])$/.test(periodMonth)
     ? periodMonth
@@ -31,6 +37,40 @@ export function getMonthDateRange(periodMonth: string): { startDate: string; end
   return {
     startDate: `${normalized}-01`,
     endDate: `${normalized}-${endDay}`,
+  };
+}
+
+export function getStatementMonthDateRange(
+  periodMonth: string,
+  referenceDate: Date = new Date()
+): StatementDailyBalanceRange {
+  const normalizedPeriodMonth = /^\d{4}-(0[1-9]|1[0-2])$/.test(periodMonth)
+    ? periodMonth
+    : getCurrentPeriodMonth(referenceDate);
+  const currentPeriodMonth = getCurrentPeriodMonth(referenceDate);
+  const today = normalizeDateOnly(referenceDate) ?? `${currentPeriodMonth}-01`;
+
+  if (normalizedPeriodMonth > currentPeriodMonth) {
+    return {
+      startDate: `${normalizedPeriodMonth}-01`,
+      endDate: null,
+      isFutureMonth: true,
+    };
+  }
+
+  if (normalizedPeriodMonth === currentPeriodMonth) {
+    return {
+      startDate: `${normalizedPeriodMonth}-01`,
+      endDate: today,
+      isFutureMonth: false,
+    };
+  }
+
+  const { startDate, endDate } = getMonthDateRange(normalizedPeriodMonth);
+  return {
+    startDate,
+    endDate,
+    isFutureMonth: false,
   };
 }
 
@@ -141,4 +181,37 @@ export function calculateDailyRunningBalances(
   }
 
   return balances;
+}
+
+export function getStatementDailyRunningBalances(
+  input: DailyBalanceInput & {
+    periodMonth: string;
+    referenceDate?: Date;
+  }
+): { balances: DailyBalance[]; isFutureMonth: boolean; startDate: string; endDate: string | null } {
+  const { periodMonth, referenceDate, openingBalanceCents, items } = input;
+  const range = getStatementMonthDateRange(periodMonth, referenceDate);
+
+  if (range.isFutureMonth || range.endDate === null) {
+    return {
+      balances: [],
+      isFutureMonth: true,
+      startDate: range.startDate,
+      endDate: range.endDate,
+    };
+  }
+
+  const balances = calculateDailyRunningBalances({
+    openingBalanceCents,
+    items,
+    startDate: range.startDate,
+    endDate: range.endDate,
+  });
+
+  return {
+    balances: [...balances].reverse(),
+    isFutureMonth: false,
+    startDate: range.startDate,
+    endDate: range.endDate,
+  };
 }

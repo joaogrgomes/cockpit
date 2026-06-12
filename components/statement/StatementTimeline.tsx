@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
-import { calculateDailyRunningBalances, getMonthDateRange } from "@/lib/daily-balance";
+import { getStatementDailyRunningBalances } from "@/lib/daily-balance";
 import { getStatementGroupHeading, type StatementItem } from "@/lib/statement";
 import { StatementItemRow } from "./StatementItemRow";
 
@@ -23,13 +23,21 @@ export function StatementTimeline({
   periodMonth,
   openingBalanceCents,
 }: StatementTimelineProps) {
-  const { startDate, endDate } = getMonthDateRange(periodMonth);
-  const dailyBalances = calculateDailyRunningBalances({
+  const { balances: dailyBalances, isFutureMonth } = getStatementDailyRunningBalances({
+    periodMonth,
     openingBalanceCents,
     items,
-    startDate,
-    endDate,
   });
+
+  if (isFutureMonth) {
+    return (
+      <Card className="border-border/80 shadow-sm">
+        <CardContent className="py-10 text-center text-sm text-muted-foreground">
+          Extrato disponível apenas para meses já iniciados.
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (dailyBalances.length === 0) {
     return (
@@ -43,7 +51,7 @@ export function StatementTimeline({
 
   return (
     <div className="space-y-4">
-      {dailyBalances.map(({ date, items: dayItems, incomeCents, expenseCents, dailyResultCents, openingBalanceCents, closingBalanceCents }) => {
+      {dailyBalances.map(({ date, items: dayItems, incomeCents, expenseCents, dailyResultCents, closingBalanceCents }) => {
         const resultClassName =
           dailyResultCents > 0
             ? "text-emerald-600"
@@ -82,10 +90,6 @@ export function StatementTimeline({
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-muted-foreground">Saldo acumulado</span>
                   <span className={closingClassName}>{formatBRL(closingBalanceCents)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3 sm:col-span-2">
-                  <span className="text-muted-foreground">Saldo de abertura do dia</span>
-                  <span>{formatBRL(openingBalanceCents)}</span>
                 </div>
               </div>
             </CardContent>
