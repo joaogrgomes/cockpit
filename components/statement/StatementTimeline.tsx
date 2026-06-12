@@ -1,18 +1,37 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
-import {
-  getStatementGroupHeading,
-  groupStatementItemsByDate,
-  type StatementItem,
-} from "@/lib/statement";
+import { calculateDailyRunningBalances, getMonthDateRange } from "@/lib/daily-balance";
+import { getStatementGroupHeading, type StatementItem } from "@/lib/statement";
 import { StatementItemRow } from "./StatementItemRow";
 
 type StatementTimelineProps = {
   items: StatementItem[];
+  periodMonth: string;
+  openingBalanceCents: number;
 };
 
-export function StatementTimeline({ items }: StatementTimelineProps) {
-  if (items.length === 0) {
+function formatSignedBRL(value: number): string {
+  if (value === 0) {
+    return formatBRL(0);
+  }
+
+  return value > 0 ? `+${formatBRL(value)}` : formatBRL(value);
+}
+
+export function StatementTimeline({
+  items,
+  periodMonth,
+  openingBalanceCents,
+}: StatementTimelineProps) {
+  const { startDate, endDate } = getMonthDateRange(periodMonth);
+  const dailyBalances = calculateDailyRunningBalances({
+    openingBalanceCents,
+    items,
+    startDate,
+    endDate,
+  });
+
+  if (dailyBalances.length === 0) {
     return (
       <Card className="border-border/80 shadow-sm">
         <CardContent className="py-10 text-center text-sm text-muted-foreground">
@@ -22,35 +41,52 @@ export function StatementTimeline({ items }: StatementTimelineProps) {
     );
   }
 
-  const groupedItems = groupStatementItemsByDate(items);
-
   return (
     <div className="space-y-4">
-      {groupedItems.map(({ date, items: dayItems, dailyBalance }) => {
-        const balanceClassName =
-          dailyBalance > 0
+      {dailyBalances.map(({ date, items: dayItems, incomeCents, expenseCents, dailyResultCents, openingBalanceCents, closingBalanceCents }) => {
+        const resultClassName =
+          dailyResultCents > 0
             ? "text-emerald-600"
-            : dailyBalance < 0
+            : dailyResultCents < 0
               ? "text-destructive"
               : "text-muted-foreground";
-        const balancePrefix = dailyBalance > 0 ? "+" : dailyBalance < 0 ? "-" : "";
+        const closingClassName =
+          closingBalanceCents > 0
+            ? "text-emerald-600"
+            : closingBalanceCents < 0
+              ? "text-destructive"
+              : "text-muted-foreground";
 
         return (
           <Card key={date} className="border-border/80 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">{getStatementGroupHeading(date)}</CardTitle>
-              <CardDescription>{dayItems.length} lançamento(s)</CardDescription>
+              <CardDescription>
+                {dayItems.length} lançamento(s) · entradas {formatBRL(incomeCents)} · gastos{" "}
+                {formatBRL(expenseCents)}
+              </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              {dayItems.map((item) => (
-                <StatementItemRow key={item.id} item={item} />
-              ))}
-              <div className="flex items-center justify-between gap-3 border-t border-border/60 bg-muted/20 px-3 py-2 text-sm font-medium">
-                <span className="text-muted-foreground">Saldo do dia</span>
-                <span className={balanceClassName}>
-                  {balancePrefix}
-                  {formatBRL(Math.abs(dailyBalance))}
-                </span>
+              {dayItems.length > 0 ? (
+                dayItems.map((item) => <StatementItemRow key={item.id} item={item} />)
+              ) : (
+                <div className="border-b border-border/60 px-3 py-4 text-sm text-muted-foreground">
+                  Nenhum lançamento nesse dia.
+                </div>
+              )}
+              <div className="grid gap-2 border-t border-border/60 bg-muted/20 px-3 py-3 text-sm sm:grid-cols-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Resultado do dia</span>
+                  <span className={resultClassName}>{formatSignedBRL(dailyResultCents)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Saldo acumulado</span>
+                  <span className={closingClassName}>{formatBRL(closingBalanceCents)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3 sm:col-span-2">
+                  <span className="text-muted-foreground">Saldo de abertura do dia</span>
+                  <span>{formatBRL(openingBalanceCents)}</span>
+                </div>
               </div>
             </CardContent>
           </Card>

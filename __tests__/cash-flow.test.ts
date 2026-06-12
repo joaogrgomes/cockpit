@@ -5,6 +5,8 @@ import {
   calculateCashFlowProjection,
   getCashFlowProjectionYearBounds,
   getPeriodMonthRange,
+  getPreviousPeriodMonth,
+  getProjectionStartMonth,
   getYearMonths,
   isMonthBefore,
 } from "@/lib/cash-flow";
@@ -46,6 +48,17 @@ describe("cash flow helpers", () => {
       "2027-01",
       "2027-02",
     ]);
+  });
+
+  it("usa o mês fechado mais recente antes do startMonth como início da timeline", () => {
+    expect(getProjectionStartMonth("2026-06", ["2026-03", "2026-05"])).toBe("2026-05");
+    expect(getProjectionStartMonth("2026-06", ["2026-04"])).toBe("2026-04");
+    expect(getProjectionStartMonth("2026-06", ["2026-06"])).toBe("2026-06");
+  });
+
+  it("encontra o mês anterior corretamente", () => {
+    expect(getPreviousPeriodMonth("2026-06")).toBe("2026-05");
+    expect(getPreviousPeriodMonth("2026-01")).toBe("2025-12");
   });
 
   it("limita o horizonte do fluxo de caixa em cinco anos", () => {

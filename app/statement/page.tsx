@@ -2,7 +2,10 @@ import { OneTimeIncomeEntryForm } from "@/components/income-tracking/OneTimeInco
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatementExpenseEntryForm } from "@/components/statement/StatementExpenseEntryForm";
-import { getStatementByPeriod } from "@/lib/services/statement.service";
+import {
+  getStatementByPeriod,
+  getStatementOpeningBalance,
+} from "@/lib/services/statement.service";
 import { listMonthlyExpenses } from "@/lib/services/monthly-expense.service";
 import {
   getStatementCategoryGroups,
@@ -35,7 +38,7 @@ export default async function StatementPage({ searchParams }: StatementPageProps
   const selectedCategory = normalizeStatementCategory(params.category);
   const selectedQuery = normalizeStatementQuery(params.q);
 
-  const [statement, monthlyExpenses] = await Promise.all([
+  const [statement, monthlyExpenses, openingBalanceCents] = await Promise.all([
     getStatementByPeriod({
       periodMonth: selectedPeriod,
       type: selectedType,
@@ -47,6 +50,7 @@ export default async function StatementPage({ searchParams }: StatementPageProps
       sort: "category",
       periodMonth: selectedPeriod,
     }),
+    getStatementOpeningBalance(selectedPeriod),
   ]);
 
   return (
@@ -92,7 +96,11 @@ export default async function StatementPage({ searchParams }: StatementPageProps
           <CardTitle className="text-base">Timeline</CardTitle>
         </CardHeader>
         <CardContent>
-          <StatementTimeline items={statement.items} />
+          <StatementTimeline
+            items={statement.items}
+            periodMonth={statement.periodMonth}
+            openingBalanceCents={openingBalanceCents}
+          />
         </CardContent>
       </Card>
     </section>

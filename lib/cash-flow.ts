@@ -103,6 +103,46 @@ export function getCurrentPeriodMonth(referenceDate: Date = new Date()): string 
   return `${year}-${month}`;
 }
 
+export function getPreviousPeriodMonth(periodMonth: string): string | null {
+  if (!isValidPeriodMonth(periodMonth)) {
+    return null;
+  }
+
+  const [yearText, monthText] = periodMonth.split("-");
+  const year = Number.parseInt(yearText, 10);
+  const month = Number.parseInt(monthText, 10);
+
+  if (Number.isNaN(year) || Number.isNaN(month)) {
+    return null;
+  }
+
+  const previousMonth = month === 1 ? 12 : month - 1;
+  const previousYear = month === 1 ? year - 1 : year;
+  return `${previousYear}-${String(previousMonth).padStart(2, "0")}`;
+}
+
+export function getProjectionStartMonth(
+  startMonth: string,
+  closedMonths: Iterable<string>
+): string {
+  if (!isValidPeriodMonth(startMonth)) {
+    return getCurrentPeriodMonth();
+  }
+
+  let projectionStartMonth: string | null = null;
+  for (const closedMonth of closedMonths) {
+    if (
+      isValidPeriodMonth(closedMonth) &&
+      closedMonth < startMonth &&
+      (projectionStartMonth === null || closedMonth > projectionStartMonth)
+    ) {
+      projectionStartMonth = closedMonth;
+    }
+  }
+
+  return projectionStartMonth ?? startMonth;
+}
+
 function getNextPeriodMonth(periodMonth: string): string {
   const [yearText, monthText] = periodMonth.split("-");
   const year = Number.parseInt(yearText, 10);

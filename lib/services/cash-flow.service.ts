@@ -1,10 +1,11 @@
 import "server-only";
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import {
   calculateCashFlowProjection,
   getCurrentPeriodMonth,
   getPeriodMonthRange,
+  getProjectionStartMonth,
   getYearMonths,
 } from "@/lib/cash-flow";
 import { getDb } from "@/lib/db";
@@ -118,8 +119,18 @@ export async function getCashFlowProjection(
 ): Promise<CashFlowProjectionResult> {
   const db = getDb();
   const settings = await getCashFlowSettings();
-  const projectionStartMonth = settings.startMonth;
   const projectionEndMonth = `${year}-12`;
+  const closedMonthsRows = await db
+    .select({
+      periodMonth: monthlyClosings.periodMonth,
+    })
+    .from(monthlyClosings)
+    .where(sql`${monthlyClosings.periodMonth} <= ${projectionEndMonth}`)
+    .orderBy(desc(monthlyClosings.periodMonth));
+  const projectionStartMonth = getProjectionStartMonth(
+    settings.startMonth,
+    closedMonthsRows.map((row) => row.periodMonth)
+  );
   const projectionMonths = getPeriodMonthRange(projectionStartMonth, projectionEndMonth);
   const projectionStartDate = `${projectionStartMonth}-01`;
   const projectionEndDate = `${projectionEndMonth}-31`;
@@ -130,7 +141,6 @@ export async function getCashFlowProjection(
     linkedIncomeRows,
     oneTimeIncomeRows,
     futureExpectedIncomeRows,
-    closingRows,
     fixedExpenseRows,
     variableExpenseRows,
     futureExpectedFixedExpenseRows,
@@ -200,15 +210,6 @@ export async function getCashFlowProjection(
         )
       )
       .groupBy(sql`to_char(${futureIncomeReceivables.expectedDate}, 'YYYY-MM')`),
-    db
-      .select({ periodMonth: monthlyClosings.periodMonth })
-      .from(monthlyClosings)
-      .where(
-        and(
-          sql`${monthlyClosings.periodMonth} >= ${projectionStartMonth}`,
-          sql`${monthlyClosings.periodMonth} <= ${projectionEndMonth}`
-        )
-      ),
     db
       .select({
         periodMonth: monthlyExpenseEntries.periodMonth,
@@ -358,7 +359,7 @@ export async function getCashFlowProjection(
 
   const projection = calculateCashFlowProjection({
     year,
-    startMonth: settings.startMonth,
+    startMonth: projectionStartMonth,
     initialBalance: settings.initialBalance,
     plannedIncomesTotal,
     plannedRecurringIncomesByMonth,
@@ -366,7 +367,7 @@ export async function getCashFlowProjection(
     actualOneTimeIncomesByMonth,
     futureExpectedIncomesByMonth,
     incomePlanItemsByMonth,
-    closedMonths: new Set(closingRows.map((row) => row.periodMonth)),
+    closedMonths: new Set(closedMonthsRows.map((row) => row.periodMonth)),
     plannedFixedExpensesTotal,
     plannedFixedExpensesByMonth,
     actualFixedExpensesByMonth,
