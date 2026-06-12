@@ -143,6 +143,28 @@ export function getProjectionStartMonth(
   return projectionStartMonth ?? startMonth;
 }
 
+export function getProjectionOpeningBalance(
+  months: Pick<CashFlowMonth, "periodMonth" | "openingBalance" | "closingBalance">[],
+  periodMonth: string,
+  fallbackOpeningBalance: number
+): number {
+  const previousMonth = getPreviousPeriodMonth(periodMonth);
+
+  if (previousMonth) {
+    const previousMonthProjection = months.find((month) => month.periodMonth === previousMonth);
+    if (previousMonthProjection) {
+      return previousMonthProjection.closingBalance;
+    }
+  }
+
+  const currentMonthProjection = months.find((month) => month.periodMonth === periodMonth);
+  if (currentMonthProjection) {
+    return currentMonthProjection.openingBalance;
+  }
+
+  return fallbackOpeningBalance;
+}
+
 function getNextPeriodMonth(periodMonth: string): string {
   const [yearText, monthText] = periodMonth.split("-");
   const year = Number.parseInt(yearText, 10);

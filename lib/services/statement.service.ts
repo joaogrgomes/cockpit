@@ -1,7 +1,7 @@
 import "server-only";
 
-import { and, desc, eq, sql } from "drizzle-orm";
-import { getCashFlowProjection, getCashFlowSettings } from "@/lib/services/cash-flow.service";
+import { desc, eq } from "drizzle-orm";
+import { getCashFlowProjection } from "@/lib/services/cash-flow.service";
 import { getDb } from "@/lib/db";
 import {
   monthlyExpenseEntries,
@@ -9,8 +9,7 @@ import {
   monthlyIncomeEntries,
   monthlyIncomes,
 } from "@/lib/db/schema";
-import { getMonthlyClosing } from "@/lib/services/monthly-closing.service";
-import { getPreviousPeriodMonth } from "@/lib/cash-flow";
+import { getProjectionOpeningBalance } from "@/lib/cash-flow";
 import {
   buildStatementResult,
   mapExpenseEntryRowToStatementItem,
@@ -28,58 +27,14 @@ export type StatementByPeriodInput = {
 };
 
 export async function getStatementOpeningBalance(periodMonth: string): Promise<number> {
-  const settings = await getCashFlowSettings();
   const normalizedPeriodMonth = normalizeStatementPeriodMonth(periodMonth);
-  const previousMonth = getPreviousPeriodMonth(normalizedPeriodMonth);
+  const projection = await getCashFlowProjection(Number(normalizedPeriodMonth.slice(0, 4)));
 
-  if (previousMonth && (await getMonthlyClosing(previousMonth))) {
-    const projection = await getCashFlowProjection(Number(normalizedPeriodMonth.slice(0, 4)));
-    const previousMonthProjection = projection.months.find(
-      (month) => month.periodMonth === previousMonth
-    );
-
-    if (previousMonthProjection) {
-      return previousMonthProjection.closingBalance;
-    }
-  }
-
-  const db = getDb();
-  const periodStartDate = `${normalizedPeriodMonth}-01`;
-  const settingsStartDate = `${settings.startMonth}-01`;
-
-  if (normalizedPeriodMonth <= settings.startMonth) {
-    return settings.initialBalance;
-  }
-
-  const [incomeRows, expenseRows] = await Promise.all([
-    db
-      .select({
-        totalAmount: sql<number>`coalesce(sum(${monthlyIncomeEntries.amount}), 0)`,
-      })
-      .from(monthlyIncomeEntries)
-      .where(
-        and(
-          sql`${monthlyIncomeEntries.receivedAt} >= ${settingsStartDate}`,
-          sql`${monthlyIncomeEntries.receivedAt} < ${periodStartDate}`
-        )
-      ),
-    db
-      .select({
-        totalAmount: sql<number>`coalesce(sum(${monthlyExpenseEntries.amount}), 0)`,
-      })
-      .from(monthlyExpenseEntries)
-      .where(
-        and(
-          sql`${monthlyExpenseEntries.paidAt} >= ${settingsStartDate}`,
-          sql`${monthlyExpenseEntries.paidAt} < ${periodStartDate}`
-        )
-      ),
-  ]);
-
-  const totalIncome = Number(incomeRows[0]?.totalAmount ?? 0);
-  const totalExpense = Number(expenseRows[0]?.totalAmount ?? 0);
-
-  return settings.initialBalance + totalIncome - totalExpense;
+  return getProjectionOpeningBalance(
+    projection.months,
+    normalizedPeriodMonth,
+    projection.settings.initialBalance
+  );
 }
 
 export async function getStatementByPeriod(

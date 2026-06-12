@@ -5,6 +5,7 @@ import {
   calculateCashFlowProjection,
   getCashFlowProjectionYearBounds,
   getPeriodMonthRange,
+  getProjectionOpeningBalance,
   getPreviousPeriodMonth,
   getProjectionStartMonth,
   getYearMonths,
@@ -59,6 +60,43 @@ describe("cash flow helpers", () => {
   it("encontra o mês anterior corretamente", () => {
     expect(getPreviousPeriodMonth("2026-06")).toBe("2026-05");
     expect(getPreviousPeriodMonth("2026-01")).toBe("2025-12");
+  });
+
+  it("usa o fechamento do mês anterior como abertura quando ele existe na projeção", () => {
+    expect(
+      getProjectionOpeningBalance(
+        [
+          {
+            periodMonth: "2026-05",
+            openingBalance: 1_000_000,
+            closingBalance: 1_150_500,
+          },
+          {
+            periodMonth: "2026-06",
+            openingBalance: 1_150_500,
+            closingBalance: 1_203_000,
+          },
+        ],
+        "2026-06",
+        0
+      )
+    ).toBe(1_150_500);
+  });
+
+  it("cai para a abertura do mês atual quando o anterior não está disponível", () => {
+    expect(
+      getProjectionOpeningBalance(
+        [
+          {
+            periodMonth: "2026-06",
+            openingBalance: 1_150_500,
+            closingBalance: 1_203_000,
+          },
+        ],
+        "2026-06",
+        0
+      )
+    ).toBe(1_150_500);
   });
 
   it("limita o horizonte do fluxo de caixa em cinco anos", () => {
