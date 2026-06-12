@@ -312,7 +312,7 @@ describe("daily balance helper", () => {
       ],
     });
 
-    expect(timeline.balances[0]?.items.map((item) => item.id)).toEqual(["first", "later"]);
+    expect(timeline.balances[0]?.items.map((item) => item.id)).toEqual(["later", "first"]);
   });
 
   it("mostra saldo do dia como closingBalance", () => {

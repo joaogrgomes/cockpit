@@ -264,19 +264,15 @@ function compareStatementItems(a: StatementItem, b: StatementItem): number {
   const bCreatedAt = b.createdAt ? getTimestampMs(b.createdAt) : null;
 
   if (aCreatedAt !== null || bCreatedAt !== null) {
-    if (aCreatedAt === null) {
-      return 1;
+    if (aCreatedAt !== null && bCreatedAt !== null) {
+      if (aCreatedAt !== bCreatedAt) {
+        return bCreatedAt - aCreatedAt;
+      }
+
+      return 0;
     }
 
-    if (bCreatedAt === null) {
-      return -1;
-    }
-
-    if (aCreatedAt !== bCreatedAt) {
-      return aCreatedAt - bCreatedAt;
-    }
-
-    return 0;
+    return a.id.localeCompare(b.id);
   }
 
   return a.id.localeCompare(b.id);

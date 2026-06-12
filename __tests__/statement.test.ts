@@ -380,10 +380,10 @@ describe("buildStatementResult", () => {
     });
 
     expect(result.items.map((item) => item.id)).toEqual([
-      "income-1",
       "expense-1",
-      "income-2",
+      "income-1",
       "expense-2",
+      "income-2",
     ]);
     expect(result.summary).toMatchObject({
       totalIncome: 600000,
@@ -692,6 +692,6 @@ describe("groupStatementItemsByDate", () => {
       }),
     ]);
 
-    expect(sorted.map((item) => item.id)).toEqual(["expense-1", "expense-2", "expense-3"]);
+    expect(sorted.map((item) => item.id)).toEqual(["expense-3", "expense-2", "expense-1"]);
   });
 });

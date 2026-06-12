@@ -75,6 +75,16 @@ export function StatementTimeline({
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
+              <div className="grid gap-2 border-b border-border/60 bg-muted/20 px-3 py-3 text-sm sm:grid-cols-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Resultado do dia</span>
+                  <span className={resultClassName}>{formatSignedBRL(dailyResultCents)}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-muted-foreground">Saldo do dia</span>
+                  <span className={closingClassName}>{formatBRL(closingBalanceCents)}</span>
+                </div>
+              </div>
               {dayItems.length > 0 ? (
                 dayItems.map((item) => <StatementItemRow key={item.id} item={item} />)
               ) : (
@@ -82,16 +92,6 @@ export function StatementTimeline({
                   Nenhum lançamento nesse dia.
                 </div>
               )}
-              <div className="grid gap-2 border-t border-border/60 bg-muted/20 px-3 py-3 text-sm sm:grid-cols-2">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Resultado do dia</span>
-                  <span className={resultClassName}>{formatSignedBRL(dailyResultCents)}</span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-muted-foreground">Saldo acumulado</span>
-                  <span className={closingClassName}>{formatBRL(closingBalanceCents)}</span>
-                </div>
-              </div>
             </CardContent>
           </Card>
         );
