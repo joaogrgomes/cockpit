@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
 import { formatDateOnlyBR } from "@/lib/date-utils";
@@ -52,13 +52,12 @@ function renderAgendaItem(item: Awaited<ReturnType<typeof getPaymentAgenda>>["it
       ) : null}
 
       <div className="mt-4 flex justify-end">
-        <Button
-          size="sm"
-          variant="outline"
-          render={<Link href={item.href} />}
+        <Link
+          href={item.href}
+          className={buttonVariants({ variant: "outline", size: "sm" })}
         >
           {actionLabel}
-        </Button>
+        </Link>
       </div>
     </div>
   );
