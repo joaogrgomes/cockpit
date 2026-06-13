@@ -1,9 +1,16 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardAction } from "@/components/ui/card";
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
-import { getDefaultCarCostAnalysis } from "@/lib/services/cost-analysis.service";
+import { getDefaultCostAnalyses } from "@/lib/services/cost-analysis.service";
 import { CostAnalysisBaseIncomeForm } from "@/components/cost-analyses/CostAnalysisBaseIncomeForm";
 import { CostAnalysisItemForm } from "@/components/cost-analyses/CostAnalysisItemForm";
 import { CostAnalysisItemsTable } from "@/components/cost-analyses/CostAnalysisItemsTable";
@@ -18,29 +25,15 @@ import { createFutureExpenseAction } from "@/app/expenses/future/actions";
 
 export const dynamic = "force-dynamic";
 
-export default async function CostAnalysesPage() {
-  const viewModel = await getDefaultCarCostAnalysis();
-
-  if (!viewModel) {
-    notFound();
-  }
-
+function CostAnalysisSection({
+  viewModel,
+}: {
+  viewModel: Awaited<ReturnType<typeof getDefaultCostAnalyses>>[number];
+}) {
   const { analysis, suggestedNetIncomeCents } = viewModel;
 
   return (
-    <section className="space-y-6">
-      <PageHeader
-        title="Análises de Custo"
-        description="Entenda o custo total de itens importantes sem confundir tudo com o fluxo de caixa."
-        actions={
-          <CostAnalysisItemForm
-            mode="create"
-            analysisId={analysis.id}
-            action={createCostAnalysisItemAction}
-          />
-        }
-      />
-
+    <section className="space-y-4">
       <Card className="border-border/80 shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -48,13 +41,22 @@ export default async function CostAnalysesPage() {
               <CardTitle className="text-base">{analysis.name}</CardTitle>
               <CardDescription>{analysis.description}</CardDescription>
             </div>
-            <Badge variant="outline">{analysis.slug}</Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline">{analysis.slug}</Badge>
+              <CardAction>
+                <CostAnalysisItemForm
+                  mode="create"
+                  analysisId={analysis.id}
+                  action={createCostAnalysisItemAction}
+                />
+              </CardAction>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Este diagnóstico ajuda a enxergar o custo anual e mensal de manter o carro, separando
-            o que sai do caixa, o que é provisão e o que é custo econômico.
+            Este diagnóstico ajuda a enxergar o custo anual e mensal de {analysis.name.toLowerCase()},
+            separando o que sai do caixa, o que é provisão e o que é custo econômico.
           </p>
         </CardContent>
       </Card>
@@ -113,7 +115,7 @@ export default async function CostAnalysesPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Itens da análise</CardTitle>
           <CardDescription>
-            Cadastre ou ajuste os custos mensais que compõem o custo total do carro.
+            Cadastre ou ajuste os custos mensais que compõem {analysis.name.toLowerCase()}.
           </CardDescription>
         </CardHeader>
         <CardContent className="px-0">
@@ -143,6 +145,27 @@ export default async function CostAnalysesPage() {
           </p>
         </CardContent>
       </Card>
+    </section>
+  );
+}
+
+export default async function CostAnalysesPage() {
+  const viewModels = await getDefaultCostAnalyses();
+
+  if (viewModels.length === 0) {
+    notFound();
+  }
+
+  return (
+    <section className="space-y-6">
+      <PageHeader
+        title="Análises de Custo"
+        description="Entenda custos importantes sem confundir tudo com o fluxo de caixa."
+      />
+
+      {viewModels.map((viewModel) => (
+        <CostAnalysisSection key={viewModel.analysis.id} viewModel={viewModel} />
+      ))}
     </section>
   );
 }

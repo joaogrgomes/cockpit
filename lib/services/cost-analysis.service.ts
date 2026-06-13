@@ -11,17 +11,16 @@ import {
 import { listMonthlyIncomes } from "@/lib/services/monthly-income.service";
 import {
   calculateCostAnalysisTotals,
+  DEFAULT_COST_ANALYSIS_DEFINITIONS,
+  DEFAULT_COST_ANALYSIS_SLUG,
   type CostAnalysisItemView,
+  type DefaultCostAnalysisDefinition,
 } from "@/lib/cost-analyses";
 import type {
   CostAnalysis,
   CostAnalysisItem,
   CostAnalysisKind,
-  NewCostAnalysis,
-  NewCostAnalysisItem,
 } from "@/types";
-
-export const DEFAULT_COST_ANALYSIS_SLUG = "carro";
 
 export type CostAnalysisWithItems = CostAnalysis & {
   items: CostAnalysisItem[];
@@ -35,76 +34,59 @@ export type CostAnalysisViewModel = {
   scheduledCountsByItemId: Record<string, number>;
 };
 
-const DEFAULT_CAR_COST_ANALYSIS: NewCostAnalysis = {
-  name: "Custo total do carro",
-  slug: DEFAULT_COST_ANALYSIS_SLUG,
-  description: "Análise do custo mensal e anual de manter o carro.",
-  baseNetIncomeCents: 0,
-  baseGrossIncomeCents: 0,
-};
-
-const DEFAULT_CAR_COST_ANALYSIS_ITEMS: Array<
-  Omit<NewCostAnalysisItem, "costAnalysisId">
-> = [
-  { name: "Financiamento", monthlyAmountCents: 60_500, costKind: "cash", notes: null, sortOrder: 0 },
-  { name: "Depreciação", monthlyAmountCents: 13_000, costKind: "economic", notes: null, sortOrder: 1 },
-  { name: "Combustível", monthlyAmountCents: 65_000, costKind: "cash", notes: null, sortOrder: 2 },
-  { name: "Estacionamento", monthlyAmountCents: 2_500, costKind: "cash", notes: null, sortOrder: 3 },
-  { name: "IPVA", monthlyAmountCents: 18_000, costKind: "provision", notes: null, sortOrder: 4 },
-  { name: "Custo de oportunidade", monthlyAmountCents: 0, costKind: "economic", notes: null, sortOrder: 5 },
-  { name: "Seguro", monthlyAmountCents: 20_300, costKind: "provision", notes: null, sortOrder: 6 },
-  { name: "Pedágio", monthlyAmountCents: 500, costKind: "cash", notes: null, sortOrder: 7 },
-  { name: "Manutenção", monthlyAmountCents: 18_000, costKind: "provision", notes: null, sortOrder: 8 },
-  { name: "Lavagem", monthlyAmountCents: 6_000, costKind: "cash", notes: null, sortOrder: 9 },
-];
-
-async function getSuggestedNetIncomeCents(): Promise<number> {
-  const currentMonth = getCurrentPeriodMonth();
-  const incomes = await listMonthlyIncomes({
-    periodMonth: currentMonth,
-    isActive: "true",
-  });
-
-  return incomes.reduce((sum, income) => sum + income.amount, 0);
-}
-
-async function seedDefaultCarAnalysisIfNeeded() {
+async function seedCostAnalysisDefinitionIfNeeded(definition: DefaultCostAnalysisDefinition) {
   const db = getDb();
   const existing = await db
     .select({ id: costAnalyses.id })
     .from(costAnalyses)
-    .where(eq(costAnalyses.slug, DEFAULT_COST_ANALYSIS_SLUG))
+    .where(eq(costAnalyses.slug, definition.analysis.slug))
     .limit(1);
 
-  if (existing[0]) {
-    return existing[0].id;
-  }
+  let analysisId = existing[0]?.id ?? null;
 
-  const suggestedNetIncomeCents = await getSuggestedNetIncomeCents();
-
-  return db.transaction(async (tx) => {
-    const insertedAnalysis = await tx
+  if (!analysisId) {
+    const insertedAnalysis = await db
       .insert(costAnalyses)
-      .values({
-        ...DEFAULT_CAR_COST_ANALYSIS,
-        baseNetIncomeCents: suggestedNetIncomeCents,
-      })
+      .values(definition.analysis)
       .returning({ id: costAnalyses.id });
 
-    const analysisId = insertedAnalysis[0]?.id;
-    if (!analysisId) {
-      return null;
-    }
+    analysisId = insertedAnalysis[0]?.id ?? null;
+  }
 
-    await tx.insert(costAnalysisItems).values(
-      DEFAULT_CAR_COST_ANALYSIS_ITEMS.map((item) => ({
+  if (!analysisId) {
+    return null;
+  }
+
+  const existingItems = await db
+    .select({ name: costAnalysisItems.name })
+    .from(costAnalysisItems)
+    .where(eq(costAnalysisItems.costAnalysisId, analysisId));
+  const existingItemNames = new Set(existingItems.map((item) => item.name));
+  const missingItems = definition.items.filter((item) => !existingItemNames.has(item.name));
+
+  if (missingItems.length > 0) {
+    const lastItem = await db
+      .select({ sortOrder: costAnalysisItems.sortOrder })
+      .from(costAnalysisItems)
+      .where(eq(costAnalysisItems.costAnalysisId, analysisId))
+      .orderBy(desc(costAnalysisItems.sortOrder), desc(costAnalysisItems.createdAt))
+      .limit(1);
+
+    let nextSortOrder = (lastItem[0]?.sortOrder ?? -1) + 1;
+    await db.insert(costAnalysisItems).values(
+      missingItems.map((item) => ({
         ...item,
         costAnalysisId: analysisId,
+        sortOrder: nextSortOrder++,
       }))
     );
+  }
 
-    return analysisId;
-  });
+  return analysisId;
+}
+
+async function ensureDefaultCostAnalysesSeeded() {
+  await Promise.all(DEFAULT_COST_ANALYSIS_DEFINITIONS.map((definition) => seedCostAnalysisDefinitionIfNeeded(definition)));
 }
 
 export async function getCostAnalysisItemById(
@@ -145,36 +127,22 @@ export async function getCostAnalysisById(
   };
 }
 
-export async function getCostAnalysisBySlug(slug: string): Promise<CostAnalysisWithItems | null> {
-  const db = getDb();
-  let analysisRows = await db
-    .select({ id: costAnalyses.id })
-    .from(costAnalyses)
-    .where(eq(costAnalyses.slug, slug))
-    .limit(1);
+async function getSuggestedNetIncomeCents(): Promise<number> {
+  const currentMonth = getCurrentPeriodMonth();
+  const incomes = await listMonthlyIncomes({
+    periodMonth: currentMonth,
+    isActive: "true",
+  });
 
-  if (!analysisRows[0] && slug === DEFAULT_COST_ANALYSIS_SLUG) {
-    const createdId = await seedDefaultCarAnalysisIfNeeded();
-    if (createdId) {
-      return getCostAnalysisById(createdId);
-    }
-
-    analysisRows = await db
-      .select({ id: costAnalyses.id })
-      .from(costAnalyses)
-      .where(eq(costAnalyses.slug, slug))
-      .limit(1);
-  }
-
-  if (!analysisRows[0]) {
-    return null;
-  }
-
-  return getCostAnalysisById(analysisRows[0].id);
+  return incomes.reduce((sum, income) => sum + income.amount, 0);
 }
 
-export async function getDefaultCarCostAnalysis(): Promise<CostAnalysisViewModel | null> {
-  const analysis = await getCostAnalysisBySlug(DEFAULT_COST_ANALYSIS_SLUG);
+export function getDefaultCostAnalysisDefinitions(): DefaultCostAnalysisDefinition[] {
+  return DEFAULT_COST_ANALYSIS_DEFINITIONS;
+}
+
+async function getCostAnalysisViewModelBySlug(slug: string): Promise<CostAnalysisViewModel | null> {
+  const analysis = await getCostAnalysisBySlug(slug);
   if (!analysis) return null;
 
   const suggestedNetIncomeCents = await getSuggestedNetIncomeCents();
@@ -206,6 +174,62 @@ export async function getDefaultCarCostAnalysis(): Promise<CostAnalysisViewModel
     suggestedNetIncomeCents,
     scheduledCountsByItemId,
   };
+}
+
+export async function getDefaultCostAnalyses(): Promise<CostAnalysisViewModel[]> {
+  await ensureDefaultCostAnalysesSeeded();
+
+  const viewModels = await Promise.all(
+    DEFAULT_COST_ANALYSIS_DEFINITIONS.map((definition) =>
+      getCostAnalysisViewModelBySlug(definition.analysis.slug)
+    )
+  );
+
+  return viewModels.filter((viewModel): viewModel is CostAnalysisViewModel => Boolean(viewModel));
+}
+
+export async function getDefaultCarCostAnalysis(): Promise<CostAnalysisViewModel | null> {
+  await ensureDefaultCostAnalysesSeeded();
+  return getCostAnalysisViewModelBySlug(DEFAULT_COST_ANALYSIS_SLUG);
+}
+
+function getDefaultCostAnalysisDefinitionBySlug(
+  slug: string
+): DefaultCostAnalysisDefinition | null {
+  return DEFAULT_COST_ANALYSIS_DEFINITIONS.find((definition) => definition.analysis.slug === slug) ?? null;
+}
+
+export async function getCostAnalysisBySlug(slug: string): Promise<CostAnalysisWithItems | null> {
+  const db = getDb();
+  let analysisRows = await db
+    .select({ id: costAnalyses.id })
+    .from(costAnalyses)
+    .where(eq(costAnalyses.slug, slug))
+    .limit(1);
+
+  if (!analysisRows[0]) {
+    const definition = getDefaultCostAnalysisDefinitionBySlug(slug);
+    if (!definition) {
+      return null;
+    }
+
+    const createdId = await seedCostAnalysisDefinitionIfNeeded(definition);
+    if (createdId) {
+      return getCostAnalysisById(createdId);
+    }
+
+    analysisRows = await db
+      .select({ id: costAnalyses.id })
+      .from(costAnalyses)
+      .where(eq(costAnalyses.slug, slug))
+      .limit(1);
+  }
+
+  if (!analysisRows[0]) {
+    return null;
+  }
+
+  return getCostAnalysisById(analysisRows[0].id);
 }
 
 export async function upsertCostAnalysisBaseIncome(input: {

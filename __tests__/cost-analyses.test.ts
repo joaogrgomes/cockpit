@@ -4,6 +4,7 @@ import {
   calculateAnnualAmount,
   calculateCostAnalysisTotals,
   getCostAnalysisKindLabel,
+  getDefaultCostAnalysisDefinitions,
 } from "@/lib/cost-analyses";
 import { CostAnalysisItemSchema } from "@/lib/validations";
 import type { CostAnalysisItem } from "@/types";
@@ -23,6 +24,18 @@ function makeItem(overrides: Partial<CostAnalysisItem>): CostAnalysisItem {
 }
 
 describe("cost analyses helpers", () => {
+  it("mantém os seeds padrão de carro e moradia sem duplicar slugs", () => {
+    const definitions = getDefaultCostAnalysisDefinitions();
+
+    expect(definitions.map((definition) => definition.analysis.slug)).toEqual([
+      "carro",
+      "moradia",
+    ]);
+    expect(new Set(definitions.map((definition) => definition.analysis.slug)).size).toBe(
+      definitions.length
+    );
+  });
+
   it("calcula valor anual a partir do mensal", () => {
     expect(calculateAnnualAmount(60_500)).toBe(726_000);
   });
@@ -104,5 +117,89 @@ describe("cost analyses helpers", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("soma total mensal e total anual da moradia", () => {
+    const analysis = calculateCostAnalysisTotals(
+      [
+        makeItem({ name: "Aluguel", monthlyAmountCents: 139_000, costKind: "cash" }),
+        makeItem({ name: "Condomínio", monthlyAmountCents: 66_000, costKind: "cash", sortOrder: 1 }),
+        makeItem({
+          name: "Manutenção",
+          monthlyAmountCents: 8_000,
+          costKind: "provision",
+          sortOrder: 2,
+          notes: "Reserva mensal para pequenos reparos e manutenção da casa.",
+        }),
+        makeItem({
+          name: "Seguro",
+          monthlyAmountCents: 4_000,
+          costKind: "provision",
+          sortOrder: 3,
+          notes: "Provisionamento mensal para seguro residencial.",
+        }),
+        makeItem({
+          name: "IPTU",
+          monthlyAmountCents: 9_000,
+          costKind: "provision",
+          sortOrder: 4,
+          notes: "Provisionamento mensal para pagamento anual ou parcelado do IPTU.",
+        }),
+        makeItem({ name: "Luz", monthlyAmountCents: 45_000, costKind: "cash", sortOrder: 5 }),
+      ],
+      1_130_000,
+      1_600_000
+    );
+
+    expect(analysis.totalMonthlyCents).toBe(271_000);
+    expect(analysis.totalAnnualCents).toBe(3_252_000);
+    expect(analysis.netIncomePercentage).toBe(23.98);
+    expect(analysis.grossIncomePercentage).toBe(16.94);
+    expect(analysis.totalCashMonthlyCents).toBe(250_000);
+    expect(analysis.totalProvisionMonthlyCents).toBe(21_000);
+  });
+
+  it("classifica os itens da moradia por tipo", () => {
+    const analysis = calculateCostAnalysisTotals(
+      [
+        makeItem({ name: "Aluguel", monthlyAmountCents: 139_000, costKind: "cash" }),
+        makeItem({ name: "Condomínio", monthlyAmountCents: 66_000, costKind: "cash", sortOrder: 1 }),
+        makeItem({
+          name: "Manutenção",
+          monthlyAmountCents: 8_000,
+          costKind: "provision",
+          sortOrder: 2,
+        }),
+        makeItem({
+          name: "Seguro",
+          monthlyAmountCents: 4_000,
+          costKind: "provision",
+          sortOrder: 3,
+        }),
+        makeItem({
+          name: "IPTU",
+          monthlyAmountCents: 9_000,
+          costKind: "provision",
+          sortOrder: 4,
+        }),
+        makeItem({ name: "Luz", monthlyAmountCents: 45_000, costKind: "cash", sortOrder: 5 }),
+      ],
+      1_130_000,
+      1_600_000
+    );
+
+    expect(analysis.items.map((item) => item.name)).toEqual([
+      "Aluguel",
+      "Condomínio",
+      "Manutenção",
+      "Seguro",
+      "IPTU",
+      "Luz",
+    ]);
+    expect(analysis.items.filter((item) => item.costKind === "provision").map((item) => item.name)).toEqual([
+      "Manutenção",
+      "Seguro",
+      "IPTU",
+    ]);
   });
 });

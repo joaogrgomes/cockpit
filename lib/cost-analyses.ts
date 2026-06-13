@@ -1,4 +1,93 @@
-import type { CostAnalysisItem, CostAnalysisKind } from "@/types";
+import type { CostAnalysisItem, CostAnalysisKind, NewCostAnalysis, NewCostAnalysisItem } from "@/types";
+
+export const DEFAULT_COST_ANALYSIS_SLUG = "carro";
+export const DEFAULT_COST_ANALYSIS_MORADIA_SLUG = "moradia";
+
+export type DefaultCostAnalysisDefinition = {
+  analysis: NewCostAnalysis;
+  items: Array<Omit<NewCostAnalysisItem, "costAnalysisId">>;
+};
+
+export const DEFAULT_COST_ANALYSIS_DEFINITIONS: DefaultCostAnalysisDefinition[] = [
+  {
+    analysis: {
+      name: "Custo total do carro",
+      slug: DEFAULT_COST_ANALYSIS_SLUG,
+      description: "Análise do custo mensal e anual de manter o carro.",
+      baseNetIncomeCents: 0,
+      baseGrossIncomeCents: 0,
+    },
+    items: [
+      { name: "Financiamento", monthlyAmountCents: 60_500, costKind: "cash", notes: null, sortOrder: 0 },
+      { name: "Depreciação", monthlyAmountCents: 13_000, costKind: "economic", notes: null, sortOrder: 1 },
+      { name: "Combustível", monthlyAmountCents: 65_000, costKind: "cash", notes: null, sortOrder: 2 },
+      { name: "Estacionamento", monthlyAmountCents: 2_500, costKind: "cash", notes: null, sortOrder: 3 },
+      { name: "IPVA", monthlyAmountCents: 18_000, costKind: "provision", notes: null, sortOrder: 4 },
+      { name: "Custo de oportunidade", monthlyAmountCents: 0, costKind: "economic", notes: null, sortOrder: 5 },
+      { name: "Seguro", monthlyAmountCents: 20_300, costKind: "provision", notes: null, sortOrder: 6 },
+      { name: "Pedágio", monthlyAmountCents: 500, costKind: "cash", notes: null, sortOrder: 7 },
+      { name: "Manutenção", monthlyAmountCents: 18_000, costKind: "provision", notes: null, sortOrder: 8 },
+      { name: "Lavagem", monthlyAmountCents: 6_000, costKind: "cash", notes: null, sortOrder: 9 },
+    ],
+  },
+  {
+    analysis: {
+      name: "Moradia",
+      slug: DEFAULT_COST_ANALYSIS_MORADIA_SLUG,
+      description: "Custos mensais e provisionamentos relacionados à casa.",
+      baseNetIncomeCents: 1_130_000,
+      baseGrossIncomeCents: 1_600_000,
+    },
+    items: [
+      {
+        name: "Aluguel",
+        monthlyAmountCents: 139_000,
+        costKind: "cash",
+        notes: null,
+        sortOrder: 0,
+      },
+      {
+        name: "Condomínio",
+        monthlyAmountCents: 66_000,
+        costKind: "cash",
+        notes: null,
+        sortOrder: 1,
+      },
+      {
+        name: "Manutenção",
+        monthlyAmountCents: 8_000,
+        costKind: "provision",
+        notes: "Reserva mensal para pequenos reparos e manutenção da casa.",
+        sortOrder: 2,
+      },
+      {
+        name: "Seguro",
+        monthlyAmountCents: 4_000,
+        costKind: "provision",
+        notes: "Provisionamento mensal para seguro residencial.",
+        sortOrder: 3,
+      },
+      {
+        name: "IPTU",
+        monthlyAmountCents: 9_000,
+        costKind: "provision",
+        notes: "Provisionamento mensal para pagamento anual ou parcelado do IPTU.",
+        sortOrder: 4,
+      },
+      {
+        name: "Luz",
+        monthlyAmountCents: 45_000,
+        costKind: "cash",
+        notes: null,
+        sortOrder: 5,
+      },
+    ],
+  },
+];
+
+export function getDefaultCostAnalysisDefinitions(): DefaultCostAnalysisDefinition[] {
+  return DEFAULT_COST_ANALYSIS_DEFINITIONS;
+}
 
 function normalizeCostAnalysisKind(kind: CostAnalysisKind | string | null | undefined): CostAnalysisKind {
   if (kind === "economic" || kind === "provision") {
