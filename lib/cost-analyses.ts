@@ -8,6 +8,11 @@ export type DefaultCostAnalysisDefinition = {
   items: Array<Omit<NewCostAnalysisItem, "costAnalysisId">>;
 };
 
+export type DefaultCostAnalysisBootstrapPlan = {
+  analysis: NewCostAnalysis;
+  items: Array<Omit<NewCostAnalysisItem, "costAnalysisId">>;
+};
+
 export const DEFAULT_COST_ANALYSIS_DEFINITIONS: DefaultCostAnalysisDefinition[] = [
   {
     analysis: {
@@ -87,6 +92,26 @@ export const DEFAULT_COST_ANALYSIS_DEFINITIONS: DefaultCostAnalysisDefinition[] 
 
 export function getDefaultCostAnalysisDefinitions(): DefaultCostAnalysisDefinition[] {
   return DEFAULT_COST_ANALYSIS_DEFINITIONS;
+}
+
+export function getDefaultCostAnalysisDefinitionBySlug(
+  slug: string
+): DefaultCostAnalysisDefinition | null {
+  return DEFAULT_COST_ANALYSIS_DEFINITIONS.find((definition) => definition.analysis.slug === slug) ?? null;
+}
+
+export function buildDefaultCostAnalysisBootstrapPlan(
+  definition: DefaultCostAnalysisDefinition,
+  analysisAlreadyExists: boolean
+): DefaultCostAnalysisBootstrapPlan | null {
+  if (analysisAlreadyExists) {
+    return null;
+  }
+
+  return {
+    analysis: definition.analysis,
+    items: definition.items,
+  };
 }
 
 function normalizeCostAnalysisKind(kind: CostAnalysisKind | string | null | undefined): CostAnalysisKind {

@@ -10,9 +10,11 @@ import {
 } from "@/lib/db/schema";
 import { listMonthlyIncomes } from "@/lib/services/monthly-income.service";
 import {
+  buildDefaultCostAnalysisBootstrapPlan,
   calculateCostAnalysisTotals,
   DEFAULT_COST_ANALYSIS_DEFINITIONS,
   DEFAULT_COST_ANALYSIS_SLUG,
+  getDefaultCostAnalysisDefinitionBySlug,
   type CostAnalysisItemView,
   type DefaultCostAnalysisDefinition,
 } from "@/lib/cost-analyses";
@@ -45,9 +47,14 @@ async function seedCostAnalysisDefinitionIfNeeded(definition: DefaultCostAnalysi
   let analysisId = existing[0]?.id ?? null;
 
   if (!analysisId) {
+    const plan = buildDefaultCostAnalysisBootstrapPlan(definition, false);
+    if (!plan) {
+      return null;
+    }
+
     const insertedAnalysis = await db
       .insert(costAnalyses)
-      .values(definition.analysis)
+      .values(plan.analysis)
       .returning({ id: costAnalyses.id });
 
     analysisId = insertedAnalysis[0]?.id ?? null;
@@ -57,27 +64,11 @@ async function seedCostAnalysisDefinitionIfNeeded(definition: DefaultCostAnalysi
     return null;
   }
 
-  const existingItems = await db
-    .select({ name: costAnalysisItems.name })
-    .from(costAnalysisItems)
-    .where(eq(costAnalysisItems.costAnalysisId, analysisId));
-  const existingItemNames = new Set(existingItems.map((item) => item.name));
-  const missingItems = definition.items.filter((item) => !existingItemNames.has(item.name));
-
-  if (missingItems.length > 0) {
-    const lastItem = await db
-      .select({ sortOrder: costAnalysisItems.sortOrder })
-      .from(costAnalysisItems)
-      .where(eq(costAnalysisItems.costAnalysisId, analysisId))
-      .orderBy(desc(costAnalysisItems.sortOrder), desc(costAnalysisItems.createdAt))
-      .limit(1);
-
-    let nextSortOrder = (lastItem[0]?.sortOrder ?? -1) + 1;
+  if (!existing[0]) {
     await db.insert(costAnalysisItems).values(
-      missingItems.map((item) => ({
+      definition.items.map((item) => ({
         ...item,
         costAnalysisId: analysisId,
-        sortOrder: nextSortOrder++,
       }))
     );
   }
@@ -191,12 +182,6 @@ export async function getDefaultCostAnalyses(): Promise<CostAnalysisViewModel[]>
 export async function getDefaultCarCostAnalysis(): Promise<CostAnalysisViewModel | null> {
   await ensureDefaultCostAnalysesSeeded();
   return getCostAnalysisViewModelBySlug(DEFAULT_COST_ANALYSIS_SLUG);
-}
-
-function getDefaultCostAnalysisDefinitionBySlug(
-  slug: string
-): DefaultCostAnalysisDefinition | null {
-  return DEFAULT_COST_ANALYSIS_DEFINITIONS.find((definition) => definition.analysis.slug === slug) ?? null;
 }
 
 export async function getCostAnalysisBySlug(slug: string): Promise<CostAnalysisWithItems | null> {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildDefaultCostAnalysisBootstrapPlan,
   canScheduleFutureExpenseFromCostKind,
   calculateAnnualAmount,
   calculateCostAnalysisTotals,
@@ -34,6 +35,29 @@ describe("cost analyses helpers", () => {
     expect(new Set(definitions.map((definition) => definition.analysis.slug)).size).toBe(
       definitions.length
     );
+  });
+
+  it("não recria itens quando a análise padrão já existe", () => {
+    const definition = getDefaultCostAnalysisDefinitions()[0];
+    const plan = buildDefaultCostAnalysisBootstrapPlan(definition, true);
+
+    expect(plan).toBeNull();
+  });
+
+  it("cria análise padrão completa quando ela ainda não existe", () => {
+    const definition = getDefaultCostAnalysisDefinitions()[1];
+    const plan = buildDefaultCostAnalysisBootstrapPlan(definition, false);
+
+    expect(plan?.analysis.slug).toBe("moradia");
+    expect(plan?.items).toHaveLength(6);
+    expect(plan?.items.map((item) => item.name)).toEqual([
+      "Aluguel",
+      "Condomínio",
+      "Manutenção",
+      "Seguro",
+      "IPTU",
+      "Luz",
+    ]);
   });
 
   it("calcula valor anual a partir do mensal", () => {
