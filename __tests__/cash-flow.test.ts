@@ -594,6 +594,20 @@ describe("calculateCashFlowProjection", () => {
     expect(jan.incomeUsed).toBe(500000);
   });
 
+  it("coluna de entradas realizadas expõe apenas o realizado e não a previsão", () => {
+    const result = calculateCashFlowProjection(
+      baseInput({
+        actualLinkedIncomesByMonth: { "2026-01": 0 },
+        actualOneTimeIncomesByMonth: { "2026-01": 0 },
+        futureExpectedIncomesByMonth: { "2026-01": 70000 },
+      })
+    );
+
+    const jan = result.months[0];
+    expect(jan.actualIncome).toBe(0);
+    expect(jan.incomeUsed).toBe(570000);
+  });
+
   it("sem entrada avulsa mantém comportamento anterior", () => {
     const result = calculateCashFlowProjection(
       baseInput({
@@ -604,6 +618,7 @@ describe("calculateCashFlowProjection", () => {
 
     const jan = result.months[0];
     expect(jan.incomeSource).toBe("planejado");
+    expect(jan.actualIncome).toBe(0);
     expect(jan.incomeUsed).toBe(500000);
   });
 
@@ -649,6 +664,7 @@ describe("calculateCashFlowProjection", () => {
     const jan = result.months[0];
     expect(jan.futureExpectedIncomes).toBe(0);
     expect(jan.incomeSource).toBe("planejado");
+    expect(jan.actualIncome).toBe(0);
     expect(jan.incomeUsed).toBe(500000);
   });
 

@@ -79,7 +79,7 @@ export function CashFlowMonthRow({
     return (
       <TableRow className="border-border/70 bg-muted/20">
         <TableCell className="font-medium">{month.monthLabel}</TableCell>
-        <TableCell colSpan={11} className="text-sm text-muted-foreground">
+        <TableCell colSpan={12} className="text-sm text-muted-foreground">
           Antes do início da projeção
         </TableCell>
       </TableRow>
@@ -188,6 +188,14 @@ export function CashFlowMonthRow({
           ) : null}
           {shouldShowDetails && month.futureExpectedIncomes > 0 && !month.isClosed ? (
             <DetailLine label="Futuras" value={month.futureExpectedIncomes} />
+          ) : null}
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="space-y-1">
+          <p>{formatBRL(month.actualIncome)}</p>
+          {shouldShowDetails ? (
+            <p className="text-xs text-muted-foreground">Entradas efetivamente realizadas</p>
           ) : null}
         </div>
       </TableCell>

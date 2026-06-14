@@ -33,6 +33,7 @@ export function CashFlowTable({
           <TableHead>Mês</TableHead>
           <TableHead>Saldo inicial</TableHead>
           <TableHead>Entradas previstas</TableHead>
+          <TableHead>Entradas realizadas</TableHead>
           <TableHead>Gastos previstos</TableHead>
           <TableHead>Orçamento previsto</TableHead>
           <TableHead>Variável realizado</TableHead>
