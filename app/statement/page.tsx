@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { OneTimeIncomeEntryForm } from "@/components/income-tracking/OneTimeIncomeEntryForm";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { StatementExpenseEntryForm } from "@/components/statement/StatementExpenseEntryForm";
 import {
   getStatementByPeriod,
@@ -64,6 +66,12 @@ export default async function StatementPage({ searchParams }: StatementPageProps
               periodMonth={statement.periodMonth}
               action={createOneTimeIncomeEntryAction}
             />
+            <Link
+              href="/statement/import"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Importar extrato
+            </Link>
             <StatementExpenseEntryForm
               periodMonth={statement.periodMonth}
               monthlyExpenses={monthlyExpenses}

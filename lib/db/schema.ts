@@ -49,6 +49,24 @@ export const PROPOSAL_STATUS_VALUES = [
   "substituida",
 ] as const;
 
+export const STATEMENT_IMPORT_SOURCE_VALUES = ["inter_csv"] as const;
+export const STATEMENT_IMPORT_BATCH_STATUS_VALUES = [
+  "parsed",
+  "partially_committed",
+  "committed",
+  "cancelled",
+] as const;
+export const STATEMENT_IMPORT_ROW_STATUS_VALUES = [
+  "pending",
+  "ignored",
+  "committed",
+  "skipped_duplicate",
+] as const;
+export const STATEMENT_IMPORT_ROW_ENTRY_TYPE_VALUES = [
+  "monthly_income_entry",
+  "monthly_expense_entry",
+] as const;
+
 export const EXPENSE_CATEGORY_VALUES = [
   "moradia",
   "dividas",
@@ -569,6 +587,79 @@ export const futureIncomeReceivables = pgTable(
     index("idx_future_income_receivables_status_date").on(table.status, table.expectedDate),
     index("idx_future_income_receivables_expected_date").on(table.expectedDate),
     index("idx_future_income_receivables_category").on(table.category),
+  ]
+);
+
+export const statementImportBatches = pgTable(
+  "statement_import_batches",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    source: text("source").notNull().default("inter_csv"),
+    originalFilename: text("original_filename"),
+    periodStart: date("period_start"),
+    periodEnd: date("period_end"),
+    status: text("status").notNull().default("parsed"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "statement_import_batches_source_valid",
+      sql`${table.source} IN ('inter_csv')`
+    ),
+    check(
+      "statement_import_batches_status_valid",
+      sql`${table.status} IN ('parsed','partially_committed','committed','cancelled')`
+    ),
+  ]
+);
+
+export const statementImportRows = pgTable(
+  "statement_import_rows",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    batchId: uuid("batch_id")
+      .notNull()
+      .references(() => statementImportBatches.id, { onDelete: "cascade" }),
+    source: text("source").notNull().default("inter_csv"),
+    rowIndex: integer("row_index").notNull(),
+    rowHash: text("row_hash").notNull(),
+    externalId: text("external_id"),
+    transactionDate: date("transaction_date").notNull(),
+    rawHistory: text("raw_history"),
+    rawDescription: text("raw_description").notNull(),
+    description: text("description").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    balanceAfterCents: integer("balance_after_cents"),
+    direction: text("direction").notNull(),
+    status: text("status").notNull().default("pending"),
+    createdEntryType: text("created_entry_type"),
+    createdEntryId: uuid("created_entry_id"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "statement_import_rows_source_valid",
+      sql`${table.source} IN ('inter_csv')`
+    ),
+    check("statement_import_rows_row_index_positive", sql`${table.rowIndex} > 0`),
+    check("statement_import_rows_amount_positive", sql`${table.amountCents} > 0`),
+    check(
+      "statement_import_rows_direction_valid",
+      sql`${table.direction} IN ('income','expense')`
+    ),
+    check(
+      "statement_import_rows_status_valid",
+      sql`${table.status} IN ('pending','ignored','committed','skipped_duplicate')`
+    ),
+    check(
+      "statement_import_rows_created_entry_type_valid",
+      sql`${table.createdEntryType} IS NULL OR ${table.createdEntryType} IN ('monthly_income_entry','monthly_expense_entry')`
+    ),
+    uniqueIndex("ux_statement_import_rows_source_hash").on(table.source, table.rowHash),
+    index("idx_statement_import_rows_batch_id").on(table.batchId),
+    index("idx_statement_import_rows_row_hash").on(table.rowHash),
   ]
 );
 

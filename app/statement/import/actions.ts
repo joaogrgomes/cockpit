@@ -1,0 +1,102 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { parseInterCsvStatement, type StatementImportReviewedRow } from "@/lib/statement-import";
+import {
+  commitStatementImportBatch,
+  createStatementImportBatchWithRows,
+} from "@/lib/services/statement-import.service";
+
+export type StatementImportActionResult = {
+  ok: boolean;
+  error?: string;
+};
+
+function parseFileFromFormData(formData: FormData): File | null {
+  const file = formData.get("file");
+  return file instanceof File ? file : null;
+}
+
+function parseRowsPayload(formData: FormData): StatementImportReviewedRow[] {
+  const payload = formData.get("rowsJson");
+  if (typeof payload !== "string" || !payload.trim()) {
+    return [];
+  }
+
+  const parsed = JSON.parse(payload) as StatementImportReviewedRow[];
+  return parsed;
+}
+
+function revalidateImportedPaths(batchId: string) {
+  revalidatePath("/statement/import");
+  revalidatePath(`/statement/import?batchId=${batchId}`);
+  revalidatePath("/statement");
+  revalidatePath("/expenses/tracking");
+  revalidatePath("/incomes/tracking");
+  revalidatePath("/cash-flow");
+  revalidatePath("/reconciliation");
+}
+
+export async function uploadStatementCsvAction(
+  _prevState: StatementImportActionResult,
+  formData: FormData
+): Promise<StatementImportActionResult> {
+  try {
+    const file = parseFileFromFormData(formData);
+    if (!file) {
+      return { ok: false, error: "Selecione um arquivo CSV" };
+    }
+
+    if (!file.name.toLowerCase().endsWith(".csv") && file.type && !file.type.includes("csv")) {
+      return { ok: false, error: "Envie um arquivo CSV válido" };
+    }
+
+    const content = await file.text();
+    const items = parseInterCsvStatement(content);
+
+    if (items.length === 0) {
+      return { ok: false, error: "Nenhuma linha de lançamento foi encontrada no CSV" };
+    }
+
+    const { batchId, insertedCount, duplicateCount } = await createStatementImportBatchWithRows(
+      {
+        source: "inter_csv",
+        originalFilename: file.name,
+      },
+      items
+    );
+
+    revalidatePath("/statement/import");
+    redirect(
+      `/statement/import?batchId=${batchId}&inserted=${insertedCount}&duplicates=${duplicateCount}`
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Não foi possível ler o CSV";
+    return { ok: false, error: message };
+  }
+}
+
+export async function commitStatementImportRowsAction(
+  _prevState: StatementImportActionResult,
+  formData: FormData
+): Promise<StatementImportActionResult> {
+  try {
+    const batchId = formData.get("batchId");
+    if (typeof batchId !== "string" || !batchId) {
+      return { ok: false, error: "Lote de importação inválido" };
+    }
+
+    const rows = parseRowsPayload(formData);
+    if (rows.length === 0) {
+      return { ok: false, error: "Nenhuma linha foi enviada para importação" };
+    }
+
+    await commitStatementImportBatch(batchId, rows);
+    revalidateImportedPaths(batchId);
+    redirect(`/statement/import?batchId=${batchId}`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Não foi possível importar os lançamentos";
+    return { ok: false, error: message };
+  }
+}

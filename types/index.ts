@@ -14,6 +14,10 @@ import {
   PAYMENT_METHOD_VALUES,
   PROPOSAL_STATUS_VALUES,
   DEBT_ATTACHMENT_TYPE_VALUES,
+  STATEMENT_IMPORT_BATCH_STATUS_VALUES,
+  STATEMENT_IMPORT_ROW_ENTRY_TYPE_VALUES,
+  STATEMENT_IMPORT_ROW_STATUS_VALUES,
+  STATEMENT_IMPORT_SOURCE_VALUES,
   debts,
   cashFlowSettings,
   monthlyIncomeEntries,
@@ -28,6 +32,8 @@ import {
   debtValueUpdates,
   costAnalyses,
   costAnalysisItems,
+  statementImportBatches,
+  statementImportRows,
 } from "@/lib/db/schema";
 
 export type Debt = InferSelectModel<typeof debts>;
@@ -77,3 +83,12 @@ export type MonthlyClosingStatus = (typeof MONTHLY_CLOSING_STATUS_VALUES)[number
 export type ExpenseOccurrenceType = (typeof EXPENSE_OCCURRENCE_TYPE_VALUES)[number];
 export type DebtAttachmentType = (typeof DEBT_ATTACHMENT_TYPE_VALUES)[number];
 export type CostAnalysisKind = (typeof COST_ANALYSIS_KIND_VALUES)[number];
+
+export type StatementImportBatch = InferSelectModel<typeof statementImportBatches>;
+export type NewStatementImportBatch = InferInsertModel<typeof statementImportBatches>;
+export type StatementImportRow = InferSelectModel<typeof statementImportRows>;
+export type NewStatementImportRow = InferInsertModel<typeof statementImportRows>;
+export type StatementImportSource = (typeof STATEMENT_IMPORT_SOURCE_VALUES)[number];
+export type StatementImportBatchStatus = (typeof STATEMENT_IMPORT_BATCH_STATUS_VALUES)[number];
+export type StatementImportRowStatus = (typeof STATEMENT_IMPORT_ROW_STATUS_VALUES)[number];
+export type StatementImportRowEntryType = (typeof STATEMENT_IMPORT_ROW_ENTRY_TYPE_VALUES)[number];
