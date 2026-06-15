@@ -2,6 +2,7 @@ import type { CostAnalysisItem, CostAnalysisKind, NewCostAnalysis, NewCostAnalys
 
 export const DEFAULT_COST_ANALYSIS_SLUG = "carro";
 export const DEFAULT_COST_ANALYSIS_MORADIA_SLUG = "moradia";
+export const DEFAULT_COST_ANALYSIS_EDUCACAO_SLUG = "educacao";
 
 export type DefaultCostAnalysisDefinition = {
   analysis: NewCostAnalysis;
@@ -85,6 +86,52 @@ export const DEFAULT_COST_ANALYSIS_DEFINITIONS: DefaultCostAnalysisDefinition[] 
         costKind: "cash",
         notes: null,
         sortOrder: 5,
+      },
+    ],
+  },
+  {
+    analysis: {
+      name: "Educação",
+      slug: DEFAULT_COST_ANALYSIS_EDUCACAO_SLUG,
+      description: "Custo total mensal e anual com escola, materiais, uniforme e faculdade.",
+      baseNetIncomeCents: 1_130_000,
+      baseGrossIncomeCents: 1_600_000,
+    },
+    items: [
+      {
+        name: "Matrícula",
+        monthlyAmountCents: 12_500,
+        costKind: "provision",
+        notes: null,
+        sortOrder: 0,
+      },
+      {
+        name: "Mensalidade",
+        monthlyAmountCents: 133_500,
+        costKind: "cash",
+        notes: null,
+        sortOrder: 1,
+      },
+      {
+        name: "Material",
+        monthlyAmountCents: 22_000,
+        costKind: "provision",
+        notes: null,
+        sortOrder: 2,
+      },
+      {
+        name: "Uniforme",
+        monthlyAmountCents: 8_500,
+        costKind: "provision",
+        notes: null,
+        sortOrder: 3,
+      },
+      {
+        name: "Faculdade Poli",
+        monthlyAmountCents: 20_000,
+        costKind: "cash",
+        notes: null,
+        sortOrder: 4,
       },
     ],
   },

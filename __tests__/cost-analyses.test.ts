@@ -31,6 +31,7 @@ describe("cost analyses helpers", () => {
     expect(definitions.map((definition) => definition.analysis.slug)).toEqual([
       "carro",
       "moradia",
+      "educacao",
     ]);
     expect(new Set(definitions.map((definition) => definition.analysis.slug)).size).toBe(
       definitions.length
@@ -57,6 +58,22 @@ describe("cost analyses helpers", () => {
       "Seguro",
       "IPTU",
       "Luz",
+    ]);
+  });
+
+  it("cria a análise padrão de educação quando ela ainda não existe", () => {
+    const definition = getDefaultCostAnalysisDefinitions()[2];
+    const plan = buildDefaultCostAnalysisBootstrapPlan(definition, false);
+
+    expect(plan?.analysis.slug).toBe("educacao");
+    expect(plan?.analysis.name).toBe("Educação");
+    expect(plan?.items).toHaveLength(5);
+    expect(plan?.items.map((item) => item.name)).toEqual([
+      "Matrícula",
+      "Mensalidade",
+      "Material",
+      "Uniforme",
+      "Faculdade Poli",
     ]);
   });
 
@@ -224,6 +241,54 @@ describe("cost analyses helpers", () => {
       "Manutenção",
       "Seguro",
       "IPTU",
+    ]);
+  });
+
+  it("soma total mensal e total anual da educação", () => {
+    const analysis = calculateCostAnalysisTotals(
+      [
+        makeItem({ name: "Matrícula", monthlyAmountCents: 12_500, costKind: "provision" }),
+        makeItem({ name: "Mensalidade", monthlyAmountCents: 133_500, costKind: "cash", sortOrder: 1 }),
+        makeItem({ name: "Material", monthlyAmountCents: 22_000, costKind: "provision", sortOrder: 2 }),
+        makeItem({ name: "Uniforme", monthlyAmountCents: 8_500, costKind: "provision", sortOrder: 3 }),
+        makeItem({ name: "Faculdade Poli", monthlyAmountCents: 20_000, costKind: "cash", sortOrder: 4 }),
+      ],
+      1_130_000,
+      1_600_000
+    );
+
+    expect(analysis.totalMonthlyCents).toBe(196_500);
+    expect(analysis.totalAnnualCents).toBe(2_358_000);
+    expect(analysis.netIncomePercentage).toBe(17.39);
+    expect(analysis.grossIncomePercentage).toBe(12.28);
+    expect(analysis.totalCashMonthlyCents).toBe(153_500);
+    expect(analysis.totalProvisionMonthlyCents).toBe(43_000);
+  });
+
+  it("classifica os itens da educação por tipo", () => {
+    const analysis = calculateCostAnalysisTotals(
+      [
+        makeItem({ name: "Matrícula", monthlyAmountCents: 12_500, costKind: "provision" }),
+        makeItem({ name: "Mensalidade", monthlyAmountCents: 133_500, costKind: "cash", sortOrder: 1 }),
+        makeItem({ name: "Material", monthlyAmountCents: 22_000, costKind: "provision", sortOrder: 2 }),
+        makeItem({ name: "Uniforme", monthlyAmountCents: 8_500, costKind: "provision", sortOrder: 3 }),
+        makeItem({ name: "Faculdade Poli", monthlyAmountCents: 20_000, costKind: "cash", sortOrder: 4 }),
+      ],
+      1_130_000,
+      1_600_000
+    );
+
+    expect(analysis.items.map((item) => item.name)).toEqual([
+      "Matrícula",
+      "Mensalidade",
+      "Material",
+      "Uniforme",
+      "Faculdade Poli",
+    ]);
+    expect(analysis.items.filter((item) => item.costKind === "provision").map((item) => item.name)).toEqual([
+      "Matrícula",
+      "Material",
+      "Uniforme",
     ]);
   });
 });
