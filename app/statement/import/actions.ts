@@ -42,6 +42,10 @@ export async function uploadStatementCsvAction(
   _prevState: StatementImportActionResult,
   formData: FormData
 ): Promise<StatementImportActionResult> {
+  let batchId: string;
+  let insertedCount = 0;
+  let duplicateCount = 0;
+
   try {
     const file = parseFileFromFormData(formData);
     if (!file) {
@@ -59,7 +63,7 @@ export async function uploadStatementCsvAction(
       return { ok: false, error: "Nenhuma linha de lançamento foi encontrada no CSV" };
     }
 
-    const { batchId, insertedCount, duplicateCount } = await createStatementImportBatchWithRows(
+    const result = await createStatementImportBatchWithRows(
       {
         source: "inter_csv",
         originalFilename: file.name,
@@ -67,25 +71,30 @@ export async function uploadStatementCsvAction(
       items
     );
 
-    revalidatePath("/statement/import");
-    redirect(
-      `/statement/import?batchId=${batchId}&inserted=${insertedCount}&duplicates=${duplicateCount}`
-    );
+    batchId = result.batchId;
+    insertedCount = result.insertedCount;
+    duplicateCount = result.duplicateCount;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Não foi possível ler o CSV";
     return { ok: false, error: message };
   }
+
+  revalidatePath("/statement/import");
+  redirect(`/statement/import?batchId=${batchId}&inserted=${insertedCount}&duplicates=${duplicateCount}`);
 }
 
 export async function commitStatementImportRowsAction(
   _prevState: StatementImportActionResult,
   formData: FormData
 ): Promise<StatementImportActionResult> {
+  let batchId: string;
+
   try {
-    const batchId = formData.get("batchId");
-    if (typeof batchId !== "string" || !batchId) {
+    const batchIdValue = formData.get("batchId");
+    if (typeof batchIdValue !== "string" || !batchIdValue) {
       return { ok: false, error: "Lote de importação inválido" };
     }
+    batchId = batchIdValue;
 
     const rows = parseRowsPayload(formData);
     if (rows.length === 0) {
@@ -94,9 +103,10 @@ export async function commitStatementImportRowsAction(
 
     await commitStatementImportBatch(batchId, rows);
     revalidateImportedPaths(batchId);
-    redirect(`/statement/import?batchId=${batchId}`);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Não foi possível importar os lançamentos";
     return { ok: false, error: message };
   }
+
+  redirect(`/statement/import?batchId=${batchId}`);
 }

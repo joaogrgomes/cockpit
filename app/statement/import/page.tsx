@@ -52,15 +52,15 @@ export default async function StatementImportPage({ searchParams }: StatementImp
       />
 
       <Card className="border-border/80 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Fluxo do MVP</CardTitle>
-          <CardDescription>
-            Upload do CSV, staging, revisão manual e gravação só após confirmação.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="text-sm text-muted-foreground">
-          O parser usa o cabeçalho <code>Data Lançamento;Histórico;Descrição;Valor;Saldo</code> e
-          preserva o saldo por transação como apoio visual.
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Fluxo do MVP</CardTitle>
+            <CardDescription>
+              Upload do CSV, staging, revisão manual e gravação só após confirmação.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="text-sm text-muted-foreground">
+            O parser usa o cabeçalho <code>Data Lançamento;Histórico;Descrição;Valor;Saldo</code> e
+            preserva o saldo por transação como apoio visual.
         </CardContent>
       </Card>
 
@@ -81,12 +81,14 @@ export default async function StatementImportPage({ searchParams }: StatementImp
       ) : (
         <div className="space-y-4">
           <Card className="border-border/80 shadow-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Lote selecionado</CardTitle>
-              <CardDescription>
-                {batchData.batch.originalFilename ? `Arquivo: ${batchData.batch.originalFilename}` : "Arquivo sem nome"}
-              </CardDescription>
-            </CardHeader>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Lote selecionado</CardTitle>
+                <CardDescription>
+                  {batchData.batch.originalFilename
+                    ? `Arquivo: ${batchData.batch.originalFilename}`
+                    : "Arquivo sem nome"}
+                </CardDescription>
+              </CardHeader>
             <CardContent className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-3">
               <p>Status: {batchData.batch.status}</p>
               <p>
