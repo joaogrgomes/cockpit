@@ -25,6 +25,7 @@ import { DebtTypeBadge } from "./DebtTypeBadge";
 import { PriorityBadge } from "./PriorityBadge";
 import { ProposalBadge } from "./ProposalBadge";
 import { StatusBadge } from "./StatusBadge";
+import type { DebtSelectionItem } from "@/lib/debt-selection";
 
 type DebtActionResult = {
   ok: boolean;
@@ -32,7 +33,7 @@ type DebtActionResult = {
 };
 
 type DebtRowProps = {
-  debt: Debt & { hasActiveProposal: boolean };
+  debt: DebtSelectionItem;
   updateAction: (formData: FormData) => Promise<DebtActionResult>;
   deleteAction: (formData: FormData) => Promise<DebtActionResult>;
 };
@@ -83,7 +84,7 @@ export function DebtRow({ debt, updateAction, deleteAction }: DebtRowProps) {
       <TableCell className="py-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={toDebtStatus(debt.status)} />
-          {debt.hasActiveProposal ? <ProposalBadge /> : null}
+          {debt.latestPayoffProposal ? <ProposalBadge state={debt.latestPayoffProposal.isExpired ? "expired" : debt.latestPayoffProposal.isCurrent ? "current" : "historical"} /> : null}
         </div>
       </TableCell>
       <TableCell className="py-3 font-medium">{formatBRL(debt.currentValue)}</TableCell>
