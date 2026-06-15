@@ -267,6 +267,7 @@ describe("statement import service", () => {
     expect(Array.isArray(stagingInsert.values)).toBe(true);
     expect(stagingInsert.values).toHaveLength(1);
     expect(stagingInsert.values[0]).toMatchObject({
+      rowIndex: 2,
       rowHash: "hash-2",
       status: "pending",
       amountCents: 400000,

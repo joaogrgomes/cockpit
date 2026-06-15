@@ -38,6 +38,7 @@ export type StatementItem = {
   notes: string | null;
   originId: string;
   originType: StatementOriginType;
+  importRowIndex?: number | null;
   createdAt?: string | Date | null;
 };
 
@@ -260,19 +261,72 @@ function compareStatementItems(a: StatementItem, b: StatementItem): number {
     return dateA < dateB ? 1 : -1;
   }
 
+  const aImported = a.importRowIndex !== null && a.importRowIndex !== undefined;
+  const bImported = b.importRowIndex !== null && b.importRowIndex !== undefined;
   const aCreatedAt = a.createdAt ? getTimestampMs(a.createdAt) : null;
   const bCreatedAt = b.createdAt ? getTimestampMs(b.createdAt) : null;
 
-  if (aCreatedAt !== null || bCreatedAt !== null) {
-    if (aCreatedAt !== null && bCreatedAt !== null) {
-      if (aCreatedAt !== bCreatedAt) {
+  if (aImported && bImported) {
+    // CSV imports preserve the bank order through rowIndex, and the statement
+    // shows the most recent bank movement first within the day.
+    if (a.importRowIndex !== b.importRowIndex) {
+      return (b.importRowIndex ?? 0) - (a.importRowIndex ?? 0);
+    }
+
+    if (aCreatedAt !== null || bCreatedAt !== null) {
+      if (aCreatedAt !== null && bCreatedAt !== null && aCreatedAt !== bCreatedAt) {
         return bCreatedAt - aCreatedAt;
       }
 
-      return 0;
+      if (aCreatedAt !== null && bCreatedAt === null) {
+        return -1;
+      }
+
+      if (aCreatedAt === null && bCreatedAt !== null) {
+        return 1;
+      }
     }
 
     return a.id.localeCompare(b.id);
+  }
+
+  if (!aImported && !bImported) {
+    // Manual entries keep the familiar ordering by creation time.
+    if (aCreatedAt !== null || bCreatedAt !== null) {
+      if (aCreatedAt !== null && bCreatedAt !== null && aCreatedAt !== bCreatedAt) {
+        return bCreatedAt - aCreatedAt;
+      }
+
+      if (aCreatedAt !== null && bCreatedAt === null) {
+        return -1;
+      }
+
+      if (aCreatedAt === null && bCreatedAt !== null) {
+        return 1;
+      }
+    }
+
+    return a.id.localeCompare(b.id);
+  }
+
+  // When mixing imported and manual items, prefer the most recent visible
+  // timestamp, but keep imported rows stable when timestamps tie.
+  if (aCreatedAt !== null || bCreatedAt !== null) {
+    if (aCreatedAt !== null && bCreatedAt !== null && aCreatedAt !== bCreatedAt) {
+      return bCreatedAt - aCreatedAt;
+    }
+
+    if (aCreatedAt !== null && bCreatedAt === null) {
+      return -1;
+    }
+
+    if (aCreatedAt === null && bCreatedAt !== null) {
+      return 1;
+    }
+  }
+
+  if (aImported !== bImported) {
+    return aImported ? -1 : 1;
   }
 
   return a.id.localeCompare(b.id);

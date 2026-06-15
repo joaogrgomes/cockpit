@@ -694,4 +694,131 @@ describe("groupStatementItemsByDate", () => {
 
     expect(sorted.map((item) => item.id)).toEqual(["expense-3", "expense-2", "expense-1"]);
   });
+
+  it("preserva a ordem bancária dos itens importados no mesmo dia pelo rowIndex desc", () => {
+    const sorted = sortStatementItems([
+      {
+        ...mapExpenseEntryRowToStatementItem({
+          id: "expense-3",
+          monthlyExpenseId: null,
+          entryName: "Mercado",
+          entryCategory: "alimentacao",
+          entryExpenseType: "variavel",
+          monthlyExpenseName: null,
+          monthlyExpenseCategory: null,
+          monthlyExpenseType: null,
+          periodMonth: "2026-06",
+          amount: 3000,
+          paidAt: "2026-06-12",
+          paymentMethod: "pix",
+          notes: null,
+          createdAt: "2026-06-12T12:00:00.000Z",
+        }),
+        importRowIndex: 2,
+      },
+      {
+        ...mapExpenseEntryRowToStatementItem({
+          id: "expense-1",
+          monthlyExpenseId: null,
+          entryName: "Padaria",
+          entryCategory: "alimentacao",
+          entryExpenseType: "variavel",
+          monthlyExpenseName: null,
+          monthlyExpenseCategory: null,
+          monthlyExpenseType: null,
+          periodMonth: "2026-06",
+          amount: 1500,
+          paidAt: "2026-06-12",
+          paymentMethod: "pix",
+          notes: null,
+          createdAt: "2026-06-12T08:00:00.000Z",
+        }),
+        importRowIndex: 0,
+      },
+      {
+        ...mapExpenseEntryRowToStatementItem({
+          id: "expense-2",
+          monthlyExpenseId: null,
+          entryName: "Farmácia",
+          entryCategory: "saude",
+          entryExpenseType: "variavel",
+          monthlyExpenseName: null,
+          monthlyExpenseCategory: null,
+          monthlyExpenseType: null,
+          periodMonth: "2026-06",
+          amount: 2000,
+          paidAt: "2026-06-12",
+          paymentMethod: "pix",
+          notes: null,
+          createdAt: "2026-06-12T10:00:00.000Z",
+        }),
+        importRowIndex: 1,
+      },
+    ]);
+
+    expect(sorted.map((item) => item.id)).toEqual(["expense-3", "expense-2", "expense-1"]);
+  });
+
+  it("mistura lançamentos manuais e importados de forma determinística dentro do mesmo dia", () => {
+    const sorted = sortStatementItems([
+      {
+        ...mapExpenseEntryRowToStatementItem({
+          id: "imported-2",
+          monthlyExpenseId: null,
+          entryName: "Mercado",
+          entryCategory: "alimentacao",
+          entryExpenseType: "variavel",
+          monthlyExpenseName: null,
+          monthlyExpenseCategory: null,
+          monthlyExpenseType: null,
+          periodMonth: "2026-06",
+          amount: 3000,
+          paidAt: "2026-06-12",
+          paymentMethod: "pix",
+          notes: null,
+          createdAt: "2026-06-12T12:00:00.000Z",
+        }),
+        importRowIndex: 1,
+      },
+      {
+        ...mapExpenseEntryRowToStatementItem({
+          id: "manual-1",
+          monthlyExpenseId: null,
+          entryName: "Manual recente",
+          entryCategory: "outros",
+          entryExpenseType: "variavel",
+          monthlyExpenseName: null,
+          monthlyExpenseCategory: null,
+          monthlyExpenseType: null,
+          periodMonth: "2026-06",
+          amount: 1500,
+          paidAt: "2026-06-12",
+          paymentMethod: "pix",
+          notes: null,
+          createdAt: "2026-06-12T13:00:00.000Z",
+        }),
+      },
+      {
+        ...mapExpenseEntryRowToStatementItem({
+          id: "imported-1",
+          monthlyExpenseId: null,
+          entryName: "Padaria",
+          entryCategory: "alimentacao",
+          entryExpenseType: "variavel",
+          monthlyExpenseName: null,
+          monthlyExpenseCategory: null,
+          monthlyExpenseType: null,
+          periodMonth: "2026-06",
+          amount: 1000,
+          paidAt: "2026-06-12",
+          paymentMethod: "pix",
+          notes: null,
+          createdAt: "2026-06-12T12:00:00.000Z",
+        }),
+        importRowIndex: 0,
+      },
+    ]);
+
+    expect(sorted.map((item) => item.id)).toEqual(["manual-1", "imported-2", "imported-1"]);
+  });
 });

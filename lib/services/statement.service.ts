@@ -1,6 +1,6 @@
 import "server-only";
 
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { getCashFlowProjection } from "@/lib/services/cash-flow.service";
 import { getDb } from "@/lib/db";
 import {
@@ -8,6 +8,7 @@ import {
   monthlyExpenses,
   monthlyIncomeEntries,
   monthlyIncomes,
+  statementImportRows,
 } from "@/lib/db/schema";
 import { getProjectionOpeningBalance } from "@/lib/cash-flow";
 import {
@@ -18,6 +19,12 @@ import {
   type StatementResult,
   type StatementTypeFilter,
 } from "@/lib/statement";
+import type { StatementImportRowEntryType } from "@/types";
+
+const STATEMENT_IMPORT_CREATED_ENTRY_TYPES: StatementImportRowEntryType[] = [
+  "monthly_income_entry",
+  "monthly_expense_entry",
+];
 
 export type StatementByPeriodInput = {
   periodMonth: string;
@@ -86,9 +93,42 @@ export async function getStatementByPeriod(
       .orderBy(desc(monthlyExpenseEntries.paidAt), desc(monthlyExpenseEntries.createdAt)),
   ]);
 
+  const entryIds = [...incomeRows.map((row) => row.id), ...expenseRows.map((row) => row.id)];
+  const importRowIndexByEntryKey = new Map<string, number>();
+
+  if (entryIds.length > 0) {
+    const importRows = await db
+      .select({
+        createdEntryType: statementImportRows.createdEntryType,
+        createdEntryId: statementImportRows.createdEntryId,
+        rowIndex: statementImportRows.rowIndex,
+      })
+      .from(statementImportRows)
+      .where(
+        and(
+          inArray(statementImportRows.createdEntryId, entryIds),
+          inArray(statementImportRows.createdEntryType, STATEMENT_IMPORT_CREATED_ENTRY_TYPES)
+        )
+      );
+
+    for (const row of importRows) {
+      if (!row.createdEntryId || !row.createdEntryType) {
+        continue;
+      }
+
+      importRowIndexByEntryKey.set(`${row.createdEntryType}:${row.createdEntryId}`, row.rowIndex);
+    }
+  }
+
   const items = [
-    ...incomeRows.map((row) => mapIncomeEntryRowToStatementItem(row)),
-    ...expenseRows.map((row) => mapExpenseEntryRowToStatementItem(row)),
+    ...incomeRows.map((row) => ({
+      ...mapIncomeEntryRowToStatementItem(row),
+      importRowIndex: importRowIndexByEntryKey.get(`monthly_income_entry:${row.id}`) ?? null,
+    })),
+    ...expenseRows.map((row) => ({
+      ...mapExpenseEntryRowToStatementItem(row),
+      importRowIndex: importRowIndexByEntryKey.get(`monthly_expense_entry:${row.id}`) ?? null,
+    })),
   ];
 
   return buildStatementResult({
