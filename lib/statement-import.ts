@@ -7,6 +7,7 @@ export type StatementImportSource = (typeof STATEMENT_IMPORT_SOURCES)[number];
 export type StatementImportDirection = "income" | "expense";
 export type StatementImportRowMode = "linked" | "one_time";
 export type StatementImportDecision = "import" | "ignore";
+export type StatementImportRowStatus = "pending" | "ignored" | "committed" | "skipped_duplicate";
 
 export type ImportedStatementItem = {
   source: StatementImportSource;
@@ -95,6 +96,18 @@ export function parseBrazilianMoneyToCents(value: string): number {
 
 export function normalizeImportedDescription(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+export function parseStatementImportRowStatus(value: string): StatementImportRowStatus {
+  switch (value) {
+    case "pending":
+    case "ignored":
+    case "committed":
+    case "skipped_duplicate":
+      return value;
+    default:
+      throw new Error(`Status de importação inválido: ${value}`);
+  }
 }
 
 export function buildStatementImportRowHash(item: {

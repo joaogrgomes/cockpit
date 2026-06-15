@@ -13,6 +13,7 @@ import {
 import {
   dedupeImportedStatementItems,
   getImportedStatementPeriod,
+  parseStatementImportRowStatus,
   type ImportedStatementItem,
   type StatementImportReviewedRow,
   type StatementImportSource,
@@ -20,6 +21,7 @@ import {
 import { isMonthWithinPeriod } from "@/lib/recurrence-period";
 
 type DbClient = ReturnType<typeof getDb>;
+type StatementImportReadExecutor = Pick<DbClient, "select">;
 
 export type StatementImportBatchCreateInput = {
   source: StatementImportSource;
@@ -32,7 +34,10 @@ function getPeriodMonthFromDate(dateValue: string): string {
   return dateValue.slice(0, 7);
 }
 
-async function getExistingRowHashes(db: DbClient, hashes: string[]): Promise<Set<string>> {
+async function getExistingRowHashes(
+  db: StatementImportReadExecutor,
+  hashes: string[]
+): Promise<Set<string>> {
   if (hashes.length === 0) {
     return new Set<string>();
   }
@@ -110,11 +115,16 @@ export async function getStatementImportBatchById(batchId: string) {
 
 export async function getStatementImportRowsByBatchId(batchId: string) {
   const db = getDb();
-  return db
+  const rows = await db
     .select()
     .from(statementImportRows)
     .where(eq(statementImportRows.batchId, batchId))
     .orderBy(asc(statementImportRows.rowIndex), asc(statementImportRows.createdAt));
+
+  return rows.map((row) => ({
+    ...row,
+    status: parseStatementImportRowStatus(row.status),
+  }));
 }
 
 export async function getStatementImportBatchWithRows(batchId: string) {
@@ -142,7 +152,10 @@ function getBatchStatus(committedCount: number, ignoredCount: number): "parsed" 
   return "cancelled";
 }
 
-function assertValidReviewedRow(row: StatementImportReviewedRow): void {
+function assertValidReviewedRow(
+  row: StatementImportReviewedRow,
+  direction: "income" | "expense"
+): void {
   if (row.decision === "ignore") {
     return;
   }
@@ -158,7 +171,7 @@ function assertValidReviewedRow(row: StatementImportReviewedRow): void {
     return;
   }
 
-  if (row.direction === "expense") {
+  if (direction === "expense") {
     if (!row.expenseType) {
       throw new Error("Tipo do gasto é obrigatório para despesa avulsa");
     }
@@ -169,7 +182,7 @@ function assertValidReviewedRow(row: StatementImportReviewedRow): void {
 }
 
 async function validateLinkedExpense(
-  db: DbClient,
+  db: StatementImportReadExecutor,
   row: StatementImportReviewedRow,
   transactionDate: string
 ): Promise<void> {
@@ -198,7 +211,7 @@ async function validateLinkedExpense(
 }
 
 async function validateLinkedIncome(
-  db: DbClient,
+  db: StatementImportReadExecutor,
   row: StatementImportReviewedRow,
   transactionDate: string
 ): Promise<void> {
@@ -267,7 +280,7 @@ export async function commitStatementImportBatch(
         continue;
       }
 
-      assertValidReviewedRow(reviewedRow);
+      assertValidReviewedRow(reviewedRow, dbRow.direction as "income" | "expense");
 
       const periodMonth = getPeriodMonthFromDate(dbRow.transactionDate);
 

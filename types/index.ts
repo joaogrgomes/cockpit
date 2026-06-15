@@ -86,7 +86,9 @@ export type CostAnalysisKind = (typeof COST_ANALYSIS_KIND_VALUES)[number];
 
 export type StatementImportBatch = InferSelectModel<typeof statementImportBatches>;
 export type NewStatementImportBatch = InferInsertModel<typeof statementImportBatches>;
-export type StatementImportRow = InferSelectModel<typeof statementImportRows>;
+export type StatementImportRow = Omit<InferSelectModel<typeof statementImportRows>, "status"> & {
+  status: StatementImportRowStatus;
+};
 export type NewStatementImportRow = InferInsertModel<typeof statementImportRows>;
 export type StatementImportSource = (typeof STATEMENT_IMPORT_SOURCE_VALUES)[number];
 export type StatementImportBatchStatus = (typeof STATEMENT_IMPORT_BATCH_STATUS_VALUES)[number];

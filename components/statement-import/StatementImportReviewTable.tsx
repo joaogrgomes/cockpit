@@ -19,10 +19,10 @@ import {
 } from "@/lib/expenses";
 import { formatRecurrencePeriodLabel, isMonthWithinPeriod } from "@/lib/recurrence-period";
 import { INCOME_CATEGORY_VALUES, getIncomeCategoryLabel } from "@/lib/incomes";
+import type { StatementImportDecision } from "@/lib/statement-import";
 import type {
   MonthlyExpense,
   MonthlyIncome,
-  StatementImportDecision,
   StatementImportRow,
   StatementImportRowStatus,
 } from "@/types";
