@@ -19,6 +19,7 @@ import {
   type StatementImportSource,
 } from "@/lib/statement-import";
 import { isMonthWithinPeriod } from "@/lib/recurrence-period";
+import type { StatementImportBatchStatus } from "@/types";
 
 type DbClient = ReturnType<typeof getDb>;
 type StatementImportReadExecutor = Pick<DbClient, "select">;
@@ -27,6 +28,21 @@ export type StatementImportBatchCreateInput = {
   source: StatementImportSource;
   originalFilename: string | null;
 };
+
+export type StatementImportBatchCreateResult =
+  | {
+      kind: "created_batch";
+      batchId: string;
+      insertedCount: number;
+      duplicateCount: number;
+    }
+  | {
+      kind: "all_duplicates";
+      insertedCount: 0;
+      duplicateCount: number;
+      existingBatchId: string | null;
+      existingBatchStatus: StatementImportBatchStatus | null;
+    };
 
 export type StatementImportBatchView = Awaited<ReturnType<typeof getStatementImportBatchById>>;
 
@@ -50,16 +66,97 @@ async function getExistingRowHashes(
   return new Set(rows.map((row) => row.rowHash));
 }
 
+type ExistingImportBatchCandidate = {
+  batchId: string;
+  batchStatus: StatementImportBatchStatus;
+  batchCreatedAt: Date;
+  pendingCount: number;
+  rowCount: number;
+};
+
+async function findExistingImportBatch(
+  db: StatementImportReadExecutor,
+  hashes: string[]
+): Promise<ExistingImportBatchCandidate | null> {
+  if (hashes.length === 0) {
+    return null;
+  }
+
+  const rows = await db
+    .select({
+      batchId: statementImportRows.batchId,
+      batchStatus: statementImportBatches.status,
+      batchCreatedAt: statementImportBatches.createdAt,
+      rowStatus: statementImportRows.status,
+    })
+    .from(statementImportRows)
+    .innerJoin(statementImportBatches, eq(statementImportRows.batchId, statementImportBatches.id))
+    .where(inArray(statementImportRows.rowHash, hashes));
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const candidates = new Map<string, ExistingImportBatchCandidate>();
+
+  for (const row of rows) {
+    const current = candidates.get(row.batchId);
+    const pendingCount = row.rowStatus === "pending" ? 1 : 0;
+
+    if (!current) {
+      candidates.set(row.batchId, {
+        batchId: row.batchId,
+        batchStatus: row.batchStatus as StatementImportBatchStatus,
+        batchCreatedAt: row.batchCreatedAt,
+        pendingCount,
+        rowCount: 1,
+      });
+      continue;
+    }
+
+    candidates.set(row.batchId, {
+      ...current,
+      pendingCount: current.pendingCount + pendingCount,
+      rowCount: current.rowCount + 1,
+      batchCreatedAt:
+        current.batchCreatedAt.getTime() >= row.batchCreatedAt.getTime()
+          ? current.batchCreatedAt
+          : row.batchCreatedAt,
+    });
+  }
+
+  const orderedCandidates = Array.from(candidates.values()).sort((left, right) => {
+    if (left.pendingCount !== right.pendingCount) {
+      return right.pendingCount - left.pendingCount;
+    }
+
+    return right.batchCreatedAt.getTime() - left.batchCreatedAt.getTime();
+  });
+
+  return orderedCandidates[0] ?? null;
+}
+
 export async function createStatementImportBatchWithRows(
   input: StatementImportBatchCreateInput,
   items: ImportedStatementItem[]
-): Promise<{ batchId: string; insertedCount: number; duplicateCount: number }> {
+): Promise<StatementImportBatchCreateResult> {
   const db = getDb();
   const { periodStart, periodEnd } = getImportedStatementPeriod(items);
   const hashes = items.map((item) => item.rowHash);
   return db.transaction(async (tx) => {
     const existingHashes = await getExistingRowHashes(tx, hashes);
     const { insertedItems, duplicateItems } = dedupeImportedStatementItems(items, existingHashes);
+
+    if (insertedItems.length === 0) {
+      const existingBatch = await findExistingImportBatch(tx, hashes);
+      return {
+        kind: "all_duplicates",
+        insertedCount: 0,
+        duplicateCount: duplicateItems.length,
+        existingBatchId: existingBatch?.batchId ?? null,
+        existingBatchStatus: existingBatch?.batchStatus ?? null,
+      };
+    }
 
     const batchRows = await tx
       .insert(statementImportBatches)
@@ -95,6 +192,7 @@ export async function createStatementImportBatchWithRows(
     }
 
     return {
+      kind: "created_batch",
       batchId,
       insertedCount: insertedItems.length,
       duplicateCount: duplicateItems.length,

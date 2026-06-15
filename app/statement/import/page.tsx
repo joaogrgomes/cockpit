@@ -7,7 +7,10 @@ import { StatementImportReviewTable } from "@/components/statement-import/Statem
 import { formatDateOnlyBR } from "@/lib/date-utils";
 import { listMonthlyExpenses } from "@/lib/services/monthly-expense.service";
 import { listMonthlyIncomes } from "@/lib/services/monthly-income.service";
-import { getStatementImportBatchWithRows } from "@/lib/services/statement-import.service";
+import {
+  getStatementImportBatchById,
+  getStatementImportBatchWithRows,
+} from "@/lib/services/statement-import.service";
 import {
   commitStatementImportRowsAction,
   uploadStatementCsvAction,
@@ -18,8 +21,11 @@ export const dynamic = "force-dynamic";
 type StatementImportPageProps = {
   searchParams?: Promise<{
     batchId?: string;
+    new?: string;
     inserted?: string;
     duplicates?: string;
+    duplicate?: string;
+    existingBatchId?: string;
   }>;
 };
 
@@ -32,12 +38,24 @@ function parseCount(value: string | undefined): number | null {
 export default async function StatementImportPage({ searchParams }: StatementImportPageProps) {
   const params = searchParams ? await searchParams : {};
   const batchId = typeof params.batchId === "string" ? params.batchId : null;
-  const insertedCount = parseCount(params.inserted);
+  const insertedCount = parseCount(params.new) ?? parseCount(params.inserted);
   const duplicateCount = parseCount(params.duplicates);
+  const duplicateUpload = params.duplicate === "1";
+  const existingBatchId =
+    typeof params.existingBatchId === "string" && params.existingBatchId.trim()
+      ? params.existingBatchId
+      : null;
 
   const batchData = batchId ? await getStatementImportBatchWithRows(batchId) : null;
+  const duplicateBatch =
+    duplicateUpload && existingBatchId ? await getStatementImportBatchById(existingBatchId) : null;
   const monthlyExpenses = batchData ? await listMonthlyExpenses({ isActive: "true" }) : [];
   const monthlyIncomes = batchData ? await listMonthlyIncomes({ isActive: "true" }) : [];
+  const canOpenExistingBatch =
+    duplicateUpload &&
+    Boolean(duplicateBatch) &&
+    duplicateBatch?.status !== "committed" &&
+    duplicateBatch?.status !== "cancelled";
 
   return (
     <section className="space-y-6">
@@ -52,19 +70,42 @@ export default async function StatementImportPage({ searchParams }: StatementImp
       />
 
       <Card className="border-border/80 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Fluxo do MVP</CardTitle>
-            <CardDescription>
-              Upload do CSV, staging, revisão manual e gravação só após confirmação.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-sm text-muted-foreground">
-            O parser usa o cabeçalho <code>Data Lançamento;Histórico;Descrição;Valor;Saldo</code> e
-            preserva o saldo por transação como apoio visual.
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Fluxo do MVP</CardTitle>
+          <CardDescription>
+            Upload do CSV, staging, revisão manual e gravação só após confirmação.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground">
+          O parser usa o cabeçalho <code>Data Lançamento;Histórico;Descrição;Valor;Saldo</code> e
+          preserva o saldo por transação como apoio visual.
         </CardContent>
       </Card>
 
-      {typeof insertedCount === "number" || typeof duplicateCount === "number" ? (
+      {duplicateUpload ? (
+        <Card className="border-amber-200 bg-amber-50/70 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-amber-900">Duplicidade detectada</CardTitle>
+            <CardDescription className="text-amber-800">
+              Este extrato já foi enviado. Nenhuma nova linha foi criada neste upload.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-amber-900">
+            {typeof duplicateCount === "number" ? <p>Linhas duplicadas detectadas: {duplicateCount}</p> : null}
+            {duplicateBatch?.status === "committed" ? (
+              <p>Estas linhas já foram importadas. Nenhuma nova linha encontrada.</p>
+            ) : null}
+            {canOpenExistingBatch ? (
+              <Link
+                href={`/statement/import?batchId=${existingBatchId}`}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
+              >
+                Abrir lote pendente
+              </Link>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : !duplicateUpload && (typeof insertedCount === "number" || typeof duplicateCount === "number") ? (
         <Card className="border-border/80 shadow-sm">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Último upload</CardTitle>

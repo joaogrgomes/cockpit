@@ -6,6 +6,7 @@ import { parseInterCsvStatement, type StatementImportReviewedRow } from "@/lib/s
 import {
   commitStatementImportBatch,
   createStatementImportBatchWithRows,
+  type StatementImportBatchCreateResult,
 } from "@/lib/services/statement-import.service";
 
 export type StatementImportActionResult = {
@@ -42,9 +43,7 @@ export async function uploadStatementCsvAction(
   _prevState: StatementImportActionResult,
   formData: FormData
 ): Promise<StatementImportActionResult> {
-  let batchId: string;
-  let insertedCount = 0;
-  let duplicateCount = 0;
+  let result: StatementImportBatchCreateResult | null = null;
 
   try {
     const file = parseFileFromFormData(formData);
@@ -63,31 +62,47 @@ export async function uploadStatementCsvAction(
       return { ok: false, error: "Nenhuma linha de lançamento foi encontrada no CSV" };
     }
 
-    const result = await createStatementImportBatchWithRows(
+    result = await createStatementImportBatchWithRows(
       {
         source: "inter_csv",
         originalFilename: file.name,
       },
       items
     );
-
-    batchId = result.batchId;
-    insertedCount = result.insertedCount;
-    duplicateCount = result.duplicateCount;
   } catch (error) {
     const message = error instanceof Error ? error.message : "Não foi possível ler o CSV";
     return { ok: false, error: message };
   }
 
+  if (!result) {
+    return { ok: false, error: "Não foi possível ler o CSV" };
+  }
+
   revalidatePath("/statement/import");
-  redirect(`/statement/import?batchId=${batchId}&inserted=${insertedCount}&duplicates=${duplicateCount}`);
+
+  if (result.kind === "created_batch") {
+    redirect(
+      `/statement/import?batchId=${result.batchId}&new=${result.insertedCount}&duplicates=${result.duplicateCount}`
+    );
+  }
+
+  const duplicateSearchParams = new URLSearchParams({
+    duplicate: "1",
+    duplicates: String(result.duplicateCount),
+  });
+
+  if (result.existingBatchId) {
+    duplicateSearchParams.set("existingBatchId", result.existingBatchId);
+  }
+
+  redirect(`/statement/import?${duplicateSearchParams.toString()}`);
 }
 
 export async function commitStatementImportRowsAction(
   _prevState: StatementImportActionResult,
   formData: FormData
 ): Promise<StatementImportActionResult> {
-  let batchId: string;
+  let batchId: string | null = null;
 
   try {
     const batchIdValue = formData.get("batchId");
@@ -106,6 +121,10 @@ export async function commitStatementImportRowsAction(
   } catch (error) {
     const message = error instanceof Error ? error.message : "Não foi possível importar os lançamentos";
     return { ok: false, error: message };
+  }
+
+  if (!batchId) {
+    return { ok: false, error: "Lote de importação inválido" };
   }
 
   redirect(`/statement/import?batchId=${batchId}`);

@@ -31,6 +31,7 @@ function makeSelectQuery(resultRows: unknown[]) {
   const query: {
     where: () => unknown;
     limit: (count: number) => Promise<unknown[]>;
+    innerJoin: () => unknown;
     then: <TResult1 = unknown[], TResult2 = never>(
       onfulfilled?: ((value: unknown[]) => TResult1 | PromiseLike<TResult1>) | null | undefined,
       onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null | undefined
@@ -38,6 +39,7 @@ function makeSelectQuery(resultRows: unknown[]) {
   } = {
     where: () => query,
     limit: (count: number) => Promise.resolve(resultRows.slice(0, count)),
+    innerJoin: () => query,
     then: (onfulfilled, onrejected) => Promise.resolve(resultRows).then(onfulfilled, onrejected),
   };
 
@@ -251,6 +253,7 @@ describe("statement import service", () => {
     );
 
     expect(result).toMatchObject({
+      kind: "created_batch",
       batchId: "batch-1",
       insertedCount: 1,
       duplicateCount: 1,
@@ -268,6 +271,127 @@ describe("statement import service", () => {
       status: "pending",
       amountCents: 400000,
     });
+  });
+
+  it("não cria lote vazio quando tudo é duplicado e aponta para lote pendente", async () => {
+    const mockDb = createDbMock([
+      [{ rowHash: "hash-1" }, { rowHash: "hash-2" }],
+      [
+        {
+          batchId: "batch-pending",
+          batchStatus: "parsed",
+          batchCreatedAt: new Date("2026-06-14T10:00:00Z"),
+          rowStatus: "pending",
+        },
+        {
+          batchId: "batch-pending",
+          batchStatus: "parsed",
+          batchCreatedAt: new Date("2026-06-14T10:00:00Z"),
+          rowStatus: "committed",
+        },
+        {
+          batchId: "batch-committed",
+          batchStatus: "committed",
+          batchCreatedAt: new Date("2026-06-10T10:00:00Z"),
+          rowStatus: "committed",
+        },
+      ],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const result = await createStatementImportBatchWithRows(
+      {
+        source: "inter_csv",
+        originalFilename: "extrato.csv",
+      },
+      [
+        {
+          source: "inter_csv",
+          rowIndex: 1,
+          externalId: null,
+          transactionDate: "2026-06-14",
+          rawHistory: "Compra no débito",
+          rawDescription: "Padaria Central",
+          description: "Padaria Central",
+          amountCents: 3604,
+          balanceAfterCents: 939521,
+          direction: "expense",
+          rowHash: "hash-1",
+        },
+        {
+          source: "inter_csv",
+          rowIndex: 2,
+          externalId: null,
+          transactionDate: "2026-06-14",
+          rawHistory: "Pix recebido",
+          rawDescription: "Depraxe",
+          description: "Depraxe",
+          amountCents: 400000,
+          balanceAfterCents: 943125,
+          direction: "income",
+          rowHash: "hash-2",
+        },
+      ]
+    );
+
+    expect(result).toMatchObject({
+      kind: "all_duplicates",
+      insertedCount: 0,
+      duplicateCount: 2,
+      existingBatchId: "batch-pending",
+      existingBatchStatus: "parsed",
+    });
+
+    expect(mockDb.inserts.find((item: any) => item.table === statementImportBatches)).toBeFalsy();
+    expect(mockDb.inserts.find((item: any) => item.table === statementImportRows)).toBeFalsy();
+  });
+
+  it("não cria lote vazio quando tudo é duplicado e informa lote já comprometido", async () => {
+    const mockDb = createDbMock([
+      [{ rowHash: "hash-1" }],
+      [
+        {
+          batchId: "batch-committed",
+          batchStatus: "committed",
+          batchCreatedAt: new Date("2026-06-10T10:00:00Z"),
+          rowStatus: "committed",
+        },
+      ],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const result = await createStatementImportBatchWithRows(
+      {
+        source: "inter_csv",
+        originalFilename: "extrato.csv",
+      },
+      [
+        {
+          source: "inter_csv",
+          rowIndex: 1,
+          externalId: null,
+          transactionDate: "2026-06-14",
+          rawHistory: "Compra no débito",
+          rawDescription: "Padaria Central",
+          description: "Padaria Central",
+          amountCents: 3604,
+          balanceAfterCents: 939521,
+          direction: "expense",
+          rowHash: "hash-1",
+        },
+      ]
+    );
+
+    expect(result).toMatchObject({
+      kind: "all_duplicates",
+      insertedCount: 0,
+      duplicateCount: 1,
+      existingBatchId: "batch-committed",
+      existingBatchStatus: "committed",
+    });
+
+    expect(mockDb.inserts.find((item: any) => item.table === statementImportBatches)).toBeFalsy();
+    expect(mockDb.inserts.find((item: any) => item.table === statementImportRows)).toBeFalsy();
   });
 
   it("descarta linha ignorada e grava despesa vinculada", async () => {
