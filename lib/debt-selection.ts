@@ -237,6 +237,33 @@ export function setCreditorFilterMode(
   };
 }
 
+export function toggleCreditorFilterMode(
+  filters: Pick<DebtSelectionFilters, "includedCreditors" | "excludedCreditors">,
+  creditor: string,
+  mode: "include" | "exclude"
+): Pick<DebtSelectionFilters, "includedCreditors" | "excludedCreditors"> {
+  const isInTargetGroup =
+    mode === "include"
+      ? filters.includedCreditors.includes(creditor)
+      : filters.excludedCreditors.includes(creditor);
+
+  if (mode === "include") {
+    return {
+      includedCreditors: isInTargetGroup
+        ? filters.includedCreditors.filter((item) => item !== creditor)
+        : Array.from(new Set([...filters.includedCreditors, creditor])),
+      excludedCreditors: filters.excludedCreditors.filter((item) => item !== creditor),
+    };
+  }
+
+  return {
+    includedCreditors: filters.includedCreditors.filter((item) => item !== creditor),
+    excludedCreditors: isInTargetGroup
+      ? filters.excludedCreditors.filter((item) => item !== creditor)
+      : Array.from(new Set([...filters.excludedCreditors, creditor])),
+  };
+}
+
 export function removeCreditorFromFilters(
   filters: Pick<DebtSelectionFilters, "includedCreditors" | "excludedCreditors">,
   creditor: string

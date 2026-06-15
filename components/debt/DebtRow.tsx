@@ -84,10 +84,27 @@ export function DebtRow({ debt, updateAction, deleteAction }: DebtRowProps) {
       <TableCell className="py-3">
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge status={toDebtStatus(debt.status)} />
-          {debt.latestPayoffProposal ? <ProposalBadge state={debt.latestPayoffProposal.isExpired ? "expired" : debt.latestPayoffProposal.isCurrent ? "current" : "historical"} /> : null}
+          {debt.latestPayoffProposal ? (
+            <ProposalBadge
+              state={
+                debt.latestPayoffProposal.isExpired
+                  ? "expired"
+                  : debt.latestPayoffProposal.isCurrent
+                    ? "current"
+                    : "historical"
+              }
+            />
+          ) : null}
         </div>
       </TableCell>
       <TableCell className="py-3 font-medium">{formatBRL(debt.currentValue)}</TableCell>
+      <TableCell className="py-3">
+        {debt.latestPayoffProposal ? (
+          <span className="font-medium">{formatBRL(debt.latestPayoffProposal.proposedValue)}</span>
+        ) : (
+          <span className="text-sm text-muted-foreground">—</span>
+        )}
+      </TableCell>
       <TableCell className="py-3">
         {typeof additions === "number" ? (
           <span className="text-sm">{`${additions >= 0 ? "+" : ""}${formatBRL(additions)}`}</span>

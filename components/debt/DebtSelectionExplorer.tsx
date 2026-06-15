@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { X } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,8 +23,6 @@ import { DEBT_TYPE_OPTIONS } from "@/lib/debt-type";
 import {
   calculateDebtSelectionSummary,
   filterDebtSelectionItems,
-  removeCreditorFromFilters,
-  setCreditorFilterMode,
   sortDebtSelectionItems,
   type DebtSelectionFilters,
   type DebtSelectionItem,
@@ -86,31 +83,6 @@ function FilterChipButton({
   );
 }
 
-function RemovableChip({
-  label,
-  onRemove,
-}: {
-  label: string;
-  onRemove: () => void;
-}) {
-  return (
-    <Badge
-      variant="outline"
-      className="flex h-8 items-center gap-1 rounded-full border-border/80 px-3 py-1 text-xs font-medium"
-    >
-      <span>{label}</span>
-      <button
-        type="button"
-        aria-label={`Remover filtro ${label}`}
-        className="ml-1 inline-flex size-4 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-        onClick={onRemove}
-      >
-        <X className="size-3" />
-      </button>
-    </Badge>
-  );
-}
-
 type DebtSelectionExplorerProps = {
   debts: DebtSelectionItem[];
   updateAction: (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
@@ -124,13 +96,11 @@ export function DebtSelectionExplorer({
 }: DebtSelectionExplorerProps) {
   const [searchText, setSearchText] = useState("");
   const [includedCreditors, setIncludedCreditors] = useState<string[]>([]);
-  const [excludedCreditors, setExcludedCreditors] = useState<string[]>([]);
   const [selectedTypes, setSelectedTypes] = useState<DebtType[]>(DEFAULT_TYPE_SELECTION);
   const [selectedStatuses, setSelectedStatuses] = useState<DebtStatus[]>(DEFAULT_STATUS_SELECTION);
   const [proposalAvailability, setProposalAvailability] =
     useState<DebtSelectionFilters["proposalAvailability"]>("all");
   const [sort, setSort] = useState<DebtSelectionFilters["sort"]>("current_desc");
-  const [creditorToAdd, setCreditorToAdd] = useState("");
 
   const creditorOptions = useMemo(
     () =>
@@ -143,13 +113,13 @@ export function DebtSelectionExplorer({
     () => ({
       searchText,
       includedCreditors,
-      excludedCreditors,
+      excludedCreditors: [],
       debtTypes: selectedTypes,
       statuses: selectedStatuses,
       proposalAvailability,
       sort,
     }),
-    [excludedCreditors, includedCreditors, proposalAvailability, searchText, selectedStatuses, selectedTypes, sort]
+    [includedCreditors, proposalAvailability, searchText, selectedStatuses, selectedTypes, sort]
   );
 
   const filteredDebts = useMemo(() => {
@@ -162,32 +132,16 @@ export function DebtSelectionExplorer({
   function resetFilters() {
     setSearchText("");
     setIncludedCreditors([]);
-    setExcludedCreditors([]);
     setSelectedTypes(DEFAULT_TYPE_SELECTION);
     setSelectedStatuses(DEFAULT_STATUS_SELECTION);
     setProposalAvailability("all");
     setSort("current_desc");
-    setCreditorToAdd("");
   }
 
-  function handleAddCreditor(mode: "include" | "exclude") {
-    if (!creditorToAdd) return;
-
-    const updated = setCreditorFilterMode(
-      { includedCreditors, excludedCreditors },
-      creditorToAdd,
-      mode
+  function handleToggleCreditor(creditor: string) {
+    setIncludedCreditors((current) =>
+      current.includes(creditor) ? current.filter((item) => item !== creditor) : [...current, creditor]
     );
-
-    setIncludedCreditors(updated.includedCreditors);
-    setExcludedCreditors(updated.excludedCreditors);
-    setCreditorToAdd("");
-  }
-
-  function handleRemoveCreditor(creditor: string) {
-    const updated = removeCreditorFromFilters({ includedCreditors, excludedCreditors }, creditor);
-    setIncludedCreditors(updated.includedCreditors);
-    setExcludedCreditors(updated.excludedCreditors);
   }
 
   return (
@@ -210,7 +164,10 @@ export function DebtSelectionExplorer({
 
             <div className="space-y-2">
               <Label htmlFor="debt-sort">Ordenação</Label>
-              <Select value={sort} onValueChange={(value) => setSort(value as DebtSelectionFilters["sort"])}>
+              <Select
+                value={sort}
+                onValueChange={(value) => setSort((value ?? "current_desc") as DebtSelectionFilters["sort"])}
+              >
                 <SelectTrigger id="debt-sort" className="w-full">
                   <SelectValue placeholder="Ordenar" />
                 </SelectTrigger>
@@ -222,63 +179,27 @@ export function DebtSelectionExplorer({
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="min-w-56 flex-1 space-y-2">
-                <Label htmlFor="creditor-picker">Credor</Label>
-                <Select value={creditorToAdd} onValueChange={(value) => setCreditorToAdd(value ?? "")}>
-                  <SelectTrigger id="creditor-picker" className="w-full">
-                    <SelectValue placeholder="Selecionar credor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {creditorOptions.map((creditor) => (
-                      <SelectItem key={creditor} value={creditor}>
-                        {creditor}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <Label>Credores</Label>
+                <span className="text-xs text-muted-foreground">Clique para ligar/desligar</span>
               </div>
-              <div className="flex flex-wrap items-end gap-2 pt-6">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="default"
-                  disabled={!creditorToAdd}
-                  onClick={() => handleAddCreditor("include")}
-                >
-                  Incluir
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  disabled={!creditorToAdd}
-                  onClick={() => handleAddCreditor("exclude")}
-                >
-                  Excluir
-                </Button>
+              <div className="flex flex-wrap gap-2">
+                {creditorOptions.map((creditor) => {
+                  const active = includedCreditors.includes(creditor);
+                  return (
+                    <FilterChipButton
+                      key={creditor}
+                      active={active}
+                      onClick={() => handleToggleCreditor(creditor)}
+                    >
+                      {creditor}
+                    </FilterChipButton>
+                  );
+                })}
               </div>
             </div>
-
-            {includedCreditors.length > 0 || excludedCreditors.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {includedCreditors.map((creditor) => (
-                  <RemovableChip
-                    key={`include-${creditor}`}
-                    label={`Incluir: ${creditor}`}
-                    onRemove={() => handleRemoveCreditor(creditor)}
-                  />
-                ))}
-                {excludedCreditors.map((creditor) => (
-                  <RemovableChip
-                    key={`exclude-${creditor}`}
-                    label={`Excluir: ${creditor}`}
-                    onRemove={() => handleRemoveCreditor(creditor)}
-                  />
-                ))}
-              </div>
-            ) : null}
           </div>
 
           <div className="space-y-3">
@@ -436,6 +357,7 @@ export function DebtSelectionExplorer({
                   <TableHead>Tipo da dívida</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Valor atual</TableHead>
+                  <TableHead>Valor proposta</TableHead>
                   <TableHead>Acréscimos</TableHead>
                   <TableHead>Crescimento</TableHead>
                   <TableHead>Prioridade</TableHead>
@@ -446,7 +368,7 @@ export function DebtSelectionExplorer({
               <TableBody>
                 {filteredDebts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={11} className="py-8 text-center text-muted-foreground">
+                    <TableCell colSpan={12} className="py-8 text-center text-muted-foreground">
                       Nenhuma dívida encontrada com os filtros atuais.
                     </TableCell>
                   </TableRow>

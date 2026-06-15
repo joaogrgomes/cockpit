@@ -2,9 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   calculateDebtSelectionSummary,
   filterDebtSelectionItems,
-  removeCreditorFromFilters,
   selectLatestPayoffProposal,
-  setCreditorFilterMode,
+  toggleCreditorFilterMode,
 } from "@/lib/debt-selection";
 import type { DebtSelectionItem } from "@/lib/debt-selection";
 import type { DebtProposal } from "@/types";
@@ -78,7 +77,7 @@ describe("debt selection helpers", () => {
     expect(result.map((debt) => debt.name)).toEqual(["Empréstimo Santander"]);
   });
 
-  it("inclui múltiplos credores e exclui um credor específico", () => {
+  it("inclui múltiplos credores", () => {
     const debts = [
       makeDebt({ name: "Cartão Itaú", creditor: "Itaú" }),
       makeDebt({ name: "Empréstimo Santander", creditor: "Santander" }),
@@ -88,7 +87,7 @@ describe("debt selection helpers", () => {
     const result = filterDebtSelectionItems(debts, {
       searchText: "",
       includedCreditors: ["Itaú", "Santander"],
-      excludedCreditors: ["Banco do Brasil"],
+      excludedCreditors: [],
       debtTypes: [],
       statuses: [],
       proposalAvailability: "all",
@@ -98,23 +97,19 @@ describe("debt selection helpers", () => {
     expect(result.map((debt) => debt.creditor)).toEqual(["Itaú", "Santander"]);
   });
 
-  it("impede conflito entre incluir e excluir o mesmo credor", () => {
+  it("liga e desliga credor por pílula", () => {
     const initial = {
-      includedCreditors: ["Itaú"],
-      excludedCreditors: ["Banco do Brasil"],
+      includedCreditors: [],
+      excludedCreditors: [],
     };
 
-    const includeUpdated = setCreditorFilterMode(initial, "Banco do Brasil", "include");
-    expect(includeUpdated.includedCreditors).toContain("Banco do Brasil");
-    expect(includeUpdated.excludedCreditors).not.toContain("Banco do Brasil");
+    const includeFirst = toggleCreditorFilterMode(initial, "Itaú", "include");
+    expect(includeFirst.includedCreditors).toEqual(["Itaú"]);
+    expect(includeFirst.excludedCreditors).toEqual([]);
 
-    const excludeUpdated = setCreditorFilterMode(initial, "Itaú", "exclude");
-    expect(excludeUpdated.excludedCreditors).toContain("Itaú");
-    expect(excludeUpdated.includedCreditors).not.toContain("Itaú");
-
-    const removed = removeCreditorFromFilters(includeUpdated, "Banco do Brasil");
-    expect(removed.includedCreditors).not.toContain("Banco do Brasil");
-    expect(removed.excludedCreditors).not.toContain("Banco do Brasil");
+    const includeSecond = toggleCreditorFilterMode(includeFirst, "Itaú", "include");
+    expect(includeSecond.includedCreditors).toEqual([]);
+    expect(includeSecond.excludedCreditors).toEqual([]);
   });
 
   it("filtra por tipo, status e presença de proposta", () => {
@@ -175,6 +170,7 @@ describe("debt selection helpers", () => {
     const selected = selectLatestPayoffProposal([proposalNewerExpired, proposalOlderCurrent]);
 
     expect(selected?.id).toBe("proposal-current");
+    expect(selected?.proposedValue).toBe(75_000);
     expect(selected?.isCurrent).toBe(true);
     expect(selected?.isExpired).toBe(false);
   });
@@ -265,5 +261,66 @@ describe("debt selection helpers", () => {
     expect(summary.totalProposalValueCents).toBe(80_000);
     expect(summary.debtsWithoutProposalCount).toBe(1);
     expect(summary.debtsWithoutProposal[0]?.name).toBe("Sem proposta");
+  });
+
+  it("recalcula o resumo quando o filtro de credor muda", () => {
+    const debts = [
+      makeDebt({
+        name: "Cartão Itaú",
+        creditor: "Itaú",
+        currentValue: 100_000,
+        latestPayoffProposal: {
+          ...makeProposal({ debtId: "1", proposedValue: 80_000 }),
+          isCurrent: true,
+          isExpired: false,
+        },
+        hasPayoffProposal: true,
+      }),
+      makeDebt({
+        name: "Santander",
+        creditor: "Santander",
+        currentValue: 50_000,
+        latestPayoffProposal: {
+          ...makeProposal({ debtId: "2", proposedValue: 40_000 }),
+          isCurrent: true,
+          isExpired: false,
+        },
+        hasPayoffProposal: true,
+      }),
+    ];
+
+    const filtered = filterDebtSelectionItems(debts, {
+      searchText: "",
+      includedCreditors: ["Itaú"],
+      excludedCreditors: [],
+      debtTypes: [],
+      statuses: [],
+      proposalAvailability: "all",
+      sort: "current_desc",
+    });
+
+    const summary = calculateDebtSelectionSummary(filtered);
+
+    expect(summary.filteredCount).toBe(1);
+    expect(summary.totalProposalValueCents).toBe(80_000);
+  });
+
+  it("limpar filtros remove credores ativos via estado vazio", () => {
+    const debts = [
+      makeDebt({ name: "Cartão Itaú", creditor: "Itaú" }),
+      makeDebt({ name: "Santander", creditor: "Santander" }),
+    ];
+
+    const filtered = filterDebtSelectionItems(debts, {
+      searchText: "",
+      includedCreditors: [],
+      excludedCreditors: [],
+      debtTypes: [],
+      statuses: [],
+      proposalAvailability: "all",
+      sort: "current_desc",
+    });
+
+    expect(filtered.map((debt) => debt.creditor)).toEqual(["Itaú", "Santander"]);
   });
 });
