@@ -180,6 +180,12 @@ export function sortDebtSelectionItems(
   });
 }
 
+export function getSelectableDebtCreditors(items: DebtSelectionItem[]): string[] {
+  return Array.from(
+    new Set(items.filter((item) => item.status !== "arquivada").map((item) => item.creditor))
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
 export function calculateDebtSelectionSummary(items: DebtSelectionItem[]): DebtSelectionSummary {
   let totalCurrentValueCents = 0;
   let totalProposalValueCents = 0;

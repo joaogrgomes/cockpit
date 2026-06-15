@@ -23,6 +23,7 @@ import { DEBT_TYPE_OPTIONS } from "@/lib/debt-type";
 import {
   calculateDebtSelectionSummary,
   filterDebtSelectionItems,
+  getSelectableDebtCreditors,
   sortDebtSelectionItems,
   type DebtSelectionFilters,
   type DebtSelectionItem,
@@ -102,12 +103,7 @@ export function DebtSelectionExplorer({
     useState<DebtSelectionFilters["proposalAvailability"]>("all");
   const [sort, setSort] = useState<DebtSelectionFilters["sort"]>("current_desc");
 
-  const creditorOptions = useMemo(
-    () =>
-      Array.from(new Set(debts.map((debt) => debt.creditor)))
-        .sort((a, b) => a.localeCompare(b, "pt-BR")),
-    [debts]
-  );
+  const creditorOptions = useMemo(() => getSelectableDebtCreditors(debts), [debts]);
 
   const filters = useMemo<DebtSelectionFilters>(
     () => ({

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   calculateDebtSelectionSummary,
   filterDebtSelectionItems,
+  getSelectableDebtCreditors,
   selectLatestPayoffProposal,
   toggleCreditorFilterMode,
 } from "@/lib/debt-selection";
@@ -322,5 +323,17 @@ describe("debt selection helpers", () => {
     });
 
     expect(filtered.map((debt) => debt.creditor)).toEqual(["Itaú", "Santander"]);
+  });
+
+  it("mostra apenas credores com ao menos uma dívida não arquivada", () => {
+    const debts = [
+      makeDebt({ creditor: "C&A", status: "arquivada" }),
+      makeDebt({ creditor: "Caedu", status: "arquivada" }),
+      makeDebt({ creditor: "Itaú", status: "em_aberto" }),
+      makeDebt({ creditor: "Santander", status: "arquivada" }),
+      makeDebt({ creditor: "Santander", status: "em_negociacao" }),
+    ];
+
+    expect(getSelectableDebtCreditors(debts)).toEqual(["Itaú", "Santander"]);
   });
 });
