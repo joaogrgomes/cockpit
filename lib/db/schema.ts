@@ -66,6 +66,7 @@ export const STATEMENT_IMPORT_ROW_ENTRY_TYPE_VALUES = [
   "monthly_income_entry",
   "monthly_expense_entry",
 ] as const;
+export const STATEMENT_CATEGORIZATION_RULE_MATCH_TYPE_VALUES = ["exact", "contains"] as const;
 
 export const EXPENSE_CATEGORY_VALUES = [
   "moradia",
@@ -660,6 +661,54 @@ export const statementImportRows = pgTable(
     uniqueIndex("ux_statement_import_rows_source_hash").on(table.source, table.rowHash),
     index("idx_statement_import_rows_batch_id").on(table.batchId),
     index("idx_statement_import_rows_row_hash").on(table.rowHash),
+  ]
+);
+
+export const statementCategorizationRules = pgTable(
+  "statement_categorization_rules",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    pattern: text("pattern").notNull(),
+    normalizedPattern: text("normalized_pattern").notNull(),
+    matchType: text("match_type").notNull().default("exact"),
+    direction: text("direction").notNull(),
+    category: text("category").notNull(),
+    expenseType: text("expense_type"),
+    occurrenceType: text("occurrence_type"),
+    monthlyExpenseId: uuid("monthly_expense_id").references(() => monthlyExpenses.id, {
+      onDelete: "set null",
+    }),
+    monthlyIncomeId: uuid("monthly_income_id").references(() => monthlyIncomes.id, {
+      onDelete: "set null",
+    }),
+    usageCount: integer("usage_count").notNull().default(1),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "statement_categorization_rules_match_type_valid",
+      sql`${table.matchType} IN ('exact','contains')`
+    ),
+    check(
+      "statement_categorization_rules_direction_valid",
+      sql`${table.direction} IN ('income','expense')`
+    ),
+    check("statement_categorization_rules_usage_count_valid", sql`${table.usageCount} > 0`),
+    check(
+      "statement_categorization_rules_monthly_plan_single_valid",
+      sql`${table.monthlyExpenseId} IS NULL OR ${table.monthlyIncomeId} IS NULL`
+    ),
+    uniqueIndex("ux_statement_categorization_rules_unique").on(
+      table.direction,
+      table.matchType,
+      table.normalizedPattern
+    ),
+    index("idx_statement_categorization_rules_lookup").on(
+      table.direction,
+      table.normalizedPattern
+    ),
   ]
 );
 

@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db";
 import {
   monthlyExpenseEntries,
   monthlyIncomeEntries,
+  statementCategorizationRules,
   statementImportBatches,
   statementImportRows,
 } from "@/lib/db/schema";
@@ -16,10 +17,13 @@ import {
   type ImportedStatementItem,
   type StatementImportReviewedRow,
 } from "@/lib/statement-import";
+import { normalizeStatementCategorizationPattern } from "@/lib/statement-categorization-rules";
 import {
   commitStatementImportBatch,
   createStatementImportBatchWithRows,
+  getStatementImportRowsByBatchId,
 } from "@/lib/services/statement-import.service";
+import { upsertStatementCategorizationRuleFromReview } from "@/lib/services/statement-categorization-rules.service";
 
 vi.mock("@/lib/db", () => ({
   getDb: vi.fn(),
@@ -30,6 +34,7 @@ const mockedGetDb = vi.mocked(getDb);
 function makeSelectQuery(resultRows: unknown[]) {
   const query: {
     where: () => unknown;
+    orderBy: () => unknown;
     limit: (count: number) => Promise<unknown[]>;
     innerJoin: () => unknown;
     then: <TResult1 = unknown[], TResult2 = never>(
@@ -38,6 +43,7 @@ function makeSelectQuery(resultRows: unknown[]) {
     ) => Promise<TResult1 | TResult2>;
   } = {
     where: () => query,
+    orderBy: () => query,
     limit: (count: number) => Promise.resolve(resultRows.slice(0, count)),
     innerJoin: () => query,
     then: (onfulfilled, onrejected) => Promise.resolve(resultRows).then(onfulfilled, onrejected),
@@ -52,6 +58,7 @@ function createDbMock(selectResults: unknown[][]) {
   let selectIndex = 0;
   let expenseEntryCounter = 0;
   let incomeEntryCounter = 0;
+  let categorizationRuleCounter = 0;
 
   const mockDb: any = {
     select: () => ({
@@ -77,14 +84,24 @@ function createDbMock(selectResults: unknown[][]) {
           return Promise.resolve([{ id: `income-entry-${incomeEntryCounter}` }]);
         }
 
+        if (table === statementCategorizationRules) {
+          categorizationRuleCounter += 1;
+          return Promise.resolve([{ id: `categorization-rule-${categorizationRuleCounter}` }]);
+        }
+
         return Promise.resolve([{ id: `inserted-${inserts.length}` }]);
       },
     }),
     update: (table: unknown) => ({
       set(values: unknown) {
         updates.push({ table, values });
+        const result = {
+          returning: () => Promise.resolve([]),
+          then: (onfulfilled: any, onrejected: any) =>
+            Promise.resolve([]).then(onfulfilled, onrejected),
+        };
         return {
-          where: () => Promise.resolve([]),
+          where: () => result,
         };
       },
     }),
@@ -206,6 +223,112 @@ describe("statement import parser", () => {
   });
 });
 
+describe("statement categorization rules", () => {
+  it("normaliza descrição de forma estável", () => {
+    expect(normalizeStatementCategorizationPattern("  PÁDARIA   CENTRAL  ")).toBe("padaria central");
+  });
+
+  it("aplica sugestão ao carregar o lote quando existe regra compatível", async () => {
+    const mockDb = createDbMock([
+      [
+        {
+          id: "row-1",
+          batchId: "batch-1",
+          source: "inter_csv",
+          rowIndex: 1,
+          rowHash: "hash-1",
+          externalId: null,
+          transactionDate: "2026-06-14",
+          rawHistory: "Compra no débito",
+          rawDescription: "Padaria Central",
+          description: "Padaria Central",
+          amountCents: 3604,
+          balanceAfterCents: 939521,
+          direction: "expense",
+          status: "pending",
+          createdEntryType: null,
+          createdEntryId: null,
+          createdAt: new Date("2026-06-14T10:00:00Z"),
+          updatedAt: new Date("2026-06-14T10:00:00Z"),
+        },
+      ],
+      [
+        {
+          id: "rule-1",
+          pattern: "Padaria Central",
+          normalizedPattern: "padaria central",
+          matchType: "exact",
+          direction: "expense",
+          category: "alimentacao",
+          expenseType: "variavel",
+          occurrenceType: "planned_one_off",
+          monthlyExpenseId: null,
+          monthlyIncomeId: null,
+          usageCount: 3,
+          lastUsedAt: new Date("2026-06-10T10:00:00Z"),
+          createdAt: new Date("2026-06-01T10:00:00Z"),
+          updatedAt: new Date("2026-06-10T10:00:00Z"),
+        },
+      ],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const rows = await getStatementImportRowsByBatchId("batch-1");
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      isSuggested: true,
+      suggestedRuleId: "rule-1",
+      suggestedCategory: "alimentacao",
+      suggestedExpenseType: "variavel",
+      suggestedOccurrenceType: "planned_one_off",
+      suggestedMonthlyExpenseId: null,
+      suggestedMonthlyIncomeId: null,
+    });
+  });
+
+  it("mantém linha sem sugestão quando não há regra compatível", async () => {
+    const mockDb = createDbMock([
+      [
+        {
+          id: "row-1",
+          batchId: "batch-1",
+          source: "inter_csv",
+          rowIndex: 1,
+          rowHash: "hash-1",
+          externalId: null,
+          transactionDate: "2026-06-14",
+          rawHistory: "Compra no débito",
+          rawDescription: "Padaria Central",
+          description: "Padaria Central",
+          amountCents: 3604,
+          balanceAfterCents: 939521,
+          direction: "expense",
+          status: "pending",
+          createdEntryType: null,
+          createdEntryId: null,
+          createdAt: new Date("2026-06-14T10:00:00Z"),
+          updatedAt: new Date("2026-06-14T10:00:00Z"),
+        },
+      ],
+      [],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const rows = await getStatementImportRowsByBatchId("batch-1");
+
+    expect(rows[0]).toMatchObject({
+      isSuggested: false,
+      suggestedRuleId: null,
+      suggestedCategory: null,
+      suggestedExpenseType: null,
+      suggestedOccurrenceType: null,
+      suggestedMonthlyExpenseId: null,
+      suggestedMonthlyIncomeId: null,
+    });
+  });
+});
+
 describe("statement import service", () => {
   beforeEach(() => {
     mockedGetDb.mockReset();
@@ -272,6 +395,171 @@ describe("statement import service", () => {
       status: "pending",
       amountCents: 400000,
     });
+  });
+
+  it("cria regra de categorização ao confirmar linha importada", async () => {
+    const mockDb = createDbMock([
+      [{ id: "batch-1" }],
+      [
+        {
+          id: "row-1",
+          status: "pending",
+          direction: "expense",
+          transactionDate: "2026-06-14",
+          amountCents: 3604,
+        },
+      ],
+      [],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const result = await commitStatementImportBatch("batch-1", [
+      {
+        rowId: "row-1",
+        decision: "import",
+        description: "Padaria Central",
+        category: "alimentacao",
+        mode: "one_time",
+        monthlyExpenseId: null,
+        monthlyIncomeId: null,
+        expenseType: "variavel",
+        occurrenceType: "planned_one_off",
+      },
+    ]);
+
+    expect(result).toMatchObject({
+      committedCount: 1,
+      ignoredCount: 0,
+      batchStatus: "committed",
+    });
+
+    const ruleInsert = mockDb.inserts.find((item: any) => item.table === statementCategorizationRules);
+    expect(ruleInsert).toBeTruthy();
+    expect(ruleInsert.values).toMatchObject({
+      pattern: "Padaria Central",
+      normalizedPattern: "padaria central",
+      matchType: "exact",
+      direction: "expense",
+      category: "alimentacao",
+      expenseType: "variavel",
+      occurrenceType: "planned_one_off",
+      monthlyExpenseId: null,
+      monthlyIncomeId: null,
+      usageCount: 1,
+    });
+  });
+
+  it("não cria regra para linha ignorada", async () => {
+    const mockDb = createDbMock([
+      [{ id: "batch-1" }],
+      [
+        {
+          id: "row-1",
+          status: "pending",
+          direction: "income",
+          transactionDate: "2026-06-14",
+          amountCents: 400000,
+        },
+      ],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    await commitStatementImportBatch("batch-1", [
+      {
+        rowId: "row-1",
+        decision: "ignore",
+        description: "Depraxe",
+        category: "salario",
+        mode: "one_time",
+        monthlyExpenseId: null,
+        monthlyIncomeId: null,
+        expenseType: null,
+        occurrenceType: null,
+      },
+    ]);
+
+    expect(mockDb.inserts.find((item: any) => item.table === statementCategorizationRules)).toBeFalsy();
+  });
+
+  it("não cria regra quando faltam campos mínimos", async () => {
+    const mockDb = createDbMock([]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const result = await upsertStatementCategorizationRuleFromReview(mockDb, {
+      direction: "expense",
+      description: "Padaria Central",
+      category: "",
+      mode: "one_time",
+      monthlyExpenseId: null,
+      monthlyIncomeId: null,
+      expenseType: "variavel",
+      occurrenceType: "planned_one_off",
+    });
+
+    expect(result).toBeNull();
+    expect(mockDb.inserts.find((item: any) => item.table === statementCategorizationRules)).toBeFalsy();
+  });
+
+  it("atualiza regra existente, incrementa uso e reflete nova categoria", async () => {
+    const mockDb = createDbMock([
+      [{ id: "batch-1" }],
+      [
+        {
+          id: "row-1",
+          status: "pending",
+          direction: "expense",
+          transactionDate: "2026-06-14",
+          amountCents: 3604,
+        },
+      ],
+      [
+        {
+          id: "rule-1",
+          pattern: "Padaria Central",
+          normalizedPattern: "padaria central",
+          matchType: "exact",
+          direction: "expense",
+          category: "alimentacao",
+          expenseType: "variavel",
+          occurrenceType: "planned_one_off",
+          monthlyExpenseId: null,
+          monthlyIncomeId: null,
+          usageCount: 3,
+          lastUsedAt: new Date("2026-06-10T10:00:00Z"),
+          createdAt: new Date("2026-06-01T10:00:00Z"),
+          updatedAt: new Date("2026-06-10T10:00:00Z"),
+        },
+      ],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    await commitStatementImportBatch("batch-1", [
+      {
+        rowId: "row-1",
+        decision: "import",
+        description: "Padaria Central",
+        category: "saude",
+        mode: "one_time",
+        monthlyExpenseId: null,
+        monthlyIncomeId: null,
+        expenseType: "variavel",
+        occurrenceType: "unexpected",
+      },
+    ]);
+
+    const ruleUpdate = mockDb.updates.find((item: any) => item.table === statementCategorizationRules);
+    expect(ruleUpdate).toBeTruthy();
+    expect(ruleUpdate.values).toMatchObject({
+      pattern: "Padaria Central",
+      normalizedPattern: "padaria central",
+      matchType: "exact",
+      direction: "expense",
+      category: "saude",
+      expenseType: "variavel",
+      occurrenceType: "unexpected",
+    });
+    expect(ruleUpdate.values.usageCount).toBeTruthy();
+    expect(ruleUpdate.values.lastUsedAt).toBeTruthy();
   });
 
   it("não cria lote vazio quando tudo é duplicado e aponta para lote pendente", async () => {

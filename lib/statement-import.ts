@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { normalizeDateOnly } from "@/lib/date-utils";
+import type { ExpenseOccurrenceType, ExpenseType } from "@/types";
 
 export const STATEMENT_IMPORT_SOURCES = ["inter_csv"] as const;
 
@@ -107,6 +108,36 @@ export function parseStatementImportRowStatus(value: string): StatementImportRow
       return value;
     default:
       throw new Error(`Status de importação inválido: ${value}`);
+  }
+}
+
+export function parseStatementImportDirection(value: string): StatementImportDirection {
+  switch (value) {
+    case "income":
+    case "expense":
+      return value;
+    default:
+      throw new Error(`Direção de importação inválida: ${value}`);
+  }
+}
+
+export function parseStatementImportExpenseType(value: string): ExpenseType {
+  switch (value) {
+    case "fixo":
+    case "variavel":
+      return value;
+    default:
+      throw new Error(`Tipo de gasto inválido: ${value}`);
+  }
+}
+
+export function parseStatementImportOccurrenceType(value: string): ExpenseOccurrenceType {
+  switch (value) {
+    case "planned_one_off":
+    case "unexpected":
+      return value;
+    default:
+      throw new Error(`Tipo de ocorrência inválido: ${value}`);
   }
 }
 

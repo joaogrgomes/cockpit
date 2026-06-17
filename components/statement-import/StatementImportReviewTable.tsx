@@ -53,16 +53,18 @@ type StatementImportReviewedTableProps = {
 const initialState: StatementImportActionResult = { ok: false };
 
 function buildReviewedRowState(row: StatementImportRow): ReviewedRowState {
+  const isLinkedSuggestion = Boolean(row.suggestedMonthlyExpenseId || row.suggestedMonthlyIncomeId);
+
   return {
     rowId: row.id,
     decision: row.status === "pending" ? "import" : "ignore",
     description: row.description,
-    category: null,
-    mode: "one_time",
-    monthlyExpenseId: null,
-    monthlyIncomeId: null,
-    expenseType: null,
-    occurrenceType: null,
+    category: row.suggestedCategory ?? null,
+    mode: isLinkedSuggestion ? "linked" : "one_time",
+    monthlyExpenseId: row.suggestedMonthlyExpenseId ?? null,
+    monthlyIncomeId: row.suggestedMonthlyIncomeId ?? null,
+    expenseType: row.suggestedExpenseType ?? null,
+    occurrenceType: row.suggestedOccurrenceType ?? null,
   };
 }
 
@@ -234,6 +236,11 @@ export function StatementImportReviewTable({
                       </TableCell>
                       <TableCell className="min-w-72 align-top">
                         <div className="space-y-2">
+                          {row.isSuggested ? (
+                            <Badge variant="secondary" className="w-fit rounded-full px-2 py-0.5 text-[11px]">
+                              Sugerido
+                            </Badge>
+                          ) : null}
                           <Input
                             value={rowState?.description ?? row.description}
                             disabled={!isPending}

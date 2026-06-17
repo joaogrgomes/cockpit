@@ -15,6 +15,7 @@ import {
   PROPOSAL_STATUS_VALUES,
   DEBT_ATTACHMENT_TYPE_VALUES,
   STATEMENT_IMPORT_BATCH_STATUS_VALUES,
+  STATEMENT_CATEGORIZATION_RULE_MATCH_TYPE_VALUES,
   STATEMENT_IMPORT_ROW_ENTRY_TYPE_VALUES,
   STATEMENT_IMPORT_ROW_STATUS_VALUES,
   STATEMENT_IMPORT_SOURCE_VALUES,
@@ -32,6 +33,7 @@ import {
   debtValueUpdates,
   costAnalyses,
   costAnalysisItems,
+  statementCategorizationRules,
   statementImportBatches,
   statementImportRows,
 } from "@/lib/db/schema";
@@ -88,9 +90,21 @@ export type StatementImportBatch = InferSelectModel<typeof statementImportBatche
 export type NewStatementImportBatch = InferInsertModel<typeof statementImportBatches>;
 export type StatementImportRow = Omit<InferSelectModel<typeof statementImportRows>, "status"> & {
   status: StatementImportRowStatus;
+  suggestedRuleId?: string | null;
+  suggestedMatchType?: StatementCategorizationRuleMatchType | null;
+  suggestedCategory?: string | null;
+  suggestedExpenseType?: ExpenseType | null;
+  suggestedOccurrenceType?: ExpenseOccurrenceType | null;
+  suggestedMonthlyExpenseId?: string | null;
+  suggestedMonthlyIncomeId?: string | null;
+  isSuggested?: boolean;
 };
 export type NewStatementImportRow = InferInsertModel<typeof statementImportRows>;
+export type StatementCategorizationRule = InferSelectModel<typeof statementCategorizationRules>;
+export type NewStatementCategorizationRule = InferInsertModel<typeof statementCategorizationRules>;
 export type StatementImportSource = (typeof STATEMENT_IMPORT_SOURCE_VALUES)[number];
 export type StatementImportBatchStatus = (typeof STATEMENT_IMPORT_BATCH_STATUS_VALUES)[number];
 export type StatementImportRowStatus = (typeof STATEMENT_IMPORT_ROW_STATUS_VALUES)[number];
 export type StatementImportRowEntryType = (typeof STATEMENT_IMPORT_ROW_ENTRY_TYPE_VALUES)[number];
+export type StatementCategorizationRuleMatchType =
+  (typeof STATEMENT_CATEGORIZATION_RULE_MATCH_TYPE_VALUES)[number];

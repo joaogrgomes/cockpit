@@ -127,6 +127,13 @@
       "when": 1781520704189,
       "tag": "0017_tan_jocasta",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1781738929897,
+      "tag": "0018_useful_the_fury",
+      "breakpoints": true
     }
   ]
 }

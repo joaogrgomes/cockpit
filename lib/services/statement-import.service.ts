@@ -13,11 +13,19 @@ import {
 import {
   dedupeImportedStatementItems,
   getImportedStatementPeriod,
+  parseStatementImportDirection,
+  parseStatementImportExpenseType,
+  parseStatementImportOccurrenceType,
   parseStatementImportRowStatus,
   type ImportedStatementItem,
   type StatementImportReviewedRow,
   type StatementImportSource,
 } from "@/lib/statement-import";
+import {
+  applyStatementImportSuggestions,
+  listStatementCategorizationRules,
+  upsertStatementCategorizationRuleFromReview,
+} from "@/lib/services/statement-categorization-rules.service";
 import { isMonthWithinPeriod } from "@/lib/recurrence-period";
 import type { StatementImportBatchStatus } from "@/types";
 
@@ -213,16 +221,22 @@ export async function getStatementImportBatchById(batchId: string) {
 
 export async function getStatementImportRowsByBatchId(batchId: string) {
   const db = getDb();
-  const rows = await db
-    .select()
-    .from(statementImportRows)
-    .where(eq(statementImportRows.batchId, batchId))
-    .orderBy(asc(statementImportRows.rowIndex), asc(statementImportRows.createdAt));
+  const [rows, rules] = await Promise.all([
+    db
+      .select()
+      .from(statementImportRows)
+      .where(eq(statementImportRows.batchId, batchId))
+      .orderBy(asc(statementImportRows.rowIndex), asc(statementImportRows.createdAt)),
+    listStatementCategorizationRules(),
+  ]);
 
-  return rows.map((row) => ({
-    ...row,
-    status: parseStatementImportRowStatus(row.status),
-  }));
+  return applyStatementImportSuggestions(
+    rows.map((row) => ({
+      ...row,
+      status: parseStatementImportRowStatus(row.status),
+    })),
+    rules
+  );
 }
 
 export async function getStatementImportBatchWithRows(batchId: string) {
@@ -337,6 +351,30 @@ async function validateLinkedIncome(
   }
 }
 
+async function upsertReviewedImportRule(
+  db: Pick<DbClient, "select" | "insert" | "update">,
+  direction: "income" | "expense",
+  reviewedRow: StatementImportReviewedRow
+): Promise<void> {
+  const expenseType = reviewedRow.expenseType
+    ? parseStatementImportExpenseType(reviewedRow.expenseType)
+    : null;
+  const occurrenceType = reviewedRow.occurrenceType
+    ? parseStatementImportOccurrenceType(reviewedRow.occurrenceType)
+    : null;
+
+  await upsertStatementCategorizationRuleFromReview(db, {
+    direction: parseStatementImportDirection(direction),
+    description: reviewedRow.description,
+    category: reviewedRow.category ?? "",
+    mode: reviewedRow.mode,
+    monthlyExpenseId: reviewedRow.monthlyExpenseId ?? null,
+    monthlyIncomeId: reviewedRow.monthlyIncomeId ?? null,
+    expenseType,
+    occurrenceType,
+  });
+}
+
 export async function commitStatementImportBatch(
   batchId: string,
   rows: StatementImportReviewedRow[]
@@ -413,6 +451,7 @@ export async function commitStatementImportBatch(
             })
             .where(eq(statementImportRows.id, dbRow.id));
           committedCount += 1;
+          await upsertReviewedImportRule(tx, "expense", reviewedRow);
           continue;
         }
 
@@ -447,6 +486,7 @@ export async function commitStatementImportBatch(
           })
           .where(eq(statementImportRows.id, dbRow.id));
         committedCount += 1;
+        await upsertReviewedImportRule(tx, "expense", reviewedRow);
         continue;
       }
 
@@ -478,6 +518,7 @@ export async function commitStatementImportBatch(
           })
           .where(eq(statementImportRows.id, dbRow.id));
         committedCount += 1;
+        await upsertReviewedImportRule(tx, "income", reviewedRow);
         continue;
       }
 
@@ -510,6 +551,7 @@ export async function commitStatementImportBatch(
         })
         .where(eq(statementImportRows.id, dbRow.id));
       committedCount += 1;
+      await upsertReviewedImportRule(tx, "income", reviewedRow);
     }
 
     const batchStatus = getBatchStatus(committedCount, ignoredCount);
