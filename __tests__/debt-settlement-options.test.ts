@@ -339,6 +339,36 @@ describe("debt settlement option service", () => {
     });
   });
 
+  it("normaliza datas date-only ao retornar opções", async () => {
+    const mockDb = createDbMock({
+      selectResults: [[
+        {
+          id: "option-1",
+          debtId: "debt-1",
+          kind: "installment",
+          installments: 6,
+          totalAmountCents: 360_000,
+          upfrontAmountCents: 60_000,
+          monthlyInstallmentCents: 50_000,
+          firstDueDate: new Date("2026-07-10T03:00:00Z"),
+          validUntil: "2026-08-10T12:34:56Z",
+          status: "active",
+          notes: null,
+          createdAt: new Date("2026-06-10T10:00:00Z"),
+          updatedAt: new Date("2026-06-10T10:00:00Z"),
+        },
+      ]],
+    });
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const result = await listDebtSettlementOptions("debt-1");
+
+    expect(result[0]).toMatchObject({
+      firstDueDate: "2026-07-10",
+      validUntil: "2026-08-10",
+    });
+  });
+
   it("arquiva opção e a remove da lista principal", async () => {
     const mockDb = createDbMock({
       selectResults: [[

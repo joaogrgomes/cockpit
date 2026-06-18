@@ -1,6 +1,7 @@
 import "server-only";
 
 import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
+import { normalizeDateOnly } from "@/lib/date-utils";
 import { getDb } from "@/lib/db";
 import { debtSettlementOptions, debts } from "@/lib/db/schema";
 import {
@@ -36,6 +37,8 @@ function mapDebtSettlementOptionRow(row: {
     ...row,
     kind: parseDebtSettlementOptionKind(row.kind),
     status: parseDebtSettlementOptionStatus(row.status),
+    firstDueDate: normalizeDateOnly(row.firstDueDate),
+    validUntil: normalizeDateOnly(row.validUntil),
     createdAt: row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt),
     updatedAt: row.updatedAt instanceof Date ? row.updatedAt : new Date(row.updatedAt),
   };
