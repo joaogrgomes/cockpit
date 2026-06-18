@@ -11,6 +11,8 @@ import {
 } from "./actions";
 import { cn } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 type StatementEntryPageProps = {
   params: Promise<{
     originType: string;

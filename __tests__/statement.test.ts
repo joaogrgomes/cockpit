@@ -4,6 +4,7 @@ import {
   buildStatementEntryUpdateValues,
   groupStatementItemsByDate,
   getStatementEntryHref,
+  isStatementOriginType,
   mapExpenseEntryRowToDetail,
   mapExpenseEntryRowToStatementItem,
   mapIncomeEntryRowToDetail,
@@ -19,6 +20,13 @@ describe("statement mapping", () => {
     expect(getStatementEntryHref("monthly_expense_entry", "expense-1")).toBe(
       "/statement/monthly_expense_entry/expense-1"
     );
+  });
+
+  it("reconhece apenas originType válidos do extrato", () => {
+    expect(isStatementOriginType("monthly_income_entry")).toBe(true);
+    expect(isStatementOriginType("monthly_expense_entry")).toBe(true);
+    expect(isStatementOriginType("future_income_receivable")).toBe(false);
+    expect(isStatementOriginType("monthly_income_entry_linked")).toBe(false);
   });
 
   it("usa nome/categoria da entrada planejada quando o lançamento é vinculado", () => {
