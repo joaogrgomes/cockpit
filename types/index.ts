@@ -3,6 +3,8 @@ import {
   DEBT_STATUS_VALUES,
   DEBT_TYPE_VALUES,
   COST_ANALYSIS_KIND_VALUES,
+  DEBT_SETTLEMENT_OPTION_KIND_VALUES,
+  DEBT_SETTLEMENT_OPTION_STATUS_VALUES,
   EXPENSE_CATEGORY_VALUES,
   EXPENSE_TYPE_VALUES,
   EXPENSE_OCCURRENCE_TYPE_VALUES,
@@ -30,6 +32,7 @@ import {
   futureExpensePayables,
   debtAttachments,
   debtProposals,
+  debtSettlementOptions,
   debtValueUpdates,
   costAnalyses,
   costAnalysisItems,
@@ -43,6 +46,11 @@ export type NewDebt = InferInsertModel<typeof debts>;
 
 export type DebtProposal = InferSelectModel<typeof debtProposals>;
 export type NewDebtProposal = InferInsertModel<typeof debtProposals>;
+export type DebtSettlementOption = Omit<InferSelectModel<typeof debtSettlementOptions>, "kind" | "status"> & {
+  kind: DebtSettlementOptionKind;
+  status: DebtSettlementOptionStatus;
+};
+export type NewDebtSettlementOption = InferInsertModel<typeof debtSettlementOptions>;
 
 export type DebtValueUpdate = InferSelectModel<typeof debtValueUpdates>;
 export type NewDebtValueUpdate = InferInsertModel<typeof debtValueUpdates>;
@@ -74,6 +82,8 @@ export type NewCashFlowSettings = InferInsertModel<typeof cashFlowSettings>;
 export type DebtStatus = (typeof DEBT_STATUS_VALUES)[number];
 export type DebtType = (typeof DEBT_TYPE_VALUES)[number];
 export type DebtProposalStatus = (typeof PROPOSAL_STATUS_VALUES)[number];
+export type DebtSettlementOptionKind = (typeof DEBT_SETTLEMENT_OPTION_KIND_VALUES)[number];
+export type DebtSettlementOptionStatus = (typeof DEBT_SETTLEMENT_OPTION_STATUS_VALUES)[number];
 export type ExpenseCategory = (typeof EXPENSE_CATEGORY_VALUES)[number];
 export type ExpenseType = (typeof EXPENSE_TYPE_VALUES)[number];
 export type PaymentMethod = (typeof PAYMENT_METHOD_VALUES)[number];

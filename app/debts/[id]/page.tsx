@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { DebtForm } from "@/components/debt/DebtForm";
 import { DebtAttachmentsCard } from "@/components/debt/DebtAttachmentsCard";
 import { DebtLifecycleActions } from "@/components/debt/DebtLifecycleActions";
+import { DebtSettlementOptionsSection } from "@/components/debt-settlement-options/DebtSettlementOptionsSection";
 import { PriorityBadge } from "@/components/debt/PriorityBadge";
 import { DebtTypeBadge } from "@/components/debt/DebtTypeBadge";
 import { StatusBadge } from "@/components/debt/StatusBadge";
@@ -25,6 +26,7 @@ import { formatDateOnlyBR } from "@/lib/date-utils";
 import { DEBT_STATUS_VALUES } from "@/lib/db/schema";
 import { isClosedDebtStatus } from "@/lib/debt-status";
 import { getDebtTypeDescription } from "@/lib/debt-type";
+import { listDebtSettlementOptions } from "@/lib/services/debt-settlement-option.service";
 import { listDebtAttachmentsByDebtId } from "@/lib/services/debt-attachment.service";
 import { getDebtById } from "@/lib/services/debt.service";
 import {
@@ -47,6 +49,11 @@ import {
   markDebtAsPaidAction,
   updateDebtAction,
 } from "../actions";
+import {
+  acceptDebtSettlementOptionAction,
+  archiveDebtSettlementOptionAction,
+  saveDebtSettlementOptionAction,
+} from "./actions";
 import { getPaymentMethodLabel } from "@/lib/expenses";
 
 type DebtDetailPageProps = {
@@ -62,13 +69,15 @@ function toStatus(value: string): DebtStatus {
 
 export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
   const { id } = await params;
-  const [debt, activeProposal, proposalHistory, valueUpdates, attachments] = await Promise.all([
-    getDebtById(id),
-    getActiveProposalByDebtId(id),
-    listProposalsByDebtId(id),
-    listValueUpdatesByDebtId(id),
-    listDebtAttachmentsByDebtId(id),
-  ]);
+  const [debt, activeProposal, proposalHistory, valueUpdates, attachments, settlementOptions] =
+    await Promise.all([
+      getDebtById(id),
+      getActiveProposalByDebtId(id),
+      listProposalsByDebtId(id),
+      listValueUpdatesByDebtId(id),
+      listDebtAttachmentsByDebtId(id),
+      listDebtSettlementOptions(id),
+    ]);
 
   if (!debt) {
     notFound();
@@ -419,6 +428,13 @@ export default async function DebtDetailPage({ params }: DebtDetailPageProps) {
       {activeProposalView ? <ProposalCard proposal={activeProposalView} /> : null}
 
       <ProposalHistory proposals={proposalHistoryView} />
+      <DebtSettlementOptionsSection
+        debtId={debt.id}
+        options={settlementOptions}
+        saveAction={saveDebtSettlementOptionAction}
+        archiveAction={archiveDebtSettlementOptionAction}
+        acceptAction={acceptDebtSettlementOptionAction}
+      />
       <ValueChart updates={valueUpdates} />
       <ValueHistory updates={valueHistoryView} />
       <DebtAttachmentsCard

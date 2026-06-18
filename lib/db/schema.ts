@@ -49,6 +49,15 @@ export const PROPOSAL_STATUS_VALUES = [
   "substituida",
 ] as const;
 
+export const DEBT_SETTLEMENT_OPTION_KIND_VALUES = ["cash", "installment"] as const;
+export const DEBT_SETTLEMENT_OPTION_STATUS_VALUES = [
+  "active",
+  "expired",
+  "accepted",
+  "rejected",
+  "archived",
+] as const;
+
 export const STATEMENT_IMPORT_SOURCE_VALUES = ["inter_csv"] as const;
 export const STATEMENT_IMPORT_BATCH_STATUS_VALUES = [
   "parsed",
@@ -233,6 +242,67 @@ export const debtProposals = pgTable(
       sql`${table.status} IN ('ativa','expirada','recusada','aceita','substituida')`
     ),
     index("idx_debt_proposals_debt_status").on(table.debtId, table.status),
+  ]
+);
+
+export const debtSettlementOptions = pgTable(
+  "debt_settlement_options",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    debtId: uuid("debt_id")
+      .notNull()
+      .references(() => debts.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    installments: integer("installments").notNull(),
+    totalAmountCents: integer("total_amount_cents").notNull(),
+    upfrontAmountCents: integer("upfront_amount_cents").notNull().default(0),
+    monthlyInstallmentCents: integer("monthly_installment_cents"),
+    firstDueDate: date("first_due_date"),
+    validUntil: date("valid_until"),
+    status: text("status").notNull().default("active"),
+    notes: text("notes"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "debt_settlement_options_kind_valid",
+      sql`${table.kind} IN ('cash','installment')`
+    ),
+    check(
+      "debt_settlement_options_installments_valid",
+      sql`${table.installments} > 0`
+    ),
+    check(
+      "debt_settlement_options_total_amount_positive",
+      sql`${table.totalAmountCents} > 0`
+    ),
+    check(
+      "debt_settlement_options_upfront_amount_non_negative",
+      sql`${table.upfrontAmountCents} >= 0`
+    ),
+    check(
+      "debt_settlement_options_monthly_installment_positive",
+      sql`${table.monthlyInstallmentCents} IS NULL OR ${table.monthlyInstallmentCents} > 0`
+    ),
+    check(
+      "debt_settlement_options_status_valid",
+      sql`${table.status} IN ('active','expired','accepted','rejected','archived')`
+    ),
+    check(
+      "debt_settlement_options_cash_fields_valid",
+      sql`(${table.kind} <> 'cash') OR (${table.installments} = 1 AND ${table.monthlyInstallmentCents} IS NULL AND ${table.upfrontAmountCents} = ${table.totalAmountCents})`
+    ),
+    check(
+      "debt_settlement_options_installment_fields_valid",
+      sql`(${table.kind} <> 'installment') OR (${table.installments} > 1 AND ${table.monthlyInstallmentCents} IS NOT NULL AND ${table.firstDueDate} IS NOT NULL)`
+    ),
+    check(
+      "debt_settlement_options_valid_until_valid",
+      sql`${table.validUntil} IS NULL OR ${table.firstDueDate} IS NULL OR ${table.validUntil} >= ${table.firstDueDate}`
+    ),
+    index("idx_debt_settlement_options_debt_status").on(table.debtId, table.status),
+    index("idx_debt_settlement_options_debt_created").on(table.debtId, table.createdAt),
   ]
 );
 

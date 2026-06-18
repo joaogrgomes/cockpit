@@ -134,6 +134,13 @@
       "when": 1781738929897,
       "tag": "0018_useful_the_fury",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781813618172,
+      "tag": "0019_lethal_quicksilver",
+      "breakpoints": true
     }
   ]
 }
