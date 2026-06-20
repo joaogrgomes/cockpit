@@ -47,6 +47,17 @@ type DebtSettlementOptionFormDialogProps = {
   triggerVariant?: "default" | "outline";
 };
 
+type DebtSettlementOptionFormState = {
+  kind: DebtSettlementOptionKind;
+  installments: string;
+  totalAmount: string;
+  upfrontAmount: string;
+  monthlyInstallment: string;
+  firstDueDate: string;
+  validUntil: string;
+  notes: string;
+};
+
 function getStatusLabel(status: DebtSettlementOptionStatus): string {
   switch (status) {
     case "active":
@@ -84,6 +95,27 @@ function getKindLabel(kind: DebtSettlementOptionKind): string {
 function moneyToInput(cents?: number | null): string {
   if (typeof cents !== "number") return "";
   return formatBRL(cents);
+}
+
+function createDebtSettlementOptionFormState(option?: DebtSettlementOption): DebtSettlementOptionFormState {
+  const kind = option?.kind ?? "cash";
+  const upfrontAmount =
+    option?.kind === "installment"
+      ? moneyToInput(option.upfrontAmountCents)
+      : option?.kind === "cash"
+        ? moneyToInput(option.totalAmountCents)
+        : "";
+
+  return {
+    kind,
+    installments: String(option?.kind === "installment" ? option.installments : 1),
+    totalAmount: moneyToInput(option?.totalAmountCents),
+    upfrontAmount,
+    monthlyInstallment: moneyToInput(option?.monthlyInstallmentCents),
+    firstDueDate: normalizeDateOnly(option?.firstDueDate) ?? "",
+    validUntil: normalizeDateOnly(option?.validUntil) ?? "",
+    notes: option?.notes ?? "",
+  };
 }
 
 function getOptionTitle(option: DebtSettlementOption): string {
@@ -177,29 +209,19 @@ function DebtSettlementOptionFormDialog({
 }: DebtSettlementOptionFormDialogProps) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [kind, setKind] = useState<DebtSettlementOptionKind>(option?.kind ?? "cash");
+  const [formValues, setFormValues] = useState<DebtSettlementOptionFormState>(() =>
+    createDebtSettlementOptionFormState(option)
+  );
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
   const isEditMode = Boolean(option);
-  const installmentsDefault =
-    option?.kind === "installment" ? option.installments : kind === "cash" ? 1 : 3;
-  const upfrontDefault =
-    option?.kind === "installment"
-      ? option.upfrontAmountCents
-      : option?.kind === "cash"
-        ? kind === "cash"
-          ? option.totalAmountCents
-          : null
-        : null;
-  const monthlyInstallmentDefault =
-    option?.kind === "installment" ? option.monthlyInstallmentCents : null;
 
   useEffect(() => {
     if (open) {
-      setKind(option?.kind ?? "cash");
+      setFormValues(createDebtSettlementOptionFormState(option));
       setError(null);
     }
-  }, [open, option?.kind]);
+  }, [open, option?.id]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -241,10 +263,10 @@ function DebtSettlementOptionFormDialog({
               router.refresh();
             });
           }}
-        >
+          >
           <input type="hidden" name="debtId" value={debtId} />
           {option?.id ? <input type="hidden" name="optionId" value={option.id} /> : null}
-          {kind === "cash" ? <input type="hidden" name="installments" value="1" /> : null}
+          {formValues.kind === "cash" ? <input type="hidden" name="installments" value="1" /> : null}
 
           <section className="space-y-4">
             <h3 className="text-sm font-semibold">Dados da liquidação</h3>
@@ -254,9 +276,25 @@ function DebtSettlementOptionFormDialog({
                 <select
                   id="kind"
                   name="kind"
-                  value={kind}
+                  value={formValues.kind}
                   className="flex h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm"
-                  onChange={(event) => setKind(event.target.value as DebtSettlementOptionKind)}
+                  onChange={(event) =>
+                    setFormValues((current) => {
+                      const nextKind = event.target.value as DebtSettlementOptionKind;
+                      return {
+                        ...current,
+                        kind: nextKind,
+                        installments: nextKind === "cash" ? "1" : current.installments || "3",
+                        upfrontAmount:
+                          nextKind === "cash"
+                            ? current.totalAmount || current.upfrontAmount
+                            : current.upfrontAmount,
+                        monthlyInstallment:
+                          nextKind === "cash" ? "" : current.monthlyInstallment,
+                        firstDueDate: nextKind === "cash" ? "" : current.firstDueDate || getLocalDateInputValue(),
+                      };
+                    })
+                  }
                   required
                 >
                   <option value="cash">À vista</option>
@@ -271,11 +309,17 @@ function DebtSettlementOptionFormDialog({
                   name="installments"
                   type="number"
                   min={1}
-                  defaultValue={installmentsDefault}
-                  disabled={kind === "cash"}
+                  value={formValues.kind === "cash" ? "1" : formValues.installments}
+                  onChange={(event) =>
+                    setFormValues((current) => ({
+                      ...current,
+                      installments: event.target.value,
+                    }))
+                  }
+                  disabled={formValues.kind === "cash"}
                 />
                 <p className="text-xs text-muted-foreground">
-                  {kind === "cash"
+                  {formValues.kind === "cash"
                     ? "Opção à vista deve permanecer com 1 parcela."
                     : "Use 3x, 6x, 12x ou a quantidade que fizer sentido."}
                 </p>
@@ -286,7 +330,13 @@ function DebtSettlementOptionFormDialog({
                 <Input
                   id="totalAmount"
                   name="totalAmount"
-                  defaultValue={moneyToInput(option?.totalAmountCents)}
+                  value={formValues.totalAmount}
+                  onChange={(event) =>
+                    setFormValues((current) => ({
+                      ...current,
+                      totalAmount: event.target.value,
+                    }))
+                  }
                   placeholder="Ex.: R$ 1.200,00"
                   inputMode="decimal"
                   required
@@ -298,7 +348,13 @@ function DebtSettlementOptionFormDialog({
                 <Input
                   id="upfrontAmount"
                   name="upfrontAmount"
-                  defaultValue={moneyToInput(upfrontDefault)}
+                  value={formValues.upfrontAmount}
+                  onChange={(event) =>
+                    setFormValues((current) => ({
+                      ...current,
+                      upfrontAmount: event.target.value,
+                    }))
+                  }
                   placeholder="Ex.: R$ 200,00"
                   inputMode="decimal"
                 />
@@ -307,14 +363,20 @@ function DebtSettlementOptionFormDialog({
                 </p>
               </div>
 
-              {kind === "installment" ? (
+              {formValues.kind === "installment" ? (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="monthlyInstallment">Valor da parcela</Label>
                     <Input
                       id="monthlyInstallment"
                       name="monthlyInstallment"
-                      defaultValue={moneyToInput(monthlyInstallmentDefault)}
+                      value={formValues.monthlyInstallment}
+                      onChange={(event) =>
+                        setFormValues((current) => ({
+                          ...current,
+                          monthlyInstallment: event.target.value,
+                        }))
+                      }
                       placeholder="Ex.: R$ 250,00"
                       inputMode="decimal"
                     />
@@ -326,7 +388,13 @@ function DebtSettlementOptionFormDialog({
                       id="firstDueDate"
                       name="firstDueDate"
                       type="date"
-                      defaultValue={normalizeDateOnly(option?.firstDueDate) ?? getLocalDateInputValue()}
+                      value={formValues.firstDueDate}
+                      onChange={(event) =>
+                        setFormValues((current) => ({
+                          ...current,
+                          firstDueDate: event.target.value,
+                        }))
+                      }
                     />
                   </div>
                 </>
@@ -338,7 +406,13 @@ function DebtSettlementOptionFormDialog({
                   id="validUntil"
                   name="validUntil"
                   type="date"
-                  defaultValue={normalizeDateOnly(option?.validUntil) ?? ""}
+                  value={formValues.validUntil}
+                  onChange={(event) =>
+                    setFormValues((current) => ({
+                      ...current,
+                      validUntil: event.target.value,
+                    }))
+                  }
                 />
               </div>
 
@@ -347,7 +421,13 @@ function DebtSettlementOptionFormDialog({
                 <Textarea
                   id="notes"
                   name="notes"
-                  defaultValue={option?.notes ?? ""}
+                  value={formValues.notes}
+                  onChange={(event) =>
+                    setFormValues((current) => ({
+                      ...current,
+                      notes: event.target.value,
+                    }))
+                  }
                   placeholder="Opcional"
                 />
               </div>

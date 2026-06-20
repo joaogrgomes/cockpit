@@ -67,6 +67,10 @@ function buildOptionOrderByClause() {
   ];
 }
 
+function getDebtStatusForAcceptedOptionKind(kind: DebtSettlementOption["kind"]) {
+  return kind === "cash" ? "aguardando_baixa" : "parcelada";
+}
+
 export async function listDebtSettlementOptions(debtId: string): Promise<DebtSettlementOption[]> {
   const db = getDb();
   const rows = await db
@@ -244,9 +248,24 @@ export async function markDebtSettlementOptionAsAccepted(
         .returning();
 
       const option = updated[0];
-      return option
-        ? { ok: true as const, option: mapDebtSettlementOptionRow(option) }
-        : { ok: false as const, code: "UNKNOWN_ERROR" as const, error: "Não foi possível aceitar a opção." };
+      if (!option) {
+        return { ok: false as const, code: "UNKNOWN_ERROR" as const, error: "Não foi possível aceitar a opção." };
+      }
+
+      const debtUpdate = await tx
+        .update(debts)
+        .set({
+          status: getDebtStatusForAcceptedOptionKind(option.kind),
+          lastUpdatedAt: sql`now()`,
+        })
+        .where(eq(debts.id, option.debtId))
+        .returning();
+
+      if (!debtUpdate[0]) {
+        throw new Error("Não foi possível atualizar a dívida.");
+      }
+
+      return { ok: true as const, option: mapDebtSettlementOptionRow(option) };
     });
 
     return result;

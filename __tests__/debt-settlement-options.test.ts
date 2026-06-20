@@ -415,7 +415,7 @@ describe("debt settlement option service", () => {
     expect(listed).toHaveLength(0);
   });
 
-  it("marcar como aceita desmarca accepted anterior da mesma dívida", async () => {
+  it("marcar como aceita desmarca accepted anterior da mesma dívida e atualiza status parcelado", async () => {
     const mockDb = createDbMock({
       selectResults: [[
         {
@@ -453,6 +453,13 @@ describe("debt settlement option service", () => {
             updatedAt: new Date("2026-06-10T10:15:00Z"),
           },
         ],
+        [
+          {
+            id: "debt-1",
+            status: "parcelada",
+            lastUpdatedAt: new Date("2026-06-10T10:15:00Z"),
+          },
+        ],
       ],
     });
     mockedGetDb.mockReturnValue(mockDb);
@@ -460,9 +467,67 @@ describe("debt settlement option service", () => {
     const accepted = await markDebtSettlementOptionAsAccepted("option-2");
     expect(accepted.ok).toBe(true);
 
-    expect(mockDb.updates).toHaveLength(2);
+    expect(mockDb.updates).toHaveLength(3);
     expect(mockDb.updates[0]?.values).toMatchObject({ status: "active" });
     expect(mockDb.updates[1]?.values).toMatchObject({ status: "accepted" });
+    expect(mockDb.updates[2]?.values).toMatchObject({ status: "parcelada" });
+  });
+
+  it("marcar como aceita opção cash atualiza dívida para aguardando baixa", async () => {
+    const mockDb = createDbMock({
+      selectResults: [[
+        {
+          id: "option-3",
+          debtId: "debt-2",
+          kind: "cash",
+          installments: 1,
+          totalAmountCents: 120_000,
+          upfrontAmountCents: 120_000,
+          monthlyInstallmentCents: null,
+          firstDueDate: null,
+          validUntil: null,
+          status: "active",
+          notes: null,
+          createdAt: new Date("2026-06-10T10:00:00Z"),
+          updatedAt: new Date("2026-06-10T10:00:00Z"),
+        },
+      ]],
+      updateResults: [
+        [],
+        [
+          {
+            id: "option-3",
+            debtId: "debt-2",
+            kind: "cash",
+            installments: 1,
+            totalAmountCents: 120_000,
+            upfrontAmountCents: 120_000,
+            monthlyInstallmentCents: null,
+            firstDueDate: null,
+            validUntil: null,
+            status: "accepted",
+            notes: null,
+            createdAt: new Date("2026-06-10T10:00:00Z"),
+            updatedAt: new Date("2026-06-10T10:15:00Z"),
+          },
+        ],
+        [
+          {
+            id: "debt-2",
+            status: "aguardando_baixa",
+            lastUpdatedAt: new Date("2026-06-10T10:15:00Z"),
+          },
+        ],
+      ],
+    });
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const accepted = await markDebtSettlementOptionAsAccepted("option-3");
+    expect(accepted.ok).toBe(true);
+
+    expect(mockDb.updates).toHaveLength(3);
+    expect(mockDb.updates[1]?.values).toMatchObject({ status: "accepted" });
+    expect(mockDb.updates[2]?.values).toMatchObject({ status: "aguardando_baixa" });
   });
 
   it("atualiza opção existente", async () => {

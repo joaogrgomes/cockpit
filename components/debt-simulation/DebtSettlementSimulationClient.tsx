@@ -76,7 +76,24 @@ export function DebtSettlementSimulationClient({ debts }: DebtSettlementSimulati
     [debts, selectedOptionIds]
   );
 
+  const acceptedDebtIds = useMemo(
+    () =>
+      new Set(
+        debts.filter((debt) => debt.settlementOptions.some((option) => option.status === "accepted")).map((debt) => debt.id)
+      ),
+    [debts]
+  );
+
+  const selectableDebts = useMemo(
+    () => debts.filter((debt) => !acceptedDebtIds.has(debt.id)),
+    [acceptedDebtIds, debts]
+  );
+
   function toggleOption(debtId: string, optionId: string) {
+    if (acceptedDebtIds.has(debtId)) {
+      return;
+    }
+
     setSelectedOptionIdsByDebtId((current) => {
       if (current[debtId] === optionId) {
         const next = { ...current };
@@ -106,7 +123,12 @@ export function DebtSettlementSimulationClient({ debts }: DebtSettlementSimulati
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        <MetricCard title="Dívidas selecionadas" value={String(simulation.selectedItems.length)} />
+        <MetricCard title="Compromissos assumidos" value={String(simulation.acceptedItems.length)} />
+        <MetricCard
+          title="Novas seleções"
+          value={String(simulation.selectedItems.length)}
+          description="Escolhas ainda abertas para simulação."
+        />
         <MetricCard
           title="Desembolso imediato"
           value={formatBRL(simulation.immediateOutflowCents)}
@@ -120,7 +142,7 @@ export function DebtSettlementSimulationClient({ debts }: DebtSettlementSimulati
         <MetricCard
           title="Total da operação"
           value={formatBRL(simulation.totalOperationCents)}
-          description="Soma de todas as opções selecionadas."
+          description="Soma dos compromissos assumidos e escolhas novas."
         />
         <MetricCard
           title="Maior parcela mensal"
@@ -134,7 +156,7 @@ export function DebtSettlementSimulationClient({ debts }: DebtSettlementSimulati
         />
       </div>
 
-      {simulation.selectedItems.length === 0 ? (
+      {simulation.acceptedItems.length === 0 && simulation.selectedItems.length === 0 ? (
         <Card className="border-dashed border-border/80 bg-muted/20 shadow-sm">
           <CardContent className="flex flex-col items-start gap-3 px-6 py-8">
             <p className="text-sm font-medium text-foreground">
@@ -147,76 +169,177 @@ export function DebtSettlementSimulationClient({ debts }: DebtSettlementSimulati
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-border/80 shadow-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Escolhas feitas</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 xl:grid-cols-2">
-            {simulation.selectedItems.map((item) => (
-              <div key={item.optionId} className="rounded-xl border border-border/80 bg-card p-4 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="font-semibold text-foreground">{item.debtName}</h3>
-                      <Badge variant="outline" className="rounded-full">
-                        {item.creditor}
-                      </Badge>
+        <>
+          {simulation.acceptedItems.length > 0 ? (
+            <Card className="border-border/80 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Compromissos assumidos</CardTitle>
+              </CardHeader>
+              <CardContent className="grid gap-4 xl:grid-cols-2">
+                {simulation.acceptedItems.map((item) => (
+                  <div key={item.optionId} className="rounded-xl border border-emerald-300/70 bg-emerald-50/40 p-4 shadow-sm">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold text-foreground">{item.debtName}</h3>
+                          <Badge variant="outline" className="rounded-full">
+                            {item.creditor}
+                          </Badge>
+                          <Badge variant="default" className="rounded-full">
+                            Já aceito
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Valor atual: {formatBRL(item.debtCurrentValueCents)}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      Valor atual: {formatBRL(item.debtCurrentValueCents)}
-                    </p>
-                  </div>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => removeSelection(item.debtId)}
-                  >
-                    Remover
-                  </Button>
-                </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Opção</p>
-                    <p className="font-medium text-foreground">{item.optionLabel}</p>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Opção</p>
+                        <p className="font-medium text-foreground">{item.optionLabel}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Total</p>
+                        <p className="font-medium text-foreground">{formatBRL(item.totalAmountCents)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Entrada</p>
+                        <p className="font-medium text-foreground">
+                          {item.upfrontAmountCents > 0 ? formatBRL(item.upfrontAmountCents) : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Parcela</p>
+                        <p className="font-medium text-foreground">
+                          {item.kind === "installment" && item.monthlyInstallmentCents
+                            ? formatBRL(item.monthlyInstallmentCents)
+                            : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Primeira parcela
+                        </p>
+                        <p className="font-medium text-foreground">
+                          {item.firstDueDate ? formatDateOnlyBR(item.firstDueDate) : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">Validade</p>
+                        <p className="font-medium text-foreground">
+                          {item.validUntil ? formatDateOnlyBR(item.validUntil) : "—"}
+                        </p>
+                      </div>
+                    </div>
+                    {item.notes ? <p className="mt-3 text-sm text-muted-foreground">{item.notes}</p> : null}
                   </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Total</p>
-                    <p className="font-medium text-foreground">{formatBRL(item.totalAmountCents)}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Entrada</p>
-                    <p className="font-medium text-foreground">
-                      {item.upfrontAmountCents > 0 ? formatBRL(item.upfrontAmountCents) : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Parcela</p>
-                    <p className="font-medium text-foreground">
-                      {item.kind === "installment" && item.monthlyInstallmentCents
-                        ? formatBRL(item.monthlyInstallmentCents)
-                        : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Primeira parcela</p>
-                    <p className="font-medium text-foreground">
-                      {item.firstDueDate ? formatDateOnlyBR(item.firstDueDate) : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Validade</p>
-                    <p className="font-medium text-foreground">
-                      {item.validUntil ? formatDateOnlyBR(item.validUntil) : "—"}
-                    </p>
-                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          ) : null}
+
+          <Card className="border-border/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Novas decisões para simular</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {selectableDebts.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/80 px-6 py-10 text-sm text-muted-foreground">
+                  Não há novas decisões abertas neste momento.
                 </div>
-                {item.notes ? <p className="mt-3 text-sm text-muted-foreground">{item.notes}</p> : null}
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+              ) : (
+                selectableDebts.map((debt) => {
+                  const selectedOptionId = selectedOptionIdsByDebtId[debt.id];
+                  const selectableOptions = debt.settlementOptions.filter(
+                    (option) => option.status === "active" || option.status === "expired"
+                  );
+
+                  return (
+                    <div key={debt.id} className="rounded-xl border border-border/80 bg-background p-4 shadow-sm">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-semibold text-foreground">{debt.name}</h3>
+                            <Badge variant="outline" className="rounded-full">
+                              {debt.creditor}
+                            </Badge>
+                            {debt.hasActiveProposal ? (
+                              <Badge variant="secondary" className="rounded-full">
+                                Proposta ativa
+                              </Badge>
+                            ) : null}
+                          </div>
+                          <p className="text-sm text-muted-foreground">
+                            Valor atual: {formatBRL(debt.currentValue)}
+                          </p>
+                        </div>
+                        {selectedOptionId ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeSelection(debt.id)}
+                          >
+                            Limpar seleção
+                          </Button>
+                        ) : null}
+                      </div>
+
+                      {selectableOptions.length === 0 ? (
+                        <p className="mt-3 text-sm text-muted-foreground">
+                          Esta dívida não tem opções ativas selecionáveis.
+                        </p>
+                      ) : (
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          {selectableOptions.map((option) => {
+                            const isExpired = option.status === "expired";
+                            const isSelected = selectedOptionId === option.id;
+
+                            return (
+                              <Button
+                                key={option.id}
+                                type="button"
+                                variant={isSelected ? "default" : "outline"}
+                                disabled={isExpired}
+                                onClick={() => toggleOption(debt.id, option.id)}
+                                className={cn(
+                                  "h-auto min-h-20 min-w-52 flex-col items-start justify-start gap-1 whitespace-normal px-4 py-3 text-left",
+                                  isSelected ? "shadow-sm" : "border-border/80 bg-background"
+                                )}
+                              >
+                                <div className="flex w-full items-center justify-between gap-2">
+                                  <span className="font-medium">
+                                    {getOptionTitle(option.kind, option.installments, option.monthlyInstallmentCents)}
+                                  </span>
+                                  <Badge variant={getStatusBadgeVariant(option.status)} className="rounded-full">
+                                    {getStatusLabel(option.status)}
+                                  </Badge>
+                                </div>
+                                <span className="text-xs text-muted-foreground">
+                                  Total {formatBRL(option.totalAmountCents)}
+                                </span>
+                                {option.kind === "installment" ? (
+                                  <span className="text-xs text-muted-foreground">
+                                    Entrada {formatBRL(option.upfrontAmountCents)}
+                                  </span>
+                                ) : null}
+                                {isExpired ? (
+                                  <span className="text-xs text-muted-foreground">Opção vencida</span>
+                                ) : null}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {simulation.monthlySchedule.length > 0 ? (
@@ -253,6 +376,9 @@ export function DebtSettlementSimulationClient({ debts }: DebtSettlementSimulati
                           {month.items.map((item) => (
                             <div key={`${month.periodMonth}:${item.optionId}:${item.installmentIndex}`} className="flex flex-wrap items-center gap-2">
                               <span className="font-medium text-foreground">{item.debtName}</span>
+                              <Badge variant={item.source === "accepted" ? "default" : "outline"} className="rounded-full">
+                                {item.source === "accepted" ? "Já aceito" : "Simulado"}
+                              </Badge>
                               <span className="text-sm text-muted-foreground">
                                 {item.optionLabel} • {formatBRL(item.amountCents)}
                               </span>

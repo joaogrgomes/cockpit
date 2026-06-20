@@ -64,7 +64,9 @@ describe("buildDebtSettlementSimulation", () => {
     });
 
     expect(result).toEqual({
+      acceptedItems: [],
       selectedItems: [],
+      allItems: [],
       immediateOutflowCents: 0,
       futureInstallmentsTotalCents: 0,
       totalOperationCents: 0,
@@ -72,6 +74,32 @@ describe("buildDebtSettlementSimulation", () => {
       maxMonthlyInstallmentCents: 0,
       committedMonthsCount: 0,
     });
+  });
+
+  it("inclui opções aceitas automaticamente no cálculo base", () => {
+    const debt = makeDebt({
+      settlementOptions: [
+        makeOption({
+          id: "accepted-cash",
+          debtId: "debt-1",
+          kind: "cash",
+          installments: 1,
+          totalAmountCents: 90_000,
+          upfrontAmountCents: 90_000,
+          status: "accepted",
+        }),
+      ],
+    });
+
+    const result = buildDebtSettlementSimulation({
+      debts: [debt],
+      selectedOptionIds: [],
+    });
+
+    expect(result.acceptedItems).toHaveLength(1);
+    expect(result.selectedItems).toHaveLength(0);
+    expect(result.immediateOutflowCents).toBe(90_000);
+    expect(result.totalOperationCents).toBe(90_000);
   });
 
   it("coloca opção à vista no desembolso imediato", () => {
@@ -174,7 +202,7 @@ describe("buildDebtSettlementSimulation", () => {
 
     const result = buildDebtSettlementSimulation({
       debts: [debtA, debtB],
-      selectedOptionIds: ["installment-a", "installment-b"],
+      selectedOptionIds: ["installment-a"],
     });
 
     expect(result.monthlySchedule).toHaveLength(2);
@@ -227,5 +255,44 @@ describe("buildDebtSettlementSimulation", () => {
     expect(result.immediateOutflowCents).toBe(80_000);
     expect(result.totalOperationCents).toBe(80_000);
     expect(result.monthlySchedule).toHaveLength(0);
+  });
+
+  it("bloqueia nova seleção quando a dívida já tem opção aceita", () => {
+    const debt = makeDebt({
+      settlementOptions: [
+        makeOption({
+          id: "accepted-installment",
+          debtId: "debt-1",
+          kind: "installment",
+          installments: 3,
+          totalAmountCents: 90_000,
+          upfrontAmountCents: 0,
+          monthlyInstallmentCents: 30_000,
+          firstDueDate: "2026-07-10",
+          status: "accepted",
+        }),
+        makeOption({
+          id: "active-installment",
+          debtId: "debt-1",
+          kind: "installment",
+          installments: 2,
+          totalAmountCents: 60_000,
+          upfrontAmountCents: 0,
+          monthlyInstallmentCents: 30_000,
+          firstDueDate: "2026-07-10",
+          status: "active",
+        }),
+      ],
+    });
+
+    const result = buildDebtSettlementSimulation({
+      debts: [debt],
+      selectedOptionIds: ["active-installment"],
+    });
+
+    expect(result.acceptedItems).toHaveLength(1);
+    expect(result.selectedItems).toHaveLength(0);
+    expect(result.totalOperationCents).toBe(90_000);
+    expect(result.monthlySchedule).toHaveLength(3);
   });
 });

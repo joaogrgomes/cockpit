@@ -12,7 +12,9 @@ export type DebtSettlementSimulationDebt = Debt & {
   settlementOptions: DebtSettlementOption[];
 };
 
-export type DebtSettlementSimulationSelectedItem = {
+export type DebtSettlementSimulationItemSource = "accepted" | "selected";
+
+export type DebtSettlementSimulationItem = {
   debtId: string;
   debtName: string;
   creditor: string;
@@ -29,6 +31,7 @@ export type DebtSettlementSimulationSelectedItem = {
   validUntil: string | null;
   notes: string | null;
   optionLabel: string;
+  source: DebtSettlementSimulationItemSource;
 };
 
 export type DebtSettlementSimulationScheduleItem = {
@@ -37,6 +40,7 @@ export type DebtSettlementSimulationScheduleItem = {
   creditor: string;
   optionId: string;
   optionLabel: string;
+  source: DebtSettlementSimulationItemSource;
   installmentIndex: number;
   installmentCount: number;
   amountCents: number;
@@ -54,7 +58,9 @@ export type DebtSettlementSimulationInput = {
 };
 
 export type DebtSettlementSimulationResult = {
-  selectedItems: DebtSettlementSimulationSelectedItem[];
+  acceptedItems: DebtSettlementSimulationItem[];
+  selectedItems: DebtSettlementSimulationItem[];
+  allItems: DebtSettlementSimulationItem[];
   immediateOutflowCents: number;
   futureInstallmentsTotalCents: number;
   totalOperationCents: number;
@@ -107,7 +113,8 @@ function getOptionMonthKey(option: DebtSettlementOption): string | null {
 export function buildDebtSettlementSimulation(
   input: DebtSettlementSimulationInput
 ): DebtSettlementSimulationResult {
-  const selectedByDebtId = new Map<string, DebtSettlementSimulationSelectedItem>();
+  const acceptedByDebtId = new Map<string, DebtSettlementSimulationItem>();
+  const selectedByDebtId = new Map<string, DebtSettlementSimulationItem>();
   const optionById = new Map<
     string,
     {
@@ -118,11 +125,13 @@ export function buildDebtSettlementSimulation(
 
   for (const debt of input.debts) {
     for (const option of debt.settlementOptions) {
-      if (!isSelectableOptionStatus(option.status)) {
-        continue;
+      if (option.status === "accepted") {
+        acceptedByDebtId.set(debt.id, buildSimulationItem(debt, option, "accepted"));
       }
 
-      optionById.set(option.id, { debt, option });
+      if (option.status === "accepted" || isSelectableOptionStatus(option.status)) {
+        optionById.set(option.id, { debt, option });
+      }
     }
   }
 
@@ -141,26 +150,12 @@ export function buildDebtSettlementSimulation(
       continue;
     }
 
+    if (acceptedByDebtId.has(matched.debt.id)) {
+      continue;
+    }
+
     const { debt, option } = matched;
-    const optionLabel = getOptionLabel(option);
-    const selectedItem: DebtSettlementSimulationSelectedItem = {
-      debtId: debt.id,
-      debtName: debt.name,
-      creditor: debt.creditor,
-      debtCurrentValueCents: debt.currentValue,
-      debtStatus: debt.status,
-      optionId: option.id,
-      kind: option.kind,
-      status: option.status,
-      installments: option.installments,
-      totalAmountCents: option.totalAmountCents,
-      upfrontAmountCents: option.upfrontAmountCents,
-      monthlyInstallmentCents: option.monthlyInstallmentCents,
-      firstDueDate: option.firstDueDate,
-      validUntil: option.validUntil,
-      notes: option.notes,
-      optionLabel,
-    };
+    const selectedItem = buildSimulationItem(debt, option, "selected");
 
     selectedByDebtId.set(debt.id, selectedItem);
     totalOperationCents += option.totalAmountCents;
@@ -194,7 +189,8 @@ export function buildDebtSettlementSimulation(
         debtName: debt.name,
         creditor: debt.creditor,
         optionId: option.id,
-        optionLabel,
+        optionLabel: selectedItem.optionLabel,
+        source: "selected",
         installmentIndex: index + 1,
         installmentCount: option.installments,
         amountCents: monthlyInstallmentCents,
@@ -203,16 +199,62 @@ export function buildDebtSettlementSimulation(
     }
   }
 
+  const acceptedItems = input.debts
+    .map((debt) => acceptedByDebtId.get(debt.id))
+    .filter((item): item is DebtSettlementSimulationItem => Boolean(item));
   const selectedItems = input.debts
     .map((debt) => selectedByDebtId.get(debt.id))
-    .filter((item): item is DebtSettlementSimulationSelectedItem => Boolean(item));
+    .filter((item): item is DebtSettlementSimulationItem => Boolean(item));
+  const allItems = [...acceptedItems, ...selectedItems];
+
+  for (const item of acceptedItems) {
+    totalOperationCents += item.totalAmountCents;
+    if (item.kind === "cash") {
+      immediateOutflowCents += item.totalAmountCents;
+      continue;
+    }
+
+    immediateOutflowCents += item.upfrontAmountCents;
+    const monthlyInstallmentCents = item.monthlyInstallmentCents ?? 0;
+    futureInstallmentsTotalCents += monthlyInstallmentCents * item.installments;
+
+    const startMonth = getOptionMonthKey(item);
+    if (!startMonth || monthlyInstallmentCents <= 0) {
+      continue;
+    }
+
+    for (let index = 0; index < item.installments; index += 1) {
+      const periodMonth = shiftPeriodMonth(startMonth, index);
+      const currentMonth = monthlyScheduleMap.get(periodMonth) ?? {
+        periodMonth,
+        totalAmountCents: 0,
+        items: [],
+      };
+
+      currentMonth.totalAmountCents += monthlyInstallmentCents;
+      currentMonth.items.push({
+        debtId: item.debtId,
+        debtName: item.debtName,
+        creditor: item.creditor,
+        optionId: item.optionId,
+        optionLabel: item.optionLabel,
+        source: "accepted",
+        installmentIndex: index + 1,
+        installmentCount: item.installments,
+        amountCents: monthlyInstallmentCents,
+      });
+      monthlyScheduleMap.set(periodMonth, currentMonth);
+    }
+  }
 
   const monthlySchedule = Array.from(monthlyScheduleMap.values()).sort((a, b) =>
     a.periodMonth.localeCompare(b.periodMonth)
   );
 
   return {
+    acceptedItems,
     selectedItems,
+    allItems,
     immediateOutflowCents,
     futureInstallmentsTotalCents,
     totalOperationCents,
@@ -222,5 +264,31 @@ export function buildDebtSettlementSimulation(
       0
     ),
     committedMonthsCount: monthlySchedule.length,
+  };
+}
+
+function buildSimulationItem(
+  debt: DebtSettlementSimulationDebt,
+  option: DebtSettlementOption,
+  source: DebtSettlementSimulationItemSource
+): DebtSettlementSimulationItem {
+  return {
+    debtId: debt.id,
+    debtName: debt.name,
+    creditor: debt.creditor,
+    debtCurrentValueCents: debt.currentValue,
+    debtStatus: debt.status,
+    optionId: option.id,
+    kind: option.kind,
+    status: option.status,
+    installments: option.installments,
+    totalAmountCents: option.totalAmountCents,
+    upfrontAmountCents: option.upfrontAmountCents,
+    monthlyInstallmentCents: option.monthlyInstallmentCents,
+    firstDueDate: option.firstDueDate,
+    validUntil: option.validUntil,
+    notes: option.notes,
+    optionLabel: getOptionLabel(option),
+    source,
   };
 }
