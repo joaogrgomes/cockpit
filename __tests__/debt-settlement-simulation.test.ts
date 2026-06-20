@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildDebtSettlementSimulation } from "@/lib/debt-settlement-simulation";
+import {
+  buildDebtSettlementSimulation,
+  filterDebtSettlementSimulationDebts,
+  getDebtSettlementSimulationCreditors,
+} from "@/lib/debt-settlement-simulation";
 import type { DebtSettlementOption, DebtSettlementSimulationDebt } from "@/types";
 
 function makeOption(overrides: Partial<DebtSettlementOption>): DebtSettlementOption {
@@ -294,5 +298,107 @@ describe("buildDebtSettlementSimulation", () => {
     expect(result.selectedItems).toHaveLength(0);
     expect(result.totalOperationCents).toBe(90_000);
     expect(result.monthlySchedule).toHaveLength(3);
+  });
+
+  it("lista apenas credores com opções elegíveis no filtro", () => {
+    const activeDebt = makeDebt({
+      id: "debt-active",
+      creditor: "Itaú",
+      settlementOptions: [
+        makeOption({
+          id: "active-option",
+          debtId: "debt-active",
+          status: "active",
+        }),
+      ],
+    });
+    const acceptedDebt = makeDebt({
+      id: "debt-accepted",
+      creditor: "Santander",
+      settlementOptions: [
+        makeOption({
+          id: "accepted-option",
+          debtId: "debt-accepted",
+          status: "accepted",
+        }),
+      ],
+    });
+    const expiredOnlyDebt = makeDebt({
+      id: "debt-expired",
+      creditor: "C&A",
+      settlementOptions: [
+        makeOption({
+          id: "expired-option",
+          debtId: "debt-expired",
+          status: "expired",
+        }),
+      ],
+    });
+    const rejectedOnlyDebt = makeDebt({
+      id: "debt-rejected",
+      creditor: "Caedu",
+      settlementOptions: [
+        makeOption({
+          id: "rejected-option",
+          debtId: "debt-rejected",
+          status: "rejected",
+        }),
+      ],
+    });
+    const noOptionDebt = makeDebt({
+      id: "debt-empty",
+      creditor: "Sem opção",
+      settlementOptions: [],
+    });
+
+    expect(
+      getDebtSettlementSimulationCreditors([
+        activeDebt,
+        acceptedDebt,
+        expiredOnlyDebt,
+        rejectedOnlyDebt,
+        noOptionDebt,
+      ])
+    ).toEqual(["C&A", "Itaú", "Santander"]);
+  });
+
+  it("filtra as dívidas elegíveis por credor sem mudar a simulação base", () => {
+    const acceptedDebt = makeDebt({
+      id: "debt-accepted",
+      creditor: "Santander",
+      settlementOptions: [
+        makeOption({
+          id: "accepted-option",
+          debtId: "debt-accepted",
+          status: "accepted",
+          totalAmountCents: 90_000,
+        }),
+      ],
+    });
+    const activeDebt = makeDebt({
+      id: "debt-active",
+      creditor: "Itaú",
+      settlementOptions: [
+        makeOption({
+          id: "active-option",
+          debtId: "debt-active",
+          status: "active",
+          totalAmountCents: 75_000,
+        }),
+      ],
+    });
+    const filtered = filterDebtSettlementSimulationDebts([acceptedDebt, activeDebt], ["Itaú"]);
+
+    expect(filtered).toHaveLength(1);
+    expect(filtered[0]?.creditor).toBe("Itaú");
+
+    const result = buildDebtSettlementSimulation({
+      debts: [acceptedDebt, activeDebt],
+      selectedOptionIds: ["active-option"],
+    });
+
+    expect(result.acceptedItems).toHaveLength(1);
+    expect(result.selectedItems).toHaveLength(1);
+    expect(result.totalOperationCents).toBe(165_000);
   });
 });

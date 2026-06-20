@@ -70,6 +70,7 @@ export type DebtSettlementSimulationResult = {
 };
 
 const SELECTABLE_STATUSES: DebtSettlementOptionStatus[] = ["active", "accepted"];
+const VISIBLE_CREDITOR_OPTION_STATUSES: DebtSettlementOptionStatus[] = ["active", "accepted", "expired"];
 
 function isSelectableOptionStatus(status: DebtSettlementOptionStatus): boolean {
   return SELECTABLE_STATUSES.includes(status);
@@ -108,6 +109,30 @@ function getOptionLabel(option: DebtSettlementOption): string {
 
 function getOptionMonthKey(option: DebtSettlementOption): string | null {
   return normalizeDateOnly(option.firstDueDate)?.slice(0, 7) ?? null;
+}
+
+export function getDebtSettlementSimulationCreditors(debts: DebtSettlementSimulationDebt[]): string[] {
+  return Array.from(
+    new Set(
+      debts
+        .filter((debt) =>
+          debt.settlementOptions.some((option) => VISIBLE_CREDITOR_OPTION_STATUSES.includes(option.status))
+        )
+        .map((debt) => debt.creditor)
+    )
+  ).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
+export function filterDebtSettlementSimulationDebts(
+  debts: DebtSettlementSimulationDebt[],
+  selectedCreditors: string[]
+): DebtSettlementSimulationDebt[] {
+  if (selectedCreditors.length === 0) {
+    return debts;
+  }
+
+  const allowed = new Set(selectedCreditors);
+  return debts.filter((debt) => allowed.has(debt.creditor));
 }
 
 export function buildDebtSettlementSimulation(

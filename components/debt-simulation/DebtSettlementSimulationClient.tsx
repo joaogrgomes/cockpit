@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,8 @@ import { formatDateOnlyBR } from "@/lib/date-utils";
 import { formatPeriodMonthShort } from "@/lib/recurrence-period";
 import {
   buildDebtSettlementSimulation,
+  filterDebtSettlementSimulationDebts,
+  getDebtSettlementSimulationCreditors,
   type DebtSettlementSimulationDebt,
 } from "@/lib/debt-settlement-simulation";
 import { cn } from "@/lib/utils";
@@ -59,8 +62,34 @@ function getStatusBadgeVariant(status: "active" | "expired" | "accepted" | "reje
   }
 }
 
+function FilterChipButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant={active ? "default" : "outline"}
+      size="sm"
+      className={cn(
+        "h-8 rounded-full px-3 text-xs font-medium",
+        active ? "shadow-sm" : "border-border/80 bg-background"
+      )}
+      onClick={onClick}
+    >
+      {children}
+    </Button>
+  );
+}
+
 export function DebtSettlementSimulationClient({ debts }: DebtSettlementSimulationClientProps) {
   const [selectedOptionIdsByDebtId, setSelectedOptionIdsByDebtId] = useState<Record<string, string>>({});
+  const [selectedCreditors, setSelectedCreditors] = useState<string[]>([]);
 
   const selectedOptionIds = useMemo(
     () => Object.values(selectedOptionIdsByDebtId),
@@ -84,9 +113,16 @@ export function DebtSettlementSimulationClient({ debts }: DebtSettlementSimulati
     [debts]
   );
 
+  const creditorOptions = useMemo(() => getDebtSettlementSimulationCreditors(debts), [debts]);
+
   const selectableDebts = useMemo(
     () => debts.filter((debt) => !acceptedDebtIds.has(debt.id)),
     [acceptedDebtIds, debts]
+  );
+
+  const filteredSelectableDebts = useMemo(
+    () => filterDebtSettlementSimulationDebts(selectableDebts, selectedCreditors),
+    [selectableDebts, selectedCreditors]
   );
 
   function toggleOption(debtId: string, optionId: string) {
@@ -118,6 +154,16 @@ export function DebtSettlementSimulationClient({ debts }: DebtSettlementSimulati
       delete next[debtId];
       return next;
     });
+  }
+
+  function toggleCreditor(creditor: string) {
+    setSelectedCreditors((current) =>
+      current.includes(creditor) ? current.filter((item) => item !== creditor) : [...current, creditor]
+    );
+  }
+
+  function resetCreditors() {
+    setSelectedCreditors([]);
   }
 
   return (
@@ -245,12 +291,47 @@ export function DebtSettlementSimulationClient({ debts }: DebtSettlementSimulati
               <CardTitle className="text-base">Novas decisões para simular</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {selectableDebts.length === 0 ? (
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-foreground">Filtrar por credor</p>
+                    <p className="text-xs text-muted-foreground">
+                      Clique para ligar/desligar os credores que quer ver nas novas decisões.
+                    </p>
+                  </div>
+                  {selectedCreditors.length > 0 ? (
+                    <Button type="button" variant="ghost" size="sm" onClick={resetCreditors}>
+                      Limpar filtros
+                    </Button>
+                  ) : null}
+                </div>
+
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {creditorOptions.map((creditor) => {
+                    const active = selectedCreditors.includes(creditor);
+                    return (
+                      <FilterChipButton key={creditor} active={active} onClick={() => toggleCreditor(creditor)}>
+                        {creditor}
+                      </FilterChipButton>
+                    );
+                  })}
+                </div>
+
+                {selectedCreditors.length > 0 ? (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {selectedCreditors.length} credor(es) selecionado(s)
+                  </p>
+                ) : null}
+              </div>
+
+              {filteredSelectableDebts.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border/80 px-6 py-10 text-sm text-muted-foreground">
-                  Não há novas decisões abertas neste momento.
+                  {selectedCreditors.length > 0
+                    ? "Nenhuma nova decisão corresponde aos credores selecionados."
+                    : "Não há novas decisões abertas neste momento."}
                 </div>
               ) : (
-                selectableDebts.map((debt) => {
+                filteredSelectableDebts.map((debt) => {
                   const selectedOptionId = selectedOptionIdsByDebtId[debt.id];
                   const selectableOptions = debt.settlementOptions.filter(
                     (option) => option.status === "active" || option.status === "expired"
