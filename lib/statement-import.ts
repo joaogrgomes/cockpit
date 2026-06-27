@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { normalizeDateOnly } from "@/lib/date-utils";
+import { isMonthWithinPeriod, isValidPeriodMonth } from "@/lib/recurrence-period";
 import type { ExpenseOccurrenceType, ExpenseType } from "@/types";
 
 export const STATEMENT_IMPORT_SOURCES = ["inter_csv"] as const;
@@ -39,6 +40,14 @@ export type StatementImportReviewedRow = {
   monthlyIncomeId?: string | null;
   expenseType?: string | null;
   occurrenceType?: "planned_one_off" | "unexpected" | null;
+};
+
+type StatementImportMonthlyPlanLike = {
+  id: string;
+  isActive: boolean;
+  category: string;
+  startMonth: string | null;
+  endMonth: string | null;
 };
 
 function splitCsvLine(line: string): string[] {
@@ -139,6 +148,54 @@ export function parseStatementImportOccurrenceType(value: string): ExpenseOccurr
     default:
       throw new Error(`Tipo de ocorrência inválido: ${value}`);
   }
+}
+
+function isCompatibleStatementImportMonthlyPlan(
+  rowMonth: string,
+  category: string | null,
+  plan: StatementImportMonthlyPlanLike
+): boolean {
+  if (!plan.startMonth || !isValidPeriodMonth(plan.startMonth)) {
+    return false;
+  }
+
+  return (
+    Boolean(category) &&
+    plan.isActive &&
+    plan.category === category &&
+    isMonthWithinPeriod(rowMonth, plan.startMonth, plan.endMonth ?? null)
+  );
+}
+
+export function getCompatibleStatementImportMonthlyPlans<T extends StatementImportMonthlyPlanLike>(
+  rowMonth: string,
+  category: string | null,
+  plans: T[]
+): T[] {
+  if (!category) {
+    return [];
+  }
+
+  return plans.filter((plan) => isCompatibleStatementImportMonthlyPlan(rowMonth, category, plan));
+}
+
+export function getAutoSelectedStatementImportMonthlyPlanId<T extends StatementImportMonthlyPlanLike>(
+  rowMonth: string,
+  category: string | null,
+  plans: T[],
+  currentPlanId: string | null
+): string | null {
+  const compatiblePlans = getCompatibleStatementImportMonthlyPlans(rowMonth, category, plans);
+
+  if (currentPlanId && compatiblePlans.some((plan) => plan.id === currentPlanId)) {
+    return currentPlanId;
+  }
+
+  if (compatiblePlans.length === 1) {
+    return compatiblePlans[0].id;
+  }
+
+  return null;
 }
 
 export function buildStatementImportRowHash(item: {

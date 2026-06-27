@@ -252,10 +252,12 @@ export async function markDebtSettlementOptionAsAccepted(
         return { ok: false as const, code: "UNKNOWN_ERROR" as const, error: "Não foi possível aceitar a opção." };
       }
 
+      const debtStatus = getDebtStatusForAcceptedOptionKind(parseDebtSettlementOptionKind(option.kind));
+
       const debtUpdate = await tx
         .update(debts)
         .set({
-          status: getDebtStatusForAcceptedOptionKind(option.kind),
+          status: debtStatus,
           lastUpdatedAt: sql`now()`,
         })
         .where(eq(debts.id, option.debtId))

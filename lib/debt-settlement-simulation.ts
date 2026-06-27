@@ -107,7 +107,11 @@ function getOptionLabel(option: DebtSettlementOption): string {
   return `${option.installments}x de ${formatBRL(option.monthlyInstallmentCents ?? 0)}`;
 }
 
-function getOptionMonthKey(option: DebtSettlementOption): string | null {
+type SettlementScheduleSource = {
+  firstDueDate: string | null;
+};
+
+function getOptionMonthKey(option: SettlementScheduleSource): string | null {
   return normalizeDateOnly(option.firstDueDate)?.slice(0, 7) ?? null;
 }
 

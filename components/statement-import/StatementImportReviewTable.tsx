@@ -17,9 +17,13 @@ import {
   getExpenseOccurrenceTypeLabel,
   getExpenseTypeLabel,
 } from "@/lib/expenses";
-import { formatRecurrencePeriodLabel, isMonthWithinPeriod } from "@/lib/recurrence-period";
+import { formatRecurrencePeriodLabel } from "@/lib/recurrence-period";
 import { INCOME_CATEGORY_VALUES, getIncomeCategoryLabel } from "@/lib/incomes";
-import type { StatementImportDecision } from "@/lib/statement-import";
+import {
+  getAutoSelectedStatementImportMonthlyPlanId,
+  getCompatibleStatementImportMonthlyPlans,
+  type StatementImportDecision,
+} from "@/lib/statement-import";
 import type {
   MonthlyExpense,
   MonthlyIncome,
@@ -85,44 +89,6 @@ function formatRowStatus(status: StatementImportRowStatus): string {
   }
 }
 
-function getExpensePlanOptions(
-  row: StatementImportRow,
-  category: string | null,
-  monthlyExpenses: MonthlyExpense[]
-): MonthlyExpense[] {
-  if (!category) {
-    return [];
-  }
-
-  const rowMonth = getRowMonth(row);
-
-  return monthlyExpenses.filter(
-    (expense) =>
-      expense.isActive &&
-      expense.category === category &&
-      isMonthWithinPeriod(rowMonth, expense.startMonth, expense.endMonth)
-  );
-}
-
-function getIncomePlanOptions(
-  row: StatementImportRow,
-  category: string | null,
-  monthlyIncomes: MonthlyIncome[]
-): MonthlyIncome[] {
-  if (!category) {
-    return [];
-  }
-
-  const rowMonth = getRowMonth(row);
-
-  return monthlyIncomes.filter(
-    (income) =>
-      income.isActive &&
-      income.category === category &&
-      isMonthWithinPeriod(rowMonth, income.startMonth, income.endMonth)
-  );
-}
-
 function formatExpensePlanLabel(expense: MonthlyExpense): string {
   return [
     expense.name,
@@ -153,13 +119,41 @@ export function StatementImportReviewTable({
   const [rowStates, setRowStates] = useState<Record<string, ReviewedRowState>>(() =>
     Object.fromEntries(rows.map((row) => [row.id, buildReviewedRowState(row)]))
   );
+  const [rowErrorsById, setRowErrorsById] = useState<Record<string, string[]>>({});
 
   const pendingRows = useMemo(() => rows.filter((row) => row.status === "pending"), [rows]);
   const hasPendingRows = pendingRows.length > 0;
+  const rowsSignature = useMemo(
+    () =>
+      rows
+        .map(
+          (row) =>
+            [
+              row.id,
+              row.status,
+              row.isSuggested ? "1" : "0",
+              row.suggestedCategory ?? "",
+              row.suggestedMonthlyExpenseId ?? "",
+              row.suggestedMonthlyIncomeId ?? "",
+            ].join(":")
+        )
+        .join("|"),
+    [rows]
+  );
 
   useEffect(() => {
     setRowStates(Object.fromEntries(rows.map((row) => [row.id, buildReviewedRowState(row)])));
-  }, [rows]);
+    setRowErrorsById({});
+  }, [rowsSignature]);
+
+  useEffect(() => {
+    if (!state.ok && state.fieldErrorsByRowId) {
+      setRowErrorsById(state.fieldErrorsByRowId);
+      return;
+    }
+
+    setRowErrorsById({});
+  }, [state]);
 
   function updateRow(rowId: string, updater: (current: ReviewedRowState) => ReviewedRowState) {
     setRowStates((current) => {
@@ -173,6 +167,36 @@ export function StatementImportReviewTable({
         [rowId]: updater(existing),
       };
     });
+  }
+
+  function syncPlanSelection(
+    row: StatementImportRow,
+    nextCategory: string | null,
+    nextMode: ReviewedRowState["mode"],
+    currentState: ReviewedRowState
+  ) {
+    const rowMonth = getRowMonth(row);
+
+    return {
+      monthlyExpenseId:
+        row.direction === "expense" && nextMode === "linked"
+          ? getAutoSelectedStatementImportMonthlyPlanId(
+              rowMonth,
+              nextCategory,
+              monthlyExpenses,
+              currentState.monthlyExpenseId
+            )
+          : null,
+      monthlyIncomeId:
+        row.direction === "income" && nextMode === "linked"
+          ? getAutoSelectedStatementImportMonthlyPlanId(
+              rowMonth,
+              nextCategory,
+              monthlyIncomes,
+              currentState.monthlyIncomeId
+            )
+          : null,
+    };
   }
 
   const reviewedRows = rows
@@ -191,6 +215,12 @@ export function StatementImportReviewTable({
         <form action={formAction} className="space-y-4">
           <input type="hidden" name="batchId" value={batchId} />
           <input type="hidden" name="rowsJson" value={JSON.stringify(reviewedRows)} />
+
+          {Object.keys(rowErrorsById).length > 0 ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              Existem linhas com erro. Corrija os itens destacados e tente novamente.
+            </div>
+          ) : null}
 
           <div className="overflow-x-auto rounded-lg border border-border/70">
             <Table>
@@ -215,22 +245,31 @@ export function StatementImportReviewTable({
                   const rowMonth = getRowMonth(row);
                   const isExpense = row.direction === "expense";
                   const categoryValues = isExpense ? EXPENSE_CATEGORY_VALUES : INCOME_CATEGORY_VALUES;
-                  const compatibleExpensePlans = getExpensePlanOptions(
-                    row,
-                    rowState?.category,
+                  const compatibleExpensePlans = getCompatibleStatementImportMonthlyPlans(
+                    rowMonth,
+                    rowState?.category ?? null,
                     monthlyExpenses
                   );
-                  const compatibleIncomePlans = getIncomePlanOptions(
-                    row,
-                    rowState?.category,
+                  const compatibleIncomePlans = getCompatibleStatementImportMonthlyPlans(
+                    rowMonth,
+                    rowState?.category ?? null,
                     monthlyIncomes
                   );
                   const isPending = row.status === "pending";
                   const isIgnored = rowState?.decision === "ignore";
                   const isLinked = rowState?.mode === "linked";
+                  const rowErrors = rowErrorsById[row.id] ?? [];
 
                   return (
-                    <TableRow key={row.id} className={isIgnored ? "opacity-60" : undefined}>
+                    <TableRow
+                      key={row.id}
+                      className={[
+                        isIgnored ? "opacity-60" : "",
+                        rowErrors.length > 0 ? "bg-red-50/60 dark:bg-red-950/20" : "",
+                      ]
+                        .filter(Boolean)
+                        .join(" ")}
+                    >
                       <TableCell className="align-top whitespace-nowrap">
                         {formatDateOnlyBR(row.transactionDate)}
                       </TableCell>
@@ -284,19 +323,18 @@ export function StatementImportReviewTable({
                         </select>
                       </TableCell>
                       <TableCell className="align-top min-w-40">
-                        <select
-                          className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
-                          disabled={!isPending || isIgnored}
-                          value={rowState?.category ?? ""}
-                          onChange={(event) =>
-                            updateRow(row.id, (current) => ({
-                              ...current,
-                              category: event.target.value || null,
-                              monthlyExpenseId: null,
-                              monthlyIncomeId: null,
-                            }))
-                          }
-                        >
+                          <select
+                            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                            disabled={!isPending || isIgnored}
+                            value={rowState?.category ?? ""}
+                            onChange={(event) =>
+                              updateRow(row.id, (current) => ({
+                                ...current,
+                                category: event.target.value || null,
+                                ...syncPlanSelection(row, event.target.value || null, current.mode, current),
+                              }))
+                            }
+                          >
                           <option value="">Selecione</option>
                           {categoryValues.map((category) => (
                             <option key={category} value={category}>
@@ -317,8 +355,12 @@ export function StatementImportReviewTable({
                               updateRow(row.id, (current) => ({
                                 ...current,
                                 mode: event.target.value as ReviewedRowState["mode"],
-                                monthlyExpenseId: null,
-                                monthlyIncomeId: null,
+                                ...syncPlanSelection(
+                                  row,
+                                  current.category,
+                                  event.target.value as ReviewedRowState["mode"],
+                                  current
+                                ),
                               }))
                             }
                           >
@@ -443,6 +485,13 @@ export function StatementImportReviewTable({
                         >
                           {formatRowStatus(row.status)}
                         </Badge>
+                        {rowErrors.length > 0 ? (
+                          <div className="mt-2 space-y-1 text-xs text-destructive">
+                            {rowErrors.map((error, index) => (
+                              <p key={`${row.id}:${index}`}>{error}</p>
+                            ))}
+                          </div>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   );
@@ -464,7 +513,11 @@ export function StatementImportReviewTable({
             ) : null}
           </div>
 
-          {state.error ? <p className="text-sm text-destructive">{state.error}</p> : null}
+          {state.error && Object.keys(rowErrorsById).length === 0 ? (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+              {state.error}
+            </div>
+          ) : null}
         </form>
       </CardContent>
     </Card>

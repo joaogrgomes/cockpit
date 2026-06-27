@@ -9,6 +9,7 @@ import {
   statementImportRows,
 } from "@/lib/db/schema";
 import {
+  getAutoSelectedStatementImportMonthlyPlanId,
   buildStatementImportRowHash,
   dedupeImportedStatementItems,
   normalizeImportedDescription,
@@ -326,6 +327,45 @@ describe("statement categorization rules", () => {
       suggestedMonthlyExpenseId: null,
       suggestedMonthlyIncomeId: null,
     });
+  });
+
+  it("auto-seleciona o planejamento quando há exatamente uma opção compatível", () => {
+    const plans = [
+      {
+        id: "expense-1",
+        isActive: true,
+        category: "alimentacao",
+        startMonth: "2026-01",
+        endMonth: "2026-12",
+      },
+    ];
+
+    expect(
+      getAutoSelectedStatementImportMonthlyPlanId("2026-06", "alimentacao", plans, null)
+    ).toBe("expense-1");
+  });
+
+  it("não auto-seleciona o planejamento quando há múltiplas opções compatíveis", () => {
+    const plans = [
+      {
+        id: "expense-1",
+        isActive: true,
+        category: "alimentacao",
+        startMonth: "2026-01",
+        endMonth: "2026-12",
+      },
+      {
+        id: "expense-2",
+        isActive: true,
+        category: "alimentacao",
+        startMonth: "2026-01",
+        endMonth: "2026-12",
+      },
+    ];
+
+    expect(
+      getAutoSelectedStatementImportMonthlyPlanId("2026-06", "alimentacao", plans, null)
+    ).toBeNull();
   });
 });
 
@@ -833,5 +873,46 @@ describe("statement import service", () => {
       paidAt: "2026-06-14",
       amount: 3604,
     });
+  });
+
+  it("retorna erros estruturados por linha quando a validação falha", async () => {
+    const mockDb = createDbMock([
+      [{ id: "batch-1" }],
+      [
+        {
+          id: "row-4",
+          status: "pending",
+          direction: "expense",
+          transactionDate: "2026-06-14",
+          amountCents: 3604,
+        },
+      ],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const result = await commitStatementImportBatch("batch-1", [
+      {
+        rowId: "row-4",
+        decision: "import",
+        description: "Padaria Central",
+        category: "alimentacao",
+        mode: "linked",
+        monthlyExpenseId: null,
+        monthlyIncomeId: null,
+        expenseType: null,
+        occurrenceType: null,
+      },
+    ]);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toBe("Existem linhas com erro. Corrija os itens destacados e tente novamente.");
+      expect(result.fieldErrorsByRowId).toMatchObject({
+        "row-4": ["Selecione o planejamento desta linha."],
+      });
+    }
+
+    expect(mockDb.inserts.find((item: any) => item.table === monthlyExpenseEntries)).toBeFalsy();
+    expect(mockDb.inserts.find((item: any) => item.table === monthlyIncomeEntries)).toBeFalsy();
   });
 });

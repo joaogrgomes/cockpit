@@ -53,6 +53,18 @@ export type StatementImportBatchCreateResult =
     };
 
 export type StatementImportBatchView = Awaited<ReturnType<typeof getStatementImportBatchById>>;
+export type StatementImportCommitResult =
+  | {
+      ok: true;
+      committedCount: number;
+      ignoredCount: number;
+      batchStatus: string;
+    }
+  | {
+      ok: false;
+      error: string;
+      fieldErrorsByRowId: Record<string, string[]>;
+    };
 
 function getPeriodMonthFromDate(dateValue: string): string {
   return dateValue.slice(0, 7);
@@ -267,39 +279,43 @@ function getBatchStatus(committedCount: number, ignoredCount: number): "parsed" 
 function assertValidReviewedRow(
   row: StatementImportReviewedRow,
   direction: "income" | "expense"
-): void {
+): string[] {
+  const errors: string[] = [];
+
   if (row.decision === "ignore") {
-    return;
+    return errors;
   }
 
   if (!row.category) {
-    throw new Error("Categoria é obrigatória para linhas importadas");
+    errors.push("Selecione a categoria desta linha.");
   }
 
   if (row.mode === "linked") {
     if (!row.monthlyExpenseId && !row.monthlyIncomeId) {
-      throw new Error("Selecione um planejamento para a linha vinculada");
+      errors.push("Selecione o planejamento desta linha.");
     }
-    return;
+    return errors;
   }
 
   if (direction === "expense") {
     if (!row.expenseType) {
-      throw new Error("Tipo do gasto é obrigatório para despesa avulsa");
+      errors.push("Selecione o tipo do gasto.");
     }
     if (!row.occurrenceType) {
-      throw new Error("Ocorrência é obrigatória para despesa avulsa");
+      errors.push("Selecione a ocorrência desta linha.");
     }
   }
+
+  return errors;
 }
 
 async function validateLinkedExpense(
   db: StatementImportReadExecutor,
   row: StatementImportReviewedRow,
   transactionDate: string
-): Promise<void> {
+): Promise<string | null> {
   if (!row.monthlyExpenseId) {
-    throw new Error("Planejamento de gasto não informado");
+    return "Selecione o planejamento desta linha.";
   }
 
   const [monthlyExpense] = await db
@@ -309,26 +325,28 @@ async function validateLinkedExpense(
     .limit(1);
 
   if (!monthlyExpense || !monthlyExpense.isActive) {
-    throw new Error("Planejamento de gasto não encontrado ou inativo");
+    return "Planejamento de gasto não encontrado ou inativo.";
   }
 
   const periodMonth = getPeriodMonthFromDate(transactionDate);
   if (!isMonthWithinPeriod(periodMonth, monthlyExpense.startMonth, monthlyExpense.endMonth)) {
-    throw new Error("Planejamento de gasto não está vigente na data informada");
+    return "Planejamento de gasto não está vigente na data informada.";
   }
 
   if (row.category && row.category !== monthlyExpense.category) {
-    throw new Error("Categoria não corresponde ao planejamento selecionado");
+    return "Categoria não corresponde ao planejamento selecionado.";
   }
+
+  return null;
 }
 
 async function validateLinkedIncome(
   db: StatementImportReadExecutor,
   row: StatementImportReviewedRow,
   transactionDate: string
-): Promise<void> {
+): Promise<string | null> {
   if (!row.monthlyIncomeId) {
-    throw new Error("Planejamento de entrada não informado");
+    return "Selecione o planejamento desta linha.";
   }
 
   const [monthlyIncome] = await db
@@ -338,17 +356,19 @@ async function validateLinkedIncome(
     .limit(1);
 
   if (!monthlyIncome || !monthlyIncome.isActive) {
-    throw new Error("Planejamento de entrada não encontrado ou inativo");
+    return "Planejamento de entrada não encontrado ou inativo.";
   }
 
   const periodMonth = getPeriodMonthFromDate(transactionDate);
   if (!isMonthWithinPeriod(periodMonth, monthlyIncome.startMonth, monthlyIncome.endMonth)) {
-    throw new Error("Planejamento de entrada não está vigente na data informada");
+    return "Planejamento de entrada não está vigente na data informada.";
   }
 
   if (row.category && row.category !== monthlyIncome.category) {
-    throw new Error("Categoria não corresponde ao planejamento selecionado");
+    return "Categoria não corresponde ao planejamento selecionado.";
   }
+
+  return null;
 }
 
 async function upsertReviewedImportRule(
@@ -378,7 +398,7 @@ async function upsertReviewedImportRule(
 export async function commitStatementImportBatch(
   batchId: string,
   rows: StatementImportReviewedRow[]
-): Promise<{ committedCount: number; ignoredCount: number; batchStatus: string }> {
+): Promise<StatementImportCommitResult> {
   const db = getDb();
 
   const result = await db.transaction(async (tx) => {
@@ -398,14 +418,83 @@ export async function commitStatementImportBatch(
       .where(eq(statementImportRows.batchId, batchId));
 
     const rowsById = new Map(dbRows.map((row) => [row.id, row]));
+    const fieldErrorsByRowId: Record<string, string[]> = {};
     let committedCount = 0;
     let ignoredCount = 0;
+    const validRows: Array<{
+      reviewedRow: StatementImportReviewedRow;
+      dbRow: (typeof dbRows)[number];
+      direction: "income" | "expense";
+    }> = [];
 
     for (const reviewedRow of rows) {
       const dbRow = rowsById.get(reviewedRow.rowId);
       if (!dbRow || dbRow.status !== "pending") {
-        throw new Error("Linha da importação inválida ou já processada");
+        fieldErrorsByRowId[reviewedRow.rowId] = [
+          ...(fieldErrorsByRowId[reviewedRow.rowId] ?? []),
+          "Linha da importação inválida ou já processada.",
+        ];
+        continue;
       }
+
+      if (reviewedRow.decision === "ignore") {
+        validRows.push({
+          reviewedRow,
+          dbRow,
+          direction: parseStatementImportDirection(dbRow.direction),
+        });
+        continue;
+      }
+
+      const direction = parseStatementImportDirection(dbRow.direction);
+      const rowErrors = assertValidReviewedRow(reviewedRow, direction);
+      if (rowErrors.length > 0) {
+        fieldErrorsByRowId[reviewedRow.rowId] = [
+          ...(fieldErrorsByRowId[reviewedRow.rowId] ?? []),
+          ...rowErrors,
+        ];
+        continue;
+      }
+
+      if (direction === "expense" && reviewedRow.mode === "linked") {
+        const linkedError = await validateLinkedExpense(tx, reviewedRow, dbRow.transactionDate);
+        if (linkedError) {
+          fieldErrorsByRowId[reviewedRow.rowId] = [
+            ...(fieldErrorsByRowId[reviewedRow.rowId] ?? []),
+            linkedError,
+          ];
+          continue;
+        }
+      }
+
+      if (direction === "income" && reviewedRow.mode === "linked") {
+        const linkedError = await validateLinkedIncome(tx, reviewedRow, dbRow.transactionDate);
+        if (linkedError) {
+          fieldErrorsByRowId[reviewedRow.rowId] = [
+            ...(fieldErrorsByRowId[reviewedRow.rowId] ?? []),
+            linkedError,
+          ];
+          continue;
+        }
+      }
+
+      validRows.push({
+        reviewedRow,
+        dbRow,
+        direction,
+      });
+    }
+
+    if (Object.keys(fieldErrorsByRowId).length > 0) {
+      return {
+        ok: false as const,
+        error: "Existem linhas com erro. Corrija os itens destacados e tente novamente.",
+        fieldErrorsByRowId,
+      };
+    }
+
+    for (const { reviewedRow, dbRow, direction } of validRows) {
+      const periodMonth = getPeriodMonthFromDate(dbRow.transactionDate);
 
       if (reviewedRow.decision === "ignore") {
         await tx
@@ -416,14 +505,8 @@ export async function commitStatementImportBatch(
         continue;
       }
 
-      assertValidReviewedRow(reviewedRow, dbRow.direction as "income" | "expense");
-
-      const periodMonth = getPeriodMonthFromDate(dbRow.transactionDate);
-
-      if (dbRow.direction === "expense") {
+      if (direction === "expense") {
         if (reviewedRow.mode === "linked") {
-          await validateLinkedExpense(tx, reviewedRow, dbRow.transactionDate);
-
           const inserted = await tx
             .insert(monthlyExpenseEntries)
             .values({
@@ -453,10 +536,6 @@ export async function commitStatementImportBatch(
           committedCount += 1;
           await upsertReviewedImportRule(tx, "expense", reviewedRow);
           continue;
-        }
-
-        if (!reviewedRow.category || !reviewedRow.expenseType || !reviewedRow.occurrenceType) {
-          throw new Error("Dados obrigatórios ausentes para despesa avulsa");
         }
 
         const inserted = await tx
@@ -491,8 +570,6 @@ export async function commitStatementImportBatch(
       }
 
       if (reviewedRow.mode === "linked") {
-        await validateLinkedIncome(tx, reviewedRow, dbRow.transactionDate);
-
         const inserted = await tx
           .insert(monthlyIncomeEntries)
           .values({
@@ -520,10 +597,6 @@ export async function commitStatementImportBatch(
         committedCount += 1;
         await upsertReviewedImportRule(tx, "income", reviewedRow);
         continue;
-      }
-
-      if (!reviewedRow.category) {
-        throw new Error("Categoria obrigatória para entrada avulsa");
       }
 
       const inserted = await tx
@@ -560,7 +633,7 @@ export async function commitStatementImportBatch(
       .set({ status: batchStatus, updatedAt: sql`now()` })
       .where(eq(statementImportBatches.id, batchId));
 
-    return { committedCount, ignoredCount, batchStatus };
+    return { ok: true as const, committedCount, ignoredCount, batchStatus };
   });
 
   return result;

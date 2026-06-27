@@ -12,6 +12,7 @@ import {
 export type StatementImportActionResult = {
   ok: boolean;
   error?: string;
+  fieldErrorsByRowId?: Record<string, string[]>;
 };
 
 function parseFileFromFormData(formData: FormData): File | null {
@@ -116,7 +117,11 @@ export async function commitStatementImportRowsAction(
       return { ok: false, error: "Nenhuma linha foi enviada para importação" };
     }
 
-    await commitStatementImportBatch(batchId, rows);
+    const result = await commitStatementImportBatch(batchId, rows);
+    if (!result.ok) {
+      return result;
+    }
+
     revalidateImportedPaths(batchId);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Não foi possível importar os lançamentos";
