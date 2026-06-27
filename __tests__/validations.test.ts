@@ -16,6 +16,7 @@ import {
   MonthlyIncomeSchema,
   MonthlyExpenseEntrySchema,
   MonthlyExpenseSchema,
+  PatrimonyAssetSchema,
 } from "@/lib/validations";
 
 describe("DebtSchema", () => {
@@ -971,6 +972,76 @@ describe("CashFlowSettingsSchema", () => {
     const result = CashFlowSettingsSchema.safeParse({
       startMonth: "2026/05",
       initialBalance: 0,
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("PatrimonyAssetSchema", () => {
+  it("aceita ativo patrimonial válido", () => {
+    const result = PatrimonyAssetSchema.safeParse({
+      name: "Porquinho Inter",
+      institution: "Inter",
+      productName: "Porquinho",
+      assetType: "piggy_bank",
+      objective: "Reserva de Emergência",
+      balanceCents: 120000,
+      liquidity: "imediata",
+      profitabilityLabel: "100% CDI",
+      isReserved: true,
+      notes: "Dinheiro guardado",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita name vazio", () => {
+    const result = PatrimonyAssetSchema.safeParse({
+      name: "",
+      institution: "Inter",
+      productName: "Porquinho",
+      assetType: "piggy_bank",
+      objective: "Reserva de Emergência",
+      balanceCents: 120000,
+      liquidity: "imediata",
+      profitabilityLabel: "100% CDI",
+      isReserved: true,
+      notes: null,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita objective vazio", () => {
+    const result = PatrimonyAssetSchema.safeParse({
+      name: "Porquinho Inter",
+      institution: "Inter",
+      productName: "Porquinho",
+      assetType: "piggy_bank",
+      objective: "",
+      balanceCents: 120000,
+      liquidity: "imediata",
+      profitabilityLabel: "100% CDI",
+      isReserved: true,
+      notes: null,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita saldo negativo", () => {
+    const result = PatrimonyAssetSchema.safeParse({
+      name: "Porquinho Inter",
+      institution: "Inter",
+      productName: "Porquinho",
+      assetType: "piggy_bank",
+      objective: "Reserva de Emergência",
+      balanceCents: -1,
+      liquidity: "imediata",
+      profitabilityLabel: "100% CDI",
+      isReserved: true,
+      notes: null,
     });
 
     expect(result.success).toBe(false);

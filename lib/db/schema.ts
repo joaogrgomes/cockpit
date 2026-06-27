@@ -153,6 +153,19 @@ export const COST_ANALYSIS_KIND_VALUES = [
   "provision",
 ] as const;
 
+export const PATRIMONY_ASSET_TYPE_VALUES = [
+  "checking_account",
+  "savings",
+  "piggy_bank",
+  "cdb",
+  "treasury",
+  "fund",
+  "cash",
+  "other",
+] as const;
+
+export const PATRIMONY_ASSET_STATUS_VALUES = ["active", "archived"] as const;
+
 export const debts = pgTable(
   "debts",
   {
@@ -391,6 +404,38 @@ export const costAnalysisItems = pgTable(
       sql`${table.costKind} IN ('cash','economic','provision')`
     ),
     index("idx_cost_analysis_items_analysis_sort").on(table.costAnalysisId, table.sortOrder),
+  ]
+);
+
+export const patrimonyAssets = pgTable(
+  "patrimony_assets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    institution: text("institution"),
+    productName: text("product_name"),
+    assetType: text("asset_type").notNull(),
+    objective: text("objective").notNull(),
+    balanceCents: integer("balance_cents").notNull().default(0),
+    liquidity: text("liquidity"),
+    profitabilityLabel: text("profitability_label"),
+    isReserved: boolean("is_reserved").notNull().default(true),
+    notes: text("notes"),
+    status: text("status").notNull().default("active"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check("patrimony_assets_name_required", sql`${table.name} <> ''`),
+    check("patrimony_assets_objective_required", sql`${table.objective} <> ''`),
+    check("patrimony_assets_balance_non_negative", sql`${table.balanceCents} >= 0`),
+    check(
+      "patrimony_assets_asset_type_valid",
+      sql`${table.assetType} IN ('checking_account','savings','piggy_bank','cdb','treasury','fund','cash','other')`
+    ),
+    check("patrimony_assets_status_valid", sql`${table.status} IN ('active','archived')`),
+    index("idx_patrimony_assets_status").on(table.status),
+    index("idx_patrimony_assets_type").on(table.assetType),
   ]
 );
 

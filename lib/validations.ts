@@ -15,6 +15,8 @@ import {
   INCOME_PAYMENT_METHOD_VALUES,
   PAYMENT_METHOD_VALUES,
   PROPOSAL_STATUS_VALUES,
+  PATRIMONY_ASSET_STATUS_VALUES,
+  PATRIMONY_ASSET_TYPE_VALUES,
 } from "@/lib/db/schema";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -177,6 +179,21 @@ export const CostAnalysisItemSchema = z.object({
   monthlyAmountCents: nonNegativeInt,
   costKind: z.enum(COST_ANALYSIS_KIND_VALUES),
   notes: z.string().trim().min(1).nullish(),
+});
+
+export const PatrimonyAssetSchema = z.object({
+  assetId: z.string().uuid().nullish(),
+  name: z.string().trim().min(2),
+  institution: z.string().trim().min(1).nullish(),
+  productName: z.string().trim().min(1).nullish(),
+  assetType: z.enum(PATRIMONY_ASSET_TYPE_VALUES),
+  objective: z.string().trim().min(2),
+  balanceCents: nonNegativeInt,
+  liquidity: z.string().trim().min(1).nullish(),
+  profitabilityLabel: z.string().trim().min(1).nullish(),
+  isReserved: z.boolean(),
+  notes: z.string().trim().min(1).nullish(),
+  status: z.enum(PATRIMONY_ASSET_STATUS_VALUES).default("active"),
 });
 
 export const MonthlyExpenseSchema = z.object({

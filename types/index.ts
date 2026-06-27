@@ -16,6 +16,8 @@ import {
   PAYMENT_METHOD_VALUES,
   PROPOSAL_STATUS_VALUES,
   DEBT_ATTACHMENT_TYPE_VALUES,
+  PATRIMONY_ASSET_STATUS_VALUES,
+  PATRIMONY_ASSET_TYPE_VALUES,
   STATEMENT_IMPORT_BATCH_STATUS_VALUES,
   STATEMENT_CATEGORIZATION_RULE_MATCH_TYPE_VALUES,
   STATEMENT_IMPORT_ROW_ENTRY_TYPE_VALUES,
@@ -36,6 +38,7 @@ import {
   debtValueUpdates,
   costAnalyses,
   costAnalysisItems,
+  patrimonyAssets,
   statementCategorizationRules,
   statementImportBatches,
   statementImportRows,
@@ -61,6 +64,12 @@ export type CostAnalysis = InferSelectModel<typeof costAnalyses>;
 export type NewCostAnalysis = InferInsertModel<typeof costAnalyses>;
 export type CostAnalysisItem = InferSelectModel<typeof costAnalysisItems>;
 export type NewCostAnalysisItem = InferInsertModel<typeof costAnalysisItems>;
+
+export type PatrimonyAsset = Omit<InferSelectModel<typeof patrimonyAssets>, "assetType" | "status"> & {
+  assetType: PatrimonyAssetType;
+  status: PatrimonyAssetStatus;
+};
+export type NewPatrimonyAsset = InferInsertModel<typeof patrimonyAssets>;
 
 export type MonthlyExpense = InferSelectModel<typeof monthlyExpenses>;
 export type NewMonthlyExpense = InferInsertModel<typeof monthlyExpenses>;
@@ -95,6 +104,8 @@ export type MonthlyClosingStatus = (typeof MONTHLY_CLOSING_STATUS_VALUES)[number
 export type ExpenseOccurrenceType = (typeof EXPENSE_OCCURRENCE_TYPE_VALUES)[number];
 export type DebtAttachmentType = (typeof DEBT_ATTACHMENT_TYPE_VALUES)[number];
 export type CostAnalysisKind = (typeof COST_ANALYSIS_KIND_VALUES)[number];
+export type PatrimonyAssetType = (typeof PATRIMONY_ASSET_TYPE_VALUES)[number];
+export type PatrimonyAssetStatus = (typeof PATRIMONY_ASSET_STATUS_VALUES)[number];
 
 export type StatementImportBatch = InferSelectModel<typeof statementImportBatches>;
 export type NewStatementImportBatch = InferInsertModel<typeof statementImportBatches>;
