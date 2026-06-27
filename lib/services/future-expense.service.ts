@@ -166,10 +166,19 @@ export async function markFutureExpenseAsRealized(
       .select()
       .from(futureExpensePayables)
       .where(eq(futureExpensePayables.id, input.futureExpenseId))
+      .for("update")
       .limit(1);
 
     const futureExpense = current[0];
-    if (!futureExpense || futureExpense.status !== "previsto") {
+    if (!futureExpense) {
+      return null;
+    }
+
+    if (futureExpense.status === "realizado") {
+      return futureExpense;
+    }
+
+    if (futureExpense.status !== "previsto") {
       return null;
     }
 

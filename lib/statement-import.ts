@@ -35,9 +35,11 @@ export type StatementImportReviewedRow = {
   decision: StatementImportDecision;
   description: string;
   category: string | null;
-  mode: StatementImportRowMode;
+  mode: StatementImportRowMode | "future";
   monthlyExpenseId?: string | null;
   monthlyIncomeId?: string | null;
+  futureExpensePayableId?: string | null;
+  futureIncomeReceivableId?: string | null;
   expenseType?: string | null;
   occurrenceType?: "planned_one_off" | "unexpected" | null;
 };
@@ -48,6 +50,26 @@ type StatementImportMonthlyPlanLike = {
   category: string;
   startMonth: string | null;
   endMonth: string | null;
+};
+
+type StatementImportFutureExpenseLike = {
+  id: string;
+  status: string;
+  name: string;
+  category: string;
+  expectedDate: string | Date;
+  expectedAmount: number;
+  expenseType: string;
+  occurrenceType: string;
+};
+
+type StatementImportFutureIncomeLike = {
+  id: string;
+  status: string;
+  name: string;
+  category: string;
+  expectedDate: string | Date;
+  expectedAmount: number;
 };
 
 function splitCsvLine(line: string): string[] {
@@ -155,7 +177,8 @@ function isCompatibleStatementImportMonthlyPlan(
   category: string | null,
   plan: StatementImportMonthlyPlanLike
 ): boolean {
-  if (!plan.startMonth || !isValidPeriodMonth(plan.startMonth)) {
+  const startMonth = plan.startMonth;
+  if (!startMonth || !isValidPeriodMonth(startMonth)) {
     return false;
   }
 
@@ -163,8 +186,80 @@ function isCompatibleStatementImportMonthlyPlan(
     Boolean(category) &&
     plan.isActive &&
     plan.category === category &&
-    isMonthWithinPeriod(rowMonth, plan.startMonth, plan.endMonth ?? null)
+    isMonthWithinPeriod(rowMonth, startMonth, plan.endMonth ?? null)
   );
+}
+
+function getDateOnlyUtcTime(value: string | Date): number | null {
+  const normalized = normalizeDateOnly(value);
+  if (!normalized) {
+    return null;
+  }
+
+  const [year, month, day] = normalized.split("-").map((part) => Number.parseInt(part, 10));
+  if ([year, month, day].some((part) => Number.isNaN(part))) {
+    return null;
+  }
+
+  return Date.UTC(year, month - 1, day);
+}
+
+function compareStatementImportFutureOptions<T extends { expectedDate: string | Date }>(
+  rowDate: string,
+  left: T,
+  right: T
+): number {
+  const rowTime = getDateOnlyUtcTime(rowDate);
+  const leftTime = getDateOnlyUtcTime(left.expectedDate);
+  const rightTime = getDateOnlyUtcTime(right.expectedDate);
+
+  if (rowTime !== null && leftTime !== null && rightTime !== null) {
+    const leftDelta = Math.abs(leftTime - rowTime);
+    const rightDelta = Math.abs(rightTime - rowTime);
+    if (leftDelta !== rightDelta) {
+      return leftDelta - rightDelta;
+    }
+  }
+
+  const leftDate = normalizeDateOnly(left.expectedDate) ?? "";
+  const rightDate = normalizeDateOnly(right.expectedDate) ?? "";
+  if (leftDate !== rightDate) {
+    return leftDate < rightDate ? -1 : 1;
+  }
+
+  return 0;
+}
+
+function isCompatibleStatementImportFutureExpense(
+  rowDate: string,
+  category: string | null,
+  future: StatementImportFutureExpenseLike
+): boolean {
+  if (future.status !== "previsto") {
+    return false;
+  }
+
+  if (category && future.category !== category) {
+    return false;
+  }
+
+  return Boolean(normalizeDateOnly(rowDate)) && Boolean(normalizeDateOnly(future.expectedDate));
+}
+
+function isCompatibleStatementImportFutureIncome(
+  rowDate: string,
+  category: string | null,
+  future: StatementImportFutureIncomeLike
+): boolean {
+  if (future.status !== "prevista") {
+    return false;
+  }
+
+  if (category && future.category !== category) {
+    return false;
+  }
+
+  return Boolean(normalizeDateOnly(rowDate)) && Boolean(normalizeDateOnly(future.expectedDate));
 }
 
 export function getCompatibleStatementImportMonthlyPlans<T extends StatementImportMonthlyPlanLike>(
@@ -193,6 +288,80 @@ export function getAutoSelectedStatementImportMonthlyPlanId<T extends StatementI
 
   if (compatiblePlans.length === 1) {
     return compatiblePlans[0].id;
+  }
+
+  return null;
+}
+
+export function getCompatibleStatementImportFutureExpensePayables<T extends StatementImportFutureExpenseLike>(
+  rowDate: string,
+  category: string | null,
+  futureExpenses: T[]
+): T[] {
+  return futureExpenses
+    .filter((futureExpense) =>
+      isCompatibleStatementImportFutureExpense(rowDate, category, futureExpense)
+    )
+    .sort((left, right) => compareStatementImportFutureOptions(rowDate, left, right));
+}
+
+export function getCompatibleStatementImportFutureIncomeReceivables<T extends StatementImportFutureIncomeLike>(
+  rowDate: string,
+  category: string | null,
+  futureIncomes: T[]
+): T[] {
+  return futureIncomes
+    .filter((futureIncome) => isCompatibleStatementImportFutureIncome(rowDate, category, futureIncome))
+    .sort((left, right) => compareStatementImportFutureOptions(rowDate, left, right));
+}
+
+export function getAutoSelectedStatementImportFutureExpensePayableId<T extends StatementImportFutureExpenseLike>(
+  rowDate: string,
+  category: string | null,
+  futureExpenses: T[],
+  currentFutureExpensePayableId: string | null
+): string | null {
+  const compatibleFutureExpenses = getCompatibleStatementImportFutureExpensePayables(
+    rowDate,
+    category,
+    futureExpenses
+  );
+
+  if (
+    currentFutureExpensePayableId &&
+    compatibleFutureExpenses.some((futureExpense) => futureExpense.id === currentFutureExpensePayableId)
+  ) {
+    return currentFutureExpensePayableId;
+  }
+
+  if (compatibleFutureExpenses.length === 1) {
+    return compatibleFutureExpenses[0].id;
+  }
+
+  return null;
+}
+
+export function getAutoSelectedStatementImportFutureIncomeReceivableId<T extends StatementImportFutureIncomeLike>(
+  rowDate: string,
+  category: string | null,
+  futureIncomes: T[],
+  currentFutureIncomeReceivableId: string | null
+): string | null {
+  const compatibleFutureIncomes = getCompatibleStatementImportFutureIncomeReceivables(
+    rowDate,
+    category,
+    futureIncomes
+  );
+
+  if (
+    currentFutureIncomeReceivableId &&
+    compatibleFutureIncomes.some((futureIncome) => futureIncome.id === currentFutureIncomeReceivableId)
+  ) {
+    return currentFutureIncomeReceivableId;
+  }
+
+  if (compatibleFutureIncomes.length === 1) {
+    return compatibleFutureIncomes[0].id;
   }
 
   return null;

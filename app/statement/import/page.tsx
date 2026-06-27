@@ -7,6 +7,8 @@ import { StatementImportReviewTable } from "@/components/statement-import/Statem
 import { formatDateOnlyBR } from "@/lib/date-utils";
 import { listMonthlyExpenses } from "@/lib/services/monthly-expense.service";
 import { listMonthlyIncomes } from "@/lib/services/monthly-income.service";
+import { listFutureExpensePayables } from "@/lib/services/future-expense.service";
+import { listFutureIncomeReceivables } from "@/lib/services/future-income.service";
 import {
   getStatementImportBatchById,
   getStatementImportBatchWithRows,
@@ -49,8 +51,19 @@ export default async function StatementImportPage({ searchParams }: StatementImp
   const batchData = batchId ? await getStatementImportBatchWithRows(batchId) : null;
   const duplicateBatch =
     duplicateUpload && existingBatchId ? await getStatementImportBatchById(existingBatchId) : null;
-  const monthlyExpenses = batchData ? await listMonthlyExpenses({ isActive: "true" }) : [];
-  const monthlyIncomes = batchData ? await listMonthlyIncomes({ isActive: "true" }) : [];
+  const [monthlyExpenses, monthlyIncomes, futureExpenses, futureIncomes]: [
+    Awaited<ReturnType<typeof listMonthlyExpenses>>,
+    Awaited<ReturnType<typeof listMonthlyIncomes>>,
+    Awaited<ReturnType<typeof listFutureExpensePayables>>,
+    Awaited<ReturnType<typeof listFutureIncomeReceivables>>,
+  ] = batchData
+    ? await Promise.all([
+        listMonthlyExpenses({ isActive: "true" }),
+        listMonthlyIncomes({ isActive: "true" }),
+        listFutureExpensePayables({ status: "previsto", sort: "expected_date_asc" }),
+        listFutureIncomeReceivables({ status: "prevista", sort: "expected_date_asc" }),
+      ])
+    : [[], [], [], []];
   const canOpenExistingBatch =
     duplicateUpload &&
     Boolean(duplicateBatch) &&
@@ -148,6 +161,8 @@ export default async function StatementImportPage({ searchParams }: StatementImp
               rows={batchData.rows}
               monthlyExpenses={monthlyExpenses}
               monthlyIncomes={monthlyIncomes}
+              futureExpenses={futureExpenses}
+              futureIncomes={futureIncomes}
               action={commitStatementImportRowsAction}
             />
           ) : (

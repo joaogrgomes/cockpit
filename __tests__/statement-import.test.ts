@@ -4,12 +4,18 @@ import { getDb } from "@/lib/db";
 import {
   monthlyExpenseEntries,
   monthlyIncomeEntries,
+  futureExpensePayables,
+  futureIncomeReceivables,
   statementCategorizationRules,
   statementImportBatches,
   statementImportRows,
 } from "@/lib/db/schema";
 import {
   getAutoSelectedStatementImportMonthlyPlanId,
+  getAutoSelectedStatementImportFutureExpensePayableId,
+  getAutoSelectedStatementImportFutureIncomeReceivableId,
+  getCompatibleStatementImportFutureExpensePayables,
+  getCompatibleStatementImportFutureIncomeReceivables,
   buildStatementImportRowHash,
   dedupeImportedStatementItems,
   normalizeImportedDescription,
@@ -33,22 +39,24 @@ vi.mock("@/lib/db", () => ({
 const mockedGetDb = vi.mocked(getDb);
 
 function makeSelectQuery(resultRows: unknown[]) {
-  const query: {
-    where: () => unknown;
-    orderBy: () => unknown;
-    limit: (count: number) => Promise<unknown[]>;
-    innerJoin: () => unknown;
-    then: <TResult1 = unknown[], TResult2 = never>(
-      onfulfilled?: ((value: unknown[]) => TResult1 | PromiseLike<TResult1>) | null | undefined,
-      onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null | undefined
-    ) => Promise<TResult1 | TResult2>;
-  } = {
-    where: () => query,
-    orderBy: () => query,
-    limit: (count: number) => Promise.resolve(resultRows.slice(0, count)),
-    innerJoin: () => query,
-    then: (onfulfilled, onrejected) => Promise.resolve(resultRows).then(onfulfilled, onrejected),
-  };
+    const query: {
+      where: () => unknown;
+      orderBy: () => unknown;
+      limit: (count: number) => Promise<unknown[]>;
+      innerJoin: () => unknown;
+      for: () => unknown;
+      then: <TResult1 = unknown[], TResult2 = never>(
+        onfulfilled?: ((value: unknown[]) => TResult1 | PromiseLike<TResult1>) | null | undefined,
+        onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null | undefined
+      ) => Promise<TResult1 | TResult2>;
+    } = {
+      where: () => query,
+      orderBy: () => query,
+      limit: (count: number) => Promise.resolve(resultRows.slice(0, count)),
+      innerJoin: () => query,
+      for: () => query,
+      then: (onfulfilled, onrejected) => Promise.resolve(resultRows).then(onfulfilled, onrejected),
+    };
 
   return query;
 }
@@ -221,6 +229,120 @@ describe("statement import parser", () => {
     expect(insertedItems).toHaveLength(1);
     expect(insertedItems[0].rowHash).toBe("hash-1");
     expect(duplicateItems).toHaveLength(2);
+  });
+
+  it("filtra e ordena futuros previstos compatíveis por proximidade da data", () => {
+    const rowDate = "2026-06-14";
+
+    const futureExpenses = getCompatibleStatementImportFutureExpensePayables(rowDate, "impostos", [
+      {
+        id: "future-1",
+        status: "previsto",
+        name: "IPVA",
+        category: "impostos",
+        expectedDate: "2026-06-20",
+        expectedAmount: 120000,
+        expenseType: "variavel",
+        occurrenceType: "planned_one_off",
+      },
+      {
+        id: "future-2",
+        status: "previsto",
+        name: "IPTU",
+        category: "impostos",
+        expectedDate: "2026-06-15",
+        expectedAmount: 80000,
+        expenseType: "variavel",
+        occurrenceType: "planned_one_off",
+      },
+      {
+        id: "future-3",
+        status: "cancelado",
+        name: "Seguro",
+        category: "impostos",
+        expectedDate: "2026-06-18",
+        expectedAmount: 50000,
+        expenseType: "fixo",
+        occurrenceType: "planned_one_off",
+      },
+      {
+        id: "future-4",
+        status: "previsto",
+        name: "Academia",
+        category: "esportes",
+        expectedDate: "2026-06-16",
+        expectedAmount: 10000,
+        expenseType: "fixo",
+        occurrenceType: "planned_one_off",
+      },
+    ]);
+
+    expect(futureExpenses.map((item) => item.id)).toEqual(["future-2", "future-1"]);
+
+    const futureIncomes = getCompatibleStatementImportFutureIncomeReceivables(
+      rowDate,
+      "salario",
+      [
+        {
+          id: "income-1",
+          status: "prevista",
+          name: "Bonus",
+          category: "salario",
+          expectedDate: "2026-06-20",
+          expectedAmount: 200000,
+        },
+        {
+          id: "income-2",
+          status: "prevista",
+          name: "Férias",
+          category: "salario",
+          expectedDate: "2026-06-15",
+          expectedAmount: 350000,
+        },
+      ]
+    );
+
+    expect(futureIncomes.map((item) => item.id)).toEqual(["income-2", "income-1"]);
+  });
+
+  it("auto seleciona futuro previsto compatível quando há apenas um", () => {
+    expect(
+      getAutoSelectedStatementImportFutureExpensePayableId(
+        "2026-06-14",
+        "impostos",
+        [
+          {
+            id: "future-1",
+            status: "previsto",
+            name: "IPVA",
+            category: "impostos",
+            expectedDate: "2026-06-20",
+            expectedAmount: 120000,
+            expenseType: "variavel",
+            occurrenceType: "planned_one_off",
+          },
+        ],
+        null
+      )
+    ).toBe("future-1");
+
+    expect(
+      getAutoSelectedStatementImportFutureIncomeReceivableId(
+        "2026-06-14",
+        "salario",
+        [
+          {
+            id: "income-1",
+            status: "prevista",
+            name: "Férias",
+            category: "salario",
+            expectedDate: "2026-06-15",
+            expectedAmount: 350000,
+          },
+        ],
+        null
+      )
+    ).toBe("income-1");
   });
 });
 
@@ -873,6 +995,192 @@ describe("statement import service", () => {
       paidAt: "2026-06-14",
       amount: 3604,
     });
+  });
+
+  it("grava despesa vinculada a futuro previsto e marca o futuro como realizado", async () => {
+    const mockDb = createDbMock([
+      [{ id: "batch-1" }],
+      [
+        {
+          id: "row-5",
+          status: "pending",
+          direction: "expense",
+          transactionDate: "2026-06-14",
+          amountCents: 3604,
+        },
+      ],
+      [
+        {
+          id: "future-exp-1",
+          status: "previsto",
+          name: "IPVA",
+          category: "impostos",
+          expectedDate: "2026-06-25",
+          expectedAmount: 120000,
+          expenseType: "variavel",
+          occurrenceType: "planned_one_off",
+        },
+      ],
+      [],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const result = await commitStatementImportBatch("batch-1", [
+      {
+        rowId: "row-5",
+        decision: "import",
+        description: "IPVA",
+        category: "impostos",
+        mode: "future",
+        futureExpensePayableId: "future-exp-1",
+        futureIncomeReceivableId: null,
+        monthlyExpenseId: null,
+        monthlyIncomeId: null,
+        expenseType: null,
+        occurrenceType: null,
+      },
+    ]);
+
+    expect(result).toMatchObject({
+      committedCount: 1,
+      ignoredCount: 0,
+      batchStatus: "committed",
+    });
+
+    const expenseInsert = mockDb.inserts.find((item: any) => item.table === monthlyExpenseEntries);
+    expect(expenseInsert).toBeTruthy();
+    expect(expenseInsert.values).toMatchObject({
+      monthlyExpenseId: null,
+      category: "impostos",
+      expenseType: "variavel",
+      occurrenceType: "planned_one_off",
+      periodMonth: "2026-06",
+      paidAt: "2026-06-14",
+      amount: 3604,
+    });
+
+    const futureExpenseUpdate = mockDb.updates.find((item: any) => item.table === futureExpensePayables);
+    expect(futureExpenseUpdate).toBeTruthy();
+    expect(futureExpenseUpdate.values).toMatchObject({
+      status: "realizado",
+      realizedEntryId: "expense-entry-1",
+    });
+  });
+
+  it("grava entrada vinculada a futuro prevista e marca o futuro como recebida", async () => {
+    const mockDb = createDbMock([
+      [{ id: "batch-1" }],
+      [
+        {
+          id: "row-6",
+          status: "pending",
+          direction: "income",
+          transactionDate: "2026-06-14",
+          amountCents: 400000,
+        },
+      ],
+      [
+        {
+          id: "future-inc-1",
+          status: "prevista",
+          name: "Férias",
+          category: "salario",
+          expectedDate: "2026-06-20",
+          expectedAmount: 350000,
+        },
+      ],
+      [],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const result = await commitStatementImportBatch("batch-1", [
+      {
+        rowId: "row-6",
+        decision: "import",
+        description: "Férias",
+        category: "salario",
+        mode: "future",
+        futureExpensePayableId: null,
+        futureIncomeReceivableId: "future-inc-1",
+        monthlyExpenseId: null,
+        monthlyIncomeId: null,
+        expenseType: null,
+        occurrenceType: null,
+      },
+    ]);
+
+    expect(result).toMatchObject({
+      committedCount: 1,
+      ignoredCount: 0,
+      batchStatus: "committed",
+    });
+
+    const incomeInsert = mockDb.inserts.find((item: any) => item.table === monthlyIncomeEntries);
+    expect(incomeInsert).toBeTruthy();
+    expect(incomeInsert.values).toMatchObject({
+      monthlyIncomeId: null,
+      category: "salario",
+      periodMonth: "2026-06",
+      receivedAt: "2026-06-14",
+      amount: 400000,
+    });
+
+    const futureIncomeUpdate = mockDb.updates.find((item: any) => item.table === futureIncomeReceivables);
+    expect(futureIncomeUpdate).toBeTruthy();
+    expect(futureIncomeUpdate.values).toMatchObject({
+      status: "recebida",
+      receivedEntryId: "income-entry-1",
+    });
+  });
+
+  it("retorna erro quando o futuro selecionado já foi realizado por outro lançamento", async () => {
+    const mockDb = createDbMock([
+      [{ id: "batch-1" }],
+      [
+        {
+          id: "row-7",
+          status: "pending",
+          direction: "expense",
+          transactionDate: "2026-06-14",
+          amountCents: 3604,
+        },
+      ],
+      [
+        {
+          id: "future-exp-2",
+          status: "realizado",
+          name: "IPVA",
+          category: "impostos",
+          expectedDate: "2026-06-25",
+          expectedAmount: 120000,
+          expenseType: "variavel",
+          occurrenceType: "planned_one_off",
+        },
+      ],
+    ]);
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const result = await commitStatementImportBatch("batch-1", [
+      {
+        rowId: "row-7",
+        decision: "import",
+        description: "IPVA",
+        category: "impostos",
+        mode: "future",
+        futureExpensePayableId: "future-exp-2",
+        futureIncomeReceivableId: null,
+        monthlyExpenseId: null,
+        monthlyIncomeId: null,
+        expenseType: null,
+        occurrenceType: null,
+      },
+    ]);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.fieldErrorsByRowId["row-7"][0]).toContain("já foi realizado");
+    }
+    expect(mockDb.inserts.find((item: any) => item.table === monthlyExpenseEntries)).toBeFalsy();
   });
 
   it("retorna erros estruturados por linha quando a validação falha", async () => {

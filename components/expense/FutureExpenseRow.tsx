@@ -110,15 +110,19 @@ export function FutureExpenseRow({
                   onClick={() => {
                     setError(null);
                     startCancel(async () => {
-                      const formData = new FormData();
-                      formData.set("id", futureExpense.id);
-                      const result = await cancelAction(formData);
-                      if (!result.ok) {
-                        setError(result.error ?? "Falha ao cancelar.");
-                        return;
-                      }
+                      try {
+                        const formData = new FormData();
+                        formData.set("id", futureExpense.id);
+                        const result = await cancelAction(formData);
+                        if (!result.ok) {
+                          setError(result.error ?? "Falha ao cancelar.");
+                          return;
+                        }
 
-                      router.refresh();
+                        router.refresh();
+                      } catch {
+                        setError("Falha ao cancelar.");
+                      }
                     });
                   }}
                 >

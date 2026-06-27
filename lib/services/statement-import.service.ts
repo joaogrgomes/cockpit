@@ -7,6 +7,8 @@ import {
   monthlyExpenses,
   monthlyIncomeEntries,
   monthlyIncomes,
+  futureExpensePayables,
+  futureIncomeReceivables,
   statementImportBatches,
   statementImportRows,
 } from "@/lib/db/schema";
@@ -28,6 +30,10 @@ import {
 } from "@/lib/services/statement-categorization-rules.service";
 import { isMonthWithinPeriod } from "@/lib/recurrence-period";
 import type { StatementImportBatchStatus } from "@/types";
+import type {
+  FutureExpensePayable,
+  FutureIncomeReceivable,
+} from "@/types";
 
 type DbClient = ReturnType<typeof getDb>;
 type StatementImportReadExecutor = Pick<DbClient, "select">;
@@ -297,6 +303,13 @@ function assertValidReviewedRow(
     return errors;
   }
 
+  if (row.mode === "future") {
+    if (!row.futureExpensePayableId && !row.futureIncomeReceivableId) {
+      errors.push("Selecione o futuro previsto desta linha.");
+    }
+    return errors;
+  }
+
   if (direction === "expense") {
     if (!row.expenseType) {
       errors.push("Selecione o tipo do gasto.");
@@ -309,7 +322,7 @@ function assertValidReviewedRow(
   return errors;
 }
 
-async function validateLinkedExpense(
+async function resolveLinkedMonthlyExpense(
   db: StatementImportReadExecutor,
   row: StatementImportReviewedRow,
   transactionDate: string
@@ -340,7 +353,7 @@ async function validateLinkedExpense(
   return null;
 }
 
-async function validateLinkedIncome(
+async function resolveLinkedMonthlyIncome(
   db: StatementImportReadExecutor,
   row: StatementImportReviewedRow,
   transactionDate: string
@@ -371,6 +384,58 @@ async function validateLinkedIncome(
   return null;
 }
 
+async function resolveLinkedFutureExpense(
+  db: StatementImportReadExecutor,
+  row: StatementImportReviewedRow
+): Promise<{ futureExpense: FutureExpensePayable | null; error: string | null }> {
+  if (!row.futureExpensePayableId) {
+    return { futureExpense: null, error: "Selecione o futuro previsto desta linha." };
+  }
+
+  const [futureExpense] = await db
+    .select()
+    .from(futureExpensePayables)
+    .where(eq(futureExpensePayables.id, row.futureExpensePayableId))
+    .for("update")
+    .limit(1);
+
+  if (!futureExpense) {
+    return { futureExpense: null, error: "Futuro de gasto não encontrado." };
+  }
+
+  if (futureExpense.status !== "previsto") {
+    return { futureExpense: null, error: "O futuro de gasto selecionado já foi realizado." };
+  }
+
+  return { futureExpense, error: null };
+}
+
+async function resolveLinkedFutureIncome(
+  db: StatementImportReadExecutor,
+  row: StatementImportReviewedRow
+): Promise<{ futureIncome: FutureIncomeReceivable | null; error: string | null }> {
+  if (!row.futureIncomeReceivableId) {
+    return { futureIncome: null, error: "Selecione o futuro previsto desta linha." };
+  }
+
+  const [futureIncome] = await db
+    .select()
+    .from(futureIncomeReceivables)
+    .where(eq(futureIncomeReceivables.id, row.futureIncomeReceivableId))
+    .for("update")
+    .limit(1);
+
+  if (!futureIncome) {
+    return { futureIncome: null, error: "Futuro de entrada não encontrado." };
+  }
+
+  if (futureIncome.status !== "prevista") {
+    return { futureIncome: null, error: "O futuro de entrada selecionado já foi realizado." };
+  }
+
+  return { futureIncome, error: null };
+}
+
 async function upsertReviewedImportRule(
   db: Pick<DbClient, "select" | "insert" | "update">,
   direction: "income" | "expense",
@@ -387,7 +452,7 @@ async function upsertReviewedImportRule(
     direction: parseStatementImportDirection(direction),
     description: reviewedRow.description,
     category: reviewedRow.category ?? "",
-    mode: reviewedRow.mode,
+    mode: reviewedRow.mode === "linked" ? "linked" : "one_time",
     monthlyExpenseId: reviewedRow.monthlyExpenseId ?? null,
     monthlyIncomeId: reviewedRow.monthlyIncomeId ?? null,
     expenseType,
@@ -425,6 +490,8 @@ export async function commitStatementImportBatch(
       reviewedRow: StatementImportReviewedRow;
       dbRow: (typeof dbRows)[number];
       direction: "income" | "expense";
+      futureExpense: FutureExpensePayable | null;
+      futureIncome: FutureIncomeReceivable | null;
     }> = [];
 
     for (const reviewedRow of rows) {
@@ -442,6 +509,8 @@ export async function commitStatementImportBatch(
           reviewedRow,
           dbRow,
           direction: parseStatementImportDirection(dbRow.direction),
+          futureExpense: null,
+          futureIncome: null,
         });
         continue;
       }
@@ -457,7 +526,7 @@ export async function commitStatementImportBatch(
       }
 
       if (direction === "expense" && reviewedRow.mode === "linked") {
-        const linkedError = await validateLinkedExpense(tx, reviewedRow, dbRow.transactionDate);
+        const linkedError = await resolveLinkedMonthlyExpense(tx, reviewedRow, dbRow.transactionDate);
         if (linkedError) {
           fieldErrorsByRowId[reviewedRow.rowId] = [
             ...(fieldErrorsByRowId[reviewedRow.rowId] ?? []),
@@ -468,7 +537,7 @@ export async function commitStatementImportBatch(
       }
 
       if (direction === "income" && reviewedRow.mode === "linked") {
-        const linkedError = await validateLinkedIncome(tx, reviewedRow, dbRow.transactionDate);
+        const linkedError = await resolveLinkedMonthlyIncome(tx, reviewedRow, dbRow.transactionDate);
         if (linkedError) {
           fieldErrorsByRowId[reviewedRow.rowId] = [
             ...(fieldErrorsByRowId[reviewedRow.rowId] ?? []),
@@ -478,10 +547,52 @@ export async function commitStatementImportBatch(
         }
       }
 
+      if (direction === "expense" && reviewedRow.mode === "future") {
+        const futureResolution = await resolveLinkedFutureExpense(tx, reviewedRow);
+        if (futureResolution.error) {
+          fieldErrorsByRowId[reviewedRow.rowId] = [
+            ...(fieldErrorsByRowId[reviewedRow.rowId] ?? []),
+            futureResolution.error,
+          ];
+          continue;
+        }
+
+        validRows.push({
+          reviewedRow,
+          dbRow,
+          direction,
+          futureExpense: futureResolution.futureExpense,
+          futureIncome: null,
+        });
+        continue;
+      }
+
+      if (direction === "income" && reviewedRow.mode === "future") {
+        const futureResolution = await resolveLinkedFutureIncome(tx, reviewedRow);
+        if (futureResolution.error) {
+          fieldErrorsByRowId[reviewedRow.rowId] = [
+            ...(fieldErrorsByRowId[reviewedRow.rowId] ?? []),
+            futureResolution.error,
+          ];
+          continue;
+        }
+
+        validRows.push({
+          reviewedRow,
+          dbRow,
+          direction,
+          futureExpense: null,
+          futureIncome: futureResolution.futureIncome,
+        });
+        continue;
+      }
+
       validRows.push({
         reviewedRow,
         dbRow,
         direction,
+        futureExpense: null,
+        futureIncome: null,
       });
     }
 
@@ -493,7 +604,7 @@ export async function commitStatementImportBatch(
       };
     }
 
-    for (const { reviewedRow, dbRow, direction } of validRows) {
+    for (const { reviewedRow, dbRow, direction, futureExpense, futureIncome } of validRows) {
       const periodMonth = getPeriodMonthFromDate(dbRow.transactionDate);
 
       if (reviewedRow.decision === "ignore") {
@@ -523,6 +634,52 @@ export async function commitStatementImportBatch(
               updatedAt: sql`now()`,
             })
             .returning({ id: monthlyExpenseEntries.id });
+
+          await tx
+            .update(statementImportRows)
+            .set({
+              status: "committed",
+              createdEntryType: "monthly_expense_entry",
+              createdEntryId: inserted[0].id,
+              updatedAt: sql`now()`,
+            })
+            .where(eq(statementImportRows.id, dbRow.id));
+          committedCount += 1;
+          await upsertReviewedImportRule(tx, "expense", reviewedRow);
+          continue;
+        }
+
+        if (reviewedRow.mode === "future") {
+          const futureExpenseCategory = reviewedRow.category ?? futureExpense?.category ?? null;
+          const futureExpenseType = reviewedRow.expenseType ?? futureExpense?.expenseType ?? null;
+          const futureExpenseOccurrenceType =
+            reviewedRow.occurrenceType ?? futureExpense?.occurrenceType ?? null;
+
+          const inserted = await tx
+            .insert(monthlyExpenseEntries)
+            .values({
+              monthlyExpenseId: null,
+              name: reviewedRow.description.trim(),
+              category: futureExpenseCategory,
+              expenseType: futureExpenseType,
+              occurrenceType: futureExpenseOccurrenceType,
+              periodMonth,
+              amount: dbRow.amountCents,
+              paidAt: dbRow.transactionDate,
+              paymentMethod: null,
+              notes: null,
+              updatedAt: sql`now()`,
+            })
+            .returning({ id: monthlyExpenseEntries.id });
+
+          await tx
+            .update(futureExpensePayables)
+            .set({
+              status: "realizado",
+              realizedEntryId: inserted[0].id,
+              updatedAt: sql`now()`,
+            })
+            .where(eq(futureExpensePayables.id, futureExpense?.id ?? reviewedRow.futureExpensePayableId ?? ""));
 
           await tx
             .update(statementImportRows)
@@ -584,6 +741,49 @@ export async function commitStatementImportBatch(
             updatedAt: sql`now()`,
           })
           .returning({ id: monthlyIncomeEntries.id });
+
+        await tx
+          .update(statementImportRows)
+          .set({
+            status: "committed",
+            createdEntryType: "monthly_income_entry",
+            createdEntryId: inserted[0].id,
+            updatedAt: sql`now()`,
+          })
+          .where(eq(statementImportRows.id, dbRow.id));
+        committedCount += 1;
+        await upsertReviewedImportRule(tx, "income", reviewedRow);
+        continue;
+      }
+
+      if (reviewedRow.mode === "future") {
+        const futureIncomeCategory = reviewedRow.category ?? futureIncome?.category ?? null;
+
+        const inserted = await tx
+          .insert(monthlyIncomeEntries)
+          .values({
+            monthlyIncomeId: null,
+            name: reviewedRow.description.trim(),
+            category: futureIncomeCategory,
+            periodMonth,
+            amount: dbRow.amountCents,
+            receivedAt: dbRow.transactionDate,
+            paymentMethod: null,
+            notes: null,
+            updatedAt: sql`now()`,
+          })
+          .returning({ id: monthlyIncomeEntries.id });
+
+        await tx
+          .update(futureIncomeReceivables)
+          .set({
+            status: "recebida",
+            receivedEntryId: inserted[0].id,
+            updatedAt: sql`now()`,
+          })
+          .where(
+            eq(futureIncomeReceivables.id, futureIncome?.id ?? reviewedRow.futureIncomeReceivableId ?? "")
+          );
 
         await tx
           .update(statementImportRows)

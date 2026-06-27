@@ -21,10 +21,16 @@ import { formatRecurrencePeriodLabel } from "@/lib/recurrence-period";
 import { INCOME_CATEGORY_VALUES, getIncomeCategoryLabel } from "@/lib/incomes";
 import {
   getAutoSelectedStatementImportMonthlyPlanId,
+  getAutoSelectedStatementImportFutureExpensePayableId,
+  getAutoSelectedStatementImportFutureIncomeReceivableId,
   getCompatibleStatementImportMonthlyPlans,
+  getCompatibleStatementImportFutureExpensePayables,
+  getCompatibleStatementImportFutureIncomeReceivables,
   type StatementImportDecision,
 } from "@/lib/statement-import";
 import type {
+  FutureExpensePayable,
+  FutureIncomeReceivable,
   MonthlyExpense,
   MonthlyIncome,
   StatementImportRow,
@@ -36,9 +42,11 @@ type ReviewedRowState = {
   decision: StatementImportDecision;
   description: string;
   category: string | null;
-  mode: "linked" | "one_time";
+  mode: "linked" | "one_time" | "future";
   monthlyExpenseId: string | null;
   monthlyIncomeId: string | null;
+  futureExpensePayableId: string | null;
+  futureIncomeReceivableId: string | null;
   expenseType: (typeof EXPENSE_TYPE_VALUES)[number] | null;
   occurrenceType: (typeof EXPENSE_OCCURRENCE_TYPE_VALUES)[number] | null;
 };
@@ -48,6 +56,8 @@ type StatementImportReviewedTableProps = {
   rows: StatementImportRow[];
   monthlyExpenses: MonthlyExpense[];
   monthlyIncomes: MonthlyIncome[];
+  futureExpenses: FutureExpensePayable[];
+  futureIncomes: FutureIncomeReceivable[];
   action: (
     prevState: StatementImportActionResult,
     formData: FormData
@@ -67,6 +77,8 @@ function buildReviewedRowState(row: StatementImportRow): ReviewedRowState {
     mode: isLinkedSuggestion ? "linked" : "one_time",
     monthlyExpenseId: row.suggestedMonthlyExpenseId ?? null,
     monthlyIncomeId: row.suggestedMonthlyIncomeId ?? null,
+    futureExpensePayableId: null,
+    futureIncomeReceivableId: null,
     expenseType: row.suggestedExpenseType ?? null,
     occurrenceType: row.suggestedOccurrenceType ?? null,
   };
@@ -108,11 +120,41 @@ function formatIncomePlanLabel(income: MonthlyIncome): string {
   ].join(" · ");
 }
 
+function formatFutureExpenseLabel(futureExpense: FutureExpensePayable): string {
+  return [
+    futureExpense.name,
+    formatDateOnlyBR(futureExpense.expectedDate),
+    formatBRL(futureExpense.expectedAmount),
+  ].join(" · ");
+}
+
+function formatFutureIncomeLabel(futureIncome: FutureIncomeReceivable): string {
+  return [
+    futureIncome.name,
+    formatDateOnlyBR(futureIncome.expectedDate),
+    formatBRL(futureIncome.expectedAmount),
+  ].join(" · ");
+}
+
+function normalizeReviewedExpenseType(
+  value: string | null | undefined
+): ReviewedRowState["expenseType"] {
+  return value === "fixo" || value === "variavel" ? value : null;
+}
+
+function normalizeReviewedOccurrenceType(
+  value: string | null | undefined
+): ReviewedRowState["occurrenceType"] {
+  return value === "planned_one_off" || value === "unexpected" ? value : null;
+}
+
 export function StatementImportReviewTable({
   batchId,
   rows,
   monthlyExpenses,
   monthlyIncomes,
+  futureExpenses,
+  futureIncomes,
   action,
 }: StatementImportReviewedTableProps) {
   const [state, formAction] = useActionState(action, initialState);
@@ -169,13 +211,48 @@ export function StatementImportReviewTable({
     });
   }
 
-  function syncPlanSelection(
+  function syncRelatedSelections(
     row: StatementImportRow,
     nextCategory: string | null,
     nextMode: ReviewedRowState["mode"],
     currentState: ReviewedRowState
-  ) {
+  ): Pick<
+    ReviewedRowState,
+    | "category"
+    | "monthlyExpenseId"
+    | "monthlyIncomeId"
+    | "futureExpensePayableId"
+    | "futureIncomeReceivableId"
+    | "expenseType"
+    | "occurrenceType"
+  > {
     const rowMonth = getRowMonth(row);
+    const nextFutureExpensePayableId =
+      row.direction === "expense" && nextMode === "future"
+        ? getAutoSelectedStatementImportFutureExpensePayableId(
+            rowMonth,
+            nextCategory,
+            futureExpenses,
+            currentState.futureExpensePayableId
+          )
+        : null;
+    const nextFutureIncomeReceivableId =
+      row.direction === "income" && nextMode === "future"
+        ? getAutoSelectedStatementImportFutureIncomeReceivableId(
+            rowMonth,
+            nextCategory,
+            futureIncomes,
+            currentState.futureIncomeReceivableId
+          )
+        : null;
+    const nextSelectedFutureExpense =
+      nextFutureExpensePayableId && nextMode === "future"
+        ? futureExpenses.find((futureExpense) => futureExpense.id === nextFutureExpensePayableId) ?? null
+        : null;
+    const nextSelectedFutureIncome =
+      nextFutureIncomeReceivableId && nextMode === "future"
+        ? futureIncomes.find((futureIncome) => futureIncome.id === nextFutureIncomeReceivableId) ?? null
+        : null;
 
     return {
       monthlyExpenseId:
@@ -196,6 +273,23 @@ export function StatementImportReviewTable({
               currentState.monthlyIncomeId
             )
           : null,
+      futureExpensePayableId: nextFutureExpensePayableId,
+      futureIncomeReceivableId: nextFutureIncomeReceivableId,
+      category:
+        nextMode === "future"
+          ? nextSelectedFutureExpense?.category ??
+            nextSelectedFutureIncome?.category ??
+            nextCategory
+          : nextCategory,
+      expenseType:
+        nextMode === "future" && row.direction === "expense"
+          ? normalizeReviewedExpenseType(nextSelectedFutureExpense?.expenseType) ?? currentState.expenseType
+          : currentState.expenseType,
+      occurrenceType:
+        nextMode === "future" && row.direction === "expense"
+          ? normalizeReviewedOccurrenceType(nextSelectedFutureExpense?.occurrenceType) ??
+            currentState.occurrenceType
+          : currentState.occurrenceType,
     };
   }
 
@@ -255,6 +349,18 @@ export function StatementImportReviewTable({
                     rowState?.category ?? null,
                     monthlyIncomes
                   );
+                  const compatibleFutureExpensePayables =
+                    getCompatibleStatementImportFutureExpensePayables(
+                      row.transactionDate,
+                      rowState?.category ?? null,
+                      futureExpenses
+                    );
+                  const compatibleFutureIncomeReceivables =
+                    getCompatibleStatementImportFutureIncomeReceivables(
+                      row.transactionDate,
+                      rowState?.category ?? null,
+                      futureIncomes
+                    );
                   const isPending = row.status === "pending";
                   const isIgnored = rowState?.decision === "ignore";
                   const isLinked = rowState?.mode === "linked";
@@ -330,8 +436,7 @@ export function StatementImportReviewTable({
                             onChange={(event) =>
                               updateRow(row.id, (current) => ({
                                 ...current,
-                                category: event.target.value || null,
-                                ...syncPlanSelection(row, event.target.value || null, current.mode, current),
+                                ...syncRelatedSelections(row, event.target.value || null, current.mode, current),
                               }))
                             }
                           >
@@ -355,7 +460,7 @@ export function StatementImportReviewTable({
                               updateRow(row.id, (current) => ({
                                 ...current,
                                 mode: event.target.value as ReviewedRowState["mode"],
-                                ...syncPlanSelection(
+                                ...syncRelatedSelections(
                                   row,
                                   current.category,
                                   event.target.value as ReviewedRowState["mode"],
@@ -366,61 +471,121 @@ export function StatementImportReviewTable({
                           >
                             <option value="one_time">Avulso</option>
                             <option value="linked">Planejamento</option>
+                            <option value="future">Futuro previsto</option>
                           </select>
-                          <select
-                            className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
-                            disabled={!isPending || isIgnored || rowState?.mode !== "linked" || !rowState?.category}
-                            value={
-                              isExpense
-                                ? rowState?.monthlyExpenseId ?? ""
-                                : rowState?.monthlyIncomeId ?? ""
-                            }
-                            onChange={(event) =>
-                              updateRow(row.id, (current) => ({
-                                ...current,
-                                monthlyExpenseId: isExpense ? event.target.value || null : null,
-                                monthlyIncomeId: !isExpense ? event.target.value || null : null,
-                              }))
-                            }
-                          >
-                            {rowState?.mode !== "linked" ? (
-                              <option value="">Escolha “Planejamento” acima</option>
-                            ) : rowState?.category ? (
-                              <>
-                                <option value="">
-                                  Selecione o planejamento
-                                </option>
-                                {isExpense
-                                  ? compatibleExpensePlans.map((expense) => (
-                                      <option key={expense.id} value={expense.id}>
-                                        {formatExpensePlanLabel(expense)}
-                                      </option>
-                                    ))
-                                  : compatibleIncomePlans.map((income) => (
-                                      <option key={income.id} value={income.id}>
-                                        {formatIncomePlanLabel(income)}
-                                      </option>
-                                    ))}
-                              </>
-                            ) : (
-                              <option value="">Escolha a categoria acima</option>
-                            )}
-                          </select>
-                          {rowState?.category ? (
-                            <p className="text-xs text-muted-foreground">
+                          {rowState?.mode === "linked" ? (
+                            <select
+                              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                              disabled={!isPending || isIgnored || !rowState?.category}
+                              value={
+                                isExpense
+                                  ? rowState?.monthlyExpenseId ?? ""
+                                  : rowState?.monthlyIncomeId ?? ""
+                              }
+                              onChange={(event) =>
+                                updateRow(row.id, (current) => ({
+                                  ...current,
+                                  monthlyExpenseId: isExpense ? event.target.value || null : null,
+                                  monthlyIncomeId: !isExpense ? event.target.value || null : null,
+                                }))
+                              }
+                            >
+                              {rowState?.category ? (
+                                <>
+                                  <option value="">Selecione o planejamento</option>
+                                  {isExpense
+                                    ? compatibleExpensePlans.map((expense) => (
+                                        <option key={expense.id} value={expense.id}>
+                                          {formatExpensePlanLabel(expense)}
+                                        </option>
+                                      ))
+                                    : compatibleIncomePlans.map((income) => (
+                                        <option key={income.id} value={income.id}>
+                                          {formatIncomePlanLabel(income)}
+                                        </option>
+                                      ))}
+                                </>
+                              ) : (
+                                <option value="">Escolha a categoria acima</option>
+                              )}
+                            </select>
+                          ) : rowState?.mode === "future" ? (
+                            <select
+                              className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                              disabled={!isPending || isIgnored}
+                              value={
+                                isExpense
+                                  ? rowState?.futureExpensePayableId ?? ""
+                                  : rowState?.futureIncomeReceivableId ?? ""
+                              }
+                              onChange={(event) =>
+                                updateRow(row.id, (current) => {
+                                  const selectedFutureExpense = isExpense
+                                    ? futureExpenses.find((futureExpense) => futureExpense.id === event.target.value)
+                                    : null;
+                                  const selectedFutureIncome = !isExpense
+                                    ? futureIncomes.find((futureIncome) => futureIncome.id === event.target.value)
+                                    : null;
+
+                                return {
+                                  ...current,
+                                  category:
+                                    selectedFutureExpense?.category ??
+                                    selectedFutureIncome?.category ??
+                                    current.category,
+                                  expenseType: isExpense
+                                    ? normalizeReviewedExpenseType(selectedFutureExpense?.expenseType) ??
+                                      current.expenseType
+                                    : current.expenseType,
+                                  occurrenceType: isExpense
+                                    ? normalizeReviewedOccurrenceType(selectedFutureExpense?.occurrenceType) ??
+                                      current.occurrenceType
+                                    : current.occurrenceType,
+                                  futureExpensePayableId: isExpense ? event.target.value || null : null,
+                                  futureIncomeReceivableId: !isExpense ? event.target.value || null : null,
+                                };
+                                })
+                              }
+                            >
+                              <option value="">Selecione o futuro previsto</option>
                               {isExpense
-                                ? compatibleExpensePlans.length > 0
-                                  ? `${compatibleExpensePlans.length} planejamento(s) compatível(eis) para ${rowMonth}.`
-                                  : "Sem planejamento compatível para esta categoria e mês."
-                                : compatibleIncomePlans.length > 0
-                                  ? `${compatibleIncomePlans.length} planejamento(s) compatível(eis) para ${rowMonth}.`
-                                  : "Sem planejamento compatível para esta categoria e mês."}
-                            </p>
+                                ? compatibleFutureExpensePayables.map((futureExpense) => (
+                                    <option key={futureExpense.id} value={futureExpense.id}>
+                                      {formatFutureExpenseLabel(futureExpense)}
+                                    </option>
+                                  ))
+                                : compatibleFutureIncomeReceivables.map((futureIncome) => (
+                                    <option key={futureIncome.id} value={futureIncome.id}>
+                                      {formatFutureIncomeLabel(futureIncome)}
+                                    </option>
+                                  ))}
+                            </select>
                           ) : (
                             <p className="text-xs text-muted-foreground">
-                              Escolha a categoria para ver os planejamentos compatíveis.
+                              Selecione “Planejamento” ou “Futuro previsto” para vincular a linha.
                             </p>
                           )}
+                          {rowState?.mode === "linked" || rowState?.mode === "future" ? (
+                            <p className="text-xs text-muted-foreground">
+                              {rowState?.mode === "linked"
+                                ? rowState?.category
+                                  ? isExpense
+                                    ? compatibleExpensePlans.length > 0
+                                      ? `${compatibleExpensePlans.length} planejamento(s) compatível(eis) para ${rowMonth}.`
+                                      : "Sem planejamento compatível para esta categoria e mês."
+                                    : compatibleIncomePlans.length > 0
+                                      ? `${compatibleIncomePlans.length} planejamento(s) compatível(eis) para ${rowMonth}.`
+                                      : "Sem planejamento compatível para esta categoria e mês."
+                                  : "Escolha a categoria para ver os planejamentos compatíveis."
+                                : isExpense
+                                  ? compatibleFutureExpensePayables.length > 0
+                                    ? `${compatibleFutureExpensePayables.length} futuro(s) compatível(eis) para esta linha.`
+                                    : "Sem futuro previsto compatível para esta linha."
+                                  : compatibleFutureIncomeReceivables.length > 0
+                                    ? `${compatibleFutureIncomeReceivables.length} futuro(s) compatível(eis) para esta linha.`
+                                    : "Sem futuro previsto compatível para esta linha."}
+                            </p>
+                          ) : null}
                         </div>
                       </TableCell>
                       <TableCell className="align-top min-w-40">

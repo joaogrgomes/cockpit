@@ -19,6 +19,14 @@ type FutureExpenseActionResult = {
   error?: string;
 };
 
+function getFutureExpenseActionErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return "Não foi possível processar o gasto futuro.";
+}
+
 function revalidateFutureExpensePages() {
   revalidatePath("/expenses/future");
   revalidatePath("/expenses/tracking");
@@ -150,20 +158,24 @@ export async function cancelFutureExpenseAction(
 export async function markFutureExpenseAsRealizedAction(
   formData: FormData
 ): Promise<FutureExpenseActionResult> {
-  const parsed = parseMarkAsRealizedFormData(formData);
-  if (!parsed.success) {
-    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
-  }
+  try {
+    const parsed = parseMarkAsRealizedFormData(formData);
+    if (!parsed.success) {
+      return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+    }
 
-  const updated = await markFutureExpenseAsRealized({
-    ...parsed.data,
-    paymentMethod: parsed.data.paymentMethod ?? null,
-    notes: parsed.data.notes ?? null,
-  });
-  if (!updated) {
-    return { ok: false, error: "Gasto futuro não encontrado ou já finalizado." };
-  }
+    const updated = await markFutureExpenseAsRealized({
+      ...parsed.data,
+      paymentMethod: parsed.data.paymentMethod ?? null,
+      notes: parsed.data.notes ?? null,
+    });
+    if (!updated) {
+      return { ok: false, error: "Gasto futuro não encontrado ou já finalizado." };
+    }
 
-  revalidateFutureExpensePages();
-  return { ok: true };
+    revalidateFutureExpensePages();
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: getFutureExpenseActionErrorMessage(error) };
+  }
 }

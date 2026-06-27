@@ -66,14 +66,18 @@ export function MarkFutureExpenseRealizedForm({
             formData.set("futureExpenseId", futureExpense.id);
 
             startTransition(async () => {
-              const result = await action(formData);
-              if (!result.ok) {
-                setError(result.error ?? "Não foi possível confirmar o gasto realizado.");
-                return;
-              }
+              try {
+                const result = await action(formData);
+                if (!result.ok) {
+                  setError(result.error ?? "Não foi possível confirmar o gasto realizado.");
+                  return;
+                }
 
-              setOpen(false);
-              router.refresh();
+                setOpen(false);
+                router.refresh();
+              } catch {
+                setError("Não foi possível confirmar o gasto realizado. Tente novamente.");
+              }
             });
           }}
         >

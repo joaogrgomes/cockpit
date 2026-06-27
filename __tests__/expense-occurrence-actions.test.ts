@@ -298,6 +298,19 @@ describe("expense occurrence actions", () => {
     );
   });
 
+  it("retorna erro estruturado quando falha ao marcar futuro como realizado", async () => {
+    mocks.markFutureExpenseAsRealized.mockRejectedValue(new Error("Falha simulada"));
+
+    const formData = new FormData();
+    formData.set("futureExpenseId", "550e8400-e29b-41d4-a716-446655440000");
+    formData.set("realizedAmount", "15000");
+    formData.set("paidAt", "2026-06-04");
+
+    const result = await markFutureExpenseAsRealizedAction(formData);
+
+    expect(result).toEqual({ ok: false, error: "Falha simulada" });
+  });
+
   it("atualiza gasto futuro com classificação selecionada", async () => {
     mocks.updateFutureExpensePayable.mockResolvedValue({ id: "future-2" });
 
