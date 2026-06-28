@@ -27,6 +27,7 @@ describe("budget areas helpers", () => {
     expect(model.allocations).toHaveLength(4);
     expect(model.allocations.reduce((sum, allocation) => sum + allocation.percentage, 0)).toBe(100);
     expect(model.allocations.find((allocation) => allocation.areaKey === "necessidades_basicas")?.percentage).toBe(60);
+    expect(model.allocations.find((allocation) => allocation.areaKey === "dividas")?.label).toBe("Pagamento de dívidas");
     expect(model.allocations.find((allocation) => allocation.areaKey === "dividas")?.percentage).toBe(20);
     expect(model.allocations.find((allocation) => allocation.areaKey === "reserva")?.percentage).toBe(10);
     expect(model.allocations.find((allocation) => allocation.areaKey === "compras_lazer")?.percentage).toBe(10);

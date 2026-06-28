@@ -212,9 +212,14 @@ export function BudgetAreasClient({
                   </p>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="budget-areas-needs-percent">Necessidades básicas</Label>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4 items-stretch">
+                  <div className="flex h-full flex-col space-y-2">
+                    <Label
+                      htmlFor="budget-areas-needs-percent"
+                      className="min-h-10 leading-snug"
+                    >
+                      Necessidades básicas
+                    </Label>
                     <Input
                       id="budget-areas-needs-percent"
                       name="needsPercent"
@@ -231,8 +236,13 @@ export function BudgetAreasClient({
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="budget-areas-debt-percent">Pagamento agressivo de dívidas</Label>
+                  <div className="flex h-full flex-col space-y-2">
+                    <Label
+                      htmlFor="budget-areas-debt-percent"
+                      className="min-h-10 leading-snug"
+                    >
+                      Pagamento de dívidas
+                    </Label>
                     <Input
                       id="budget-areas-debt-percent"
                       name="debtPaymentPercent"
@@ -249,8 +259,13 @@ export function BudgetAreasClient({
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="budget-areas-emergency-percent">Reserva de emergência</Label>
+                  <div className="flex h-full flex-col space-y-2">
+                    <Label
+                      htmlFor="budget-areas-emergency-percent"
+                      className="min-h-10 leading-snug"
+                    >
+                      Reserva de emergência
+                    </Label>
                     <Input
                       id="budget-areas-emergency-percent"
                       name="emergencyReservePercent"
@@ -267,8 +282,13 @@ export function BudgetAreasClient({
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="budget-areas-flexible-percent">Lazer / flexível</Label>
+                  <div className="flex h-full flex-col space-y-2">
+                    <Label
+                      htmlFor="budget-areas-flexible-percent"
+                      className="min-h-10 leading-snug"
+                    >
+                      Lazer / flexível
+                    </Label>
                     <Input
                       id="budget-areas-flexible-percent"
                       name="flexiblePercent"

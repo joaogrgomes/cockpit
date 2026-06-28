@@ -109,7 +109,7 @@ const BUDGET_AREA_ALLOCATION_TEMPLATES: BudgetAreaAllocationTemplate[] = [
   },
   {
     areaKey: "dividas",
-    label: "Pagamento agressivo das dívidas",
+    label: "Pagamento de dívidas",
     categories: ["dividas"],
   },
   {
@@ -153,7 +153,7 @@ const DEFAULT_MODEL: BudgetAreaModel = buildBudgetAreaModelFromSettings(DEFAULT_
 
 const AREA_LABELS: Record<BudgetAreaKey, string> = {
   necessidades_basicas: "Necessidades essenciais",
-  dividas: "Pagamento agressivo das dívidas",
+  dividas: "Pagamento de dívidas",
   reserva: "Reserva de emergência",
   compras_lazer: "Lazer básico / flexível",
   educacao: "Educação",
