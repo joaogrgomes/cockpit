@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatPeriodMonthShort, getCurrentPeriodMonth, normalizePeriodMonth } from "@/lib/recurrence-period";
 import { getBudgetAreasViewModel } from "@/lib/services/budget-areas.service";
+import { saveBudgetAreaSettingsAction } from "@/app/budget-areas/actions";
 import { BudgetAreasClient } from "@/components/budget-areas/BudgetAreasClient";
 
 export const dynamic = "force-dynamic";
@@ -69,9 +70,10 @@ export default async function BudgetAreasPage({ searchParams }: BudgetAreasPageP
 
       <BudgetAreasClient
         referenceMonth={viewModel.referenceMonth}
-        defaultBaseIncomeCents={viewModel.defaultBaseIncomeCents}
+        settings={viewModel.settings}
+        calculatedBaseIncomeCents={viewModel.calculatedBaseIncomeCents}
         expenseItems={viewModel.expenseItems}
-        model={viewModel.model}
+        saveAction={saveBudgetAreaSettingsAction}
       />
     </section>
   );

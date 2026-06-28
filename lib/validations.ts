@@ -23,6 +23,7 @@ const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const periodMonthRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 const optionalPositiveInt = z.number().int().positive().optional();
+const positiveInt = z.number().int().positive();
 const nonNegativeInt = z.number().int().nonnegative();
 const PERCEIVED_RISK_VALUES = [
   "baixo",
@@ -180,6 +181,30 @@ export const CostAnalysisItemSchema = z.object({
   costKind: z.enum(COST_ANALYSIS_KIND_VALUES),
   notes: z.string().trim().min(1).nullish(),
 });
+
+export const BudgetAreaSettingsSchema = z
+  .object({
+    baseIncomeCents: positiveInt,
+    needsPercent: nonNegativeInt,
+    debtPaymentPercent: nonNegativeInt,
+    emergencyReservePercent: nonNegativeInt,
+    flexiblePercent: nonNegativeInt,
+  })
+  .superRefine((data, ctx) => {
+    const totalPercent =
+      data.needsPercent +
+      data.debtPaymentPercent +
+      data.emergencyReservePercent +
+      data.flexiblePercent;
+
+    if (totalPercent !== 100) {
+      ctx.addIssue({
+        code: "custom",
+        message: "A soma dos percentuais precisa ser 100%",
+        path: ["flexiblePercent"],
+      });
+    }
+  });
 
 export const PatrimonyAssetSchema = z.object({
   assetId: z.string().uuid().nullish(),

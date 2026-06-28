@@ -18,6 +18,7 @@ type IncomeActionResult = {
 function revalidateIncomePages() {
   revalidatePath("/incomes");
   revalidatePath("/incomes/tracking");
+  revalidatePath("/budget-areas");
 }
 
 function parseOptionalText(value: FormDataEntryValue | null): string | undefined {

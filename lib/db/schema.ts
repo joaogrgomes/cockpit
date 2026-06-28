@@ -165,6 +165,7 @@ export const PATRIMONY_ASSET_TYPE_VALUES = [
 ] as const;
 
 export const PATRIMONY_ASSET_STATUS_VALUES = ["active", "archived"] as const;
+export const BUDGET_AREA_SETTINGS_SCOPE_VALUES = ["global"] as const;
 
 export const debts = pgTable(
   "debts",
@@ -888,5 +889,35 @@ export const cashFlowSettings = pgTable(
       "cash_flow_settings_start_month_valid",
       sql`${table.startMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
     ),
+  ]
+);
+
+export const budgetAreaSettings = pgTable(
+  "budget_area_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    scope: text("scope").notNull().default("global"),
+    baseIncomeCents: integer("base_income_cents").notNull(),
+    needsPercent: integer("needs_percent").notNull(),
+    debtPaymentPercent: integer("debt_payment_percent").notNull(),
+    emergencyReservePercent: integer("emergency_reserve_percent").notNull(),
+    flexiblePercent: integer("flexible_percent").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "budget_area_settings_scope_valid",
+      sql`${table.scope} = 'global'`
+    ),
+    check("budget_area_settings_base_income_positive", sql`${table.baseIncomeCents} > 0`),
+    check("budget_area_settings_needs_percent_valid", sql`${table.needsPercent} >= 0`),
+    check("budget_area_settings_debt_payment_percent_valid", sql`${table.debtPaymentPercent} >= 0`),
+    check(
+      "budget_area_settings_emergency_reserve_percent_valid",
+      sql`${table.emergencyReservePercent} >= 0`
+    ),
+    check("budget_area_settings_flexible_percent_valid", sql`${table.flexiblePercent} >= 0`),
+    uniqueIndex("ux_budget_area_settings_scope").on(table.scope),
   ]
 );

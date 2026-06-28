@@ -40,6 +40,7 @@ import {
   costAnalyses,
   costAnalysisItems,
   patrimonyAssets,
+  budgetAreaSettings,
   statementCategorizationRules,
   statementImportBatches,
   statementImportRows,
@@ -90,6 +91,8 @@ export type MonthlyClosing = InferSelectModel<typeof monthlyClosings>;
 export type NewMonthlyClosing = InferInsertModel<typeof monthlyClosings>;
 export type CashFlowSettings = InferSelectModel<typeof cashFlowSettings>;
 export type NewCashFlowSettings = InferInsertModel<typeof cashFlowSettings>;
+export type BudgetAreaSettings = InferSelectModel<typeof budgetAreaSettings>;
+export type NewBudgetAreaSettings = InferInsertModel<typeof budgetAreaSettings>;
 
 export type DebtStatus = (typeof DEBT_STATUS_VALUES)[number];
 export type DebtType = (typeof DEBT_TYPE_VALUES)[number];

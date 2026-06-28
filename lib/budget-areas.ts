@@ -25,6 +25,14 @@ export type BudgetAreaModel = {
   allocations: BudgetAreaAllocation[];
 };
 
+export type BudgetAreaSettingsInput = {
+  baseIncomeCents: number;
+  needsPercent: number;
+  debtPaymentPercent: number;
+  emergencyReservePercent: number;
+  flexiblePercent: number;
+};
+
 export type BudgetAreaExpenseItem = {
   id: string;
   name: string;
@@ -72,47 +80,76 @@ export type BudgetAreasAnalysis = {
   model: BudgetAreaModel;
 };
 
-const DEFAULT_MODEL: BudgetAreaModel = {
-  id: "reorganizacao",
-  name: "Reorganização atual",
-  allocations: [
-    {
-      areaKey: "necessidades_basicas",
-      label: "Necessidades essenciais",
-      percentage: 60,
-      categories: [
-        "moradia",
-        "alimentacao",
-        "transporte",
-        "saude",
-        "educacao",
-        "familia",
-        "servicos",
-        "assinaturas",
-        "impostos",
-        "doacoes",
-      ],
-    },
-    {
-      areaKey: "dividas",
-      label: "Pagamento agressivo das dívidas",
-      percentage: 20,
-      categories: ["dividas"],
-    },
-    {
-      areaKey: "reserva",
-      label: "Reserva de emergência",
-      percentage: 10,
-      categories: ["reserva"],
-    },
-    {
-      areaKey: "compras_lazer",
-      label: "Lazer básico / flexível",
-      percentage: 10,
-      categories: ["compras", "lazer", "beleza_cuidados", "esportes", "outros"],
-    },
-  ],
+const DEFAULT_BUDGET_AREA_SETTINGS: BudgetAreaSettingsInput = {
+  baseIncomeCents: 980_000,
+  needsPercent: 60,
+  debtPaymentPercent: 20,
+  emergencyReservePercent: 10,
+  flexiblePercent: 10,
 };
+
+type BudgetAreaAllocationTemplate = Omit<BudgetAreaAllocation, "percentage">;
+
+const BUDGET_AREA_ALLOCATION_TEMPLATES: BudgetAreaAllocationTemplate[] = [
+  {
+    areaKey: "necessidades_basicas",
+    label: "Necessidades essenciais",
+    categories: [
+      "moradia",
+      "alimentacao",
+      "transporte",
+      "saude",
+      "educacao",
+      "familia",
+      "servicos",
+      "assinaturas",
+      "impostos",
+      "doacoes",
+    ],
+  },
+  {
+    areaKey: "dividas",
+    label: "Pagamento agressivo das dívidas",
+    categories: ["dividas"],
+  },
+  {
+    areaKey: "reserva",
+    label: "Reserva de emergência",
+    categories: ["reserva"],
+  },
+  {
+    areaKey: "compras_lazer",
+    label: "Lazer básico / flexível",
+    categories: ["compras", "lazer", "beleza_cuidados", "esportes", "outros"],
+  },
+];
+
+export function getDefaultBudgetAreaSettings(): BudgetAreaSettingsInput {
+  return { ...DEFAULT_BUDGET_AREA_SETTINGS };
+}
+
+export function buildBudgetAreaModelFromSettings(
+  settings: BudgetAreaSettingsInput,
+  name = "Reorganização atual"
+): BudgetAreaModel {
+  return {
+    id: "reorganizacao",
+    name,
+    allocations: BUDGET_AREA_ALLOCATION_TEMPLATES.map((allocation) => ({
+      ...allocation,
+      percentage:
+        allocation.areaKey === "necessidades_basicas"
+          ? settings.needsPercent
+          : allocation.areaKey === "dividas"
+            ? settings.debtPaymentPercent
+            : allocation.areaKey === "reserva"
+              ? settings.emergencyReservePercent
+              : settings.flexiblePercent,
+    })),
+  };
+}
+
+const DEFAULT_MODEL: BudgetAreaModel = buildBudgetAreaModelFromSettings(DEFAULT_BUDGET_AREA_SETTINGS);
 
 const AREA_LABELS: Record<BudgetAreaKey, string> = {
   necessidades_basicas: "Necessidades essenciais",

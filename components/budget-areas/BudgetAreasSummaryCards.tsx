@@ -15,10 +15,14 @@ function formatPct(value: number) {
 
 export function BudgetAreasSummaryCards({
   analysis,
-  defaultBaseIncomeCents,
+  savedBaseIncomeCents,
+  calculatedBaseIncomeCents,
+  isDirty,
 }: {
   analysis: BudgetAreasAnalysis;
-  defaultBaseIncomeCents: number;
+  savedBaseIncomeCents: number;
+  calculatedBaseIncomeCents: number;
+  isDirty: boolean;
 }) {
   const totalPlannedSentence =
     analysis.baseIncomeCents > 0
@@ -32,14 +36,23 @@ export function BudgetAreasSummaryCards({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <MetricCard
           title="Renda base"
           value={formatBRL(analysis.baseIncomeCents)}
           description={
-            analysis.baseIncomeCents === defaultBaseIncomeCents
-              ? "Calculada a partir das entradas vigentes."
-              : `Base calculada: ${formatBRL(defaultBaseIncomeCents)} • simulação local`
+            isDirty
+              ? `Salva: ${formatBRL(savedBaseIncomeCents)} • simulação local`
+              : "Igual à configuração salva."
+          }
+        />
+        <MetricCard
+          title="Renda calculada no mês"
+          value={formatBRL(calculatedBaseIncomeCents)}
+          description={
+            calculatedBaseIncomeCents > 0
+              ? "Soma das receitas mensais ativas na referência."
+              : "Nenhuma receita mensal ativa encontrada."
           }
         />
         <MetricCard

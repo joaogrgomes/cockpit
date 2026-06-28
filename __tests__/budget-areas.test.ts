@@ -1,12 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateBudgetAreasAnalysis,
+  buildBudgetAreaModelFromSettings,
   getDefaultBudgetAreaModel,
+  getDefaultBudgetAreaSettings,
   mapExpenseCategoryToBudgetArea,
   sumBudgetAreaBaseIncome,
 } from "@/lib/budget-areas";
+import { BudgetAreaSettingsSchema } from "@/lib/validations";
 
 describe("budget areas helpers", () => {
+  it("usa a configuração padrão com renda base salva de R$ 9.800,00", () => {
+    const settings = getDefaultBudgetAreaSettings();
+
+    expect(settings.baseIncomeCents).toBe(980_000);
+    expect(settings.needsPercent).toBe(60);
+    expect(settings.debtPaymentPercent).toBe(20);
+    expect(settings.emergencyReservePercent).toBe(10);
+    expect(settings.flexiblePercent).toBe(10);
+  });
+
   it("usa o modelo padrão com 60/20/10/10", () => {
     const model = getDefaultBudgetAreaModel();
 
@@ -16,6 +29,21 @@ describe("budget areas helpers", () => {
     expect(model.allocations.find((allocation) => allocation.areaKey === "necessidades_basicas")?.percentage).toBe(60);
     expect(model.allocations.find((allocation) => allocation.areaKey === "dividas")?.percentage).toBe(20);
     expect(model.allocations.find((allocation) => allocation.areaKey === "reserva")?.percentage).toBe(10);
+    expect(model.allocations.find((allocation) => allocation.areaKey === "compras_lazer")?.percentage).toBe(10);
+  });
+
+  it("monta o modelo a partir de porcentagens personalizadas", () => {
+    const model = buildBudgetAreaModelFromSettings({
+      baseIncomeCents: 1_250_000,
+      needsPercent: 50,
+      debtPaymentPercent: 25,
+      emergencyReservePercent: 15,
+      flexiblePercent: 10,
+    });
+
+    expect(model.allocations.find((allocation) => allocation.areaKey === "necessidades_basicas")?.percentage).toBe(50);
+    expect(model.allocations.find((allocation) => allocation.areaKey === "dividas")?.percentage).toBe(25);
+    expect(model.allocations.find((allocation) => allocation.areaKey === "reserva")?.percentage).toBe(15);
     expect(model.allocations.find((allocation) => allocation.areaKey === "compras_lazer")?.percentage).toBe(10);
   });
 
@@ -243,5 +271,37 @@ describe("budget areas helpers", () => {
     expect(mapExpenseCategoryToBudgetArea("beleza_cuidados")).toBe("compras_lazer");
     expect(mapExpenseCategoryToBudgetArea("esportes")).toBe("compras_lazer");
     expect(mapExpenseCategoryToBudgetArea("outros")).toBe("compras_lazer");
+  });
+
+  it("valida renda base positiva e soma de percentuais igual a 100", () => {
+    expect(
+      BudgetAreaSettingsSchema.safeParse({
+        baseIncomeCents: 980_000,
+        needsPercent: 60,
+        debtPaymentPercent: 20,
+        emergencyReservePercent: 10,
+        flexiblePercent: 10,
+      }).success
+    ).toBe(true);
+
+    expect(
+      BudgetAreaSettingsSchema.safeParse({
+        baseIncomeCents: 0,
+        needsPercent: 50,
+        debtPaymentPercent: 25,
+        emergencyReservePercent: 15,
+        flexiblePercent: 10,
+      }).success
+    ).toBe(false);
+
+    expect(
+      BudgetAreaSettingsSchema.safeParse({
+        baseIncomeCents: 980_000,
+        needsPercent: 50,
+        debtPaymentPercent: 25,
+        emergencyReservePercent: 15,
+        flexiblePercent: 5,
+      }).success
+    ).toBe(false);
   });
 });
