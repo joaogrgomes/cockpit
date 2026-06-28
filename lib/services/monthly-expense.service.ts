@@ -3,6 +3,8 @@ import "server-only";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { monthlyExpenses } from "@/lib/db/schema";
+import { groupMonthlyExpensePausesByExpenseId, isMonthlyExpensePausedInMonth } from "@/lib/monthly-expense-pauses";
+import { listMonthlyExpensePausesByExpenseIds } from "@/lib/services/monthly-expense-pause.service";
 import type { MonthlyExpense, NewMonthlyExpense } from "@/types";
 
 export type MonthlyExpenseFilters = {
@@ -86,47 +88,30 @@ export async function listMonthlyExpenses(
 
   const baseQuery = db.select().from(monthlyExpenses);
 
-  if (filters.sort === "amount_desc") {
-    if (!whereClause) {
-      return baseQuery.orderBy(desc(monthlyExpenses.amount), asc(monthlyExpenses.name));
-    }
+  const query = !whereClause ? baseQuery : db.select().from(monthlyExpenses).where(whereClause);
 
-    return db
-      .select()
-      .from(monthlyExpenses)
-      .where(whereClause)
-      .orderBy(desc(monthlyExpenses.amount), asc(monthlyExpenses.name));
+  const rows =
+    filters.sort === "amount_desc"
+      ? await query.orderBy(desc(monthlyExpenses.amount), asc(monthlyExpenses.name))
+      : filters.sort === "category"
+        ? await query.orderBy(asc(monthlyExpenses.category), desc(monthlyExpenses.amount))
+        : await query.orderBy(
+            sql`case when ${monthlyExpenses.dueDay} is null then 1 else 0 end`,
+            asc(monthlyExpenses.dueDay),
+            desc(monthlyExpenses.amount)
+          );
+
+  const periodMonth = filters.periodMonth;
+  if (!periodMonth || rows.length === 0) {
+    return rows;
   }
 
-  if (filters.sort === "category") {
-    if (!whereClause) {
-      return baseQuery.orderBy(asc(monthlyExpenses.category), desc(monthlyExpenses.amount));
-    }
+  const pauses = await listMonthlyExpensePausesByExpenseIds(rows.map((row) => row.id));
+  const pausesByExpenseId = groupMonthlyExpensePausesByExpenseId(pauses);
 
-    return db
-      .select()
-      .from(monthlyExpenses)
-      .where(whereClause)
-      .orderBy(asc(monthlyExpenses.category), desc(monthlyExpenses.amount));
-  }
-
-  if (!whereClause) {
-    return baseQuery.orderBy(
-      sql`case when ${monthlyExpenses.dueDay} is null then 1 else 0 end`,
-      asc(monthlyExpenses.dueDay),
-      desc(monthlyExpenses.amount)
-    );
-  }
-
-  return db
-    .select()
-    .from(monthlyExpenses)
-    .where(whereClause)
-    .orderBy(
-      sql`case when ${monthlyExpenses.dueDay} is null then 1 else 0 end`,
-      asc(monthlyExpenses.dueDay),
-      desc(monthlyExpenses.amount)
-    );
+  return rows.filter(
+    (expense) => !isMonthlyExpensePausedInMonth(pausesByExpenseId[expense.id], periodMonth)
+  );
 }
 
 export async function getMonthlyExpenseById(id: string): Promise<MonthlyExpense | null> {

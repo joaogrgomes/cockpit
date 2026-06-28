@@ -22,15 +22,20 @@ import {
   getExpenseTypeLabel,
   getPaymentMethodLabel,
 } from "@/lib/expenses";
+import { groupMonthlyExpensePausesByExpenseId } from "@/lib/monthly-expense-pauses";
 import {
   getMonthlyExpenseSummary,
   listMonthlyExpenses,
 } from "@/lib/services/monthly-expense.service";
+import { listMonthlyExpensePausesByExpenseIds } from "@/lib/services/monthly-expense-pause.service";
 import {
   createMonthlyExpenseAction,
+  createMonthlyExpensePauseAction,
   deleteMonthlyExpenseAction,
+  deleteMonthlyExpensePauseAction,
   toggleMonthlyExpenseActiveAction,
   updateMonthlyExpenseAction,
+  updateMonthlyExpensePauseAction,
 } from "./actions";
 
 export const dynamic = "force-dynamic";
@@ -68,6 +73,10 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
     }),
     getMonthlyExpenseSummary(),
   ]);
+  const expensePauses = expenses.length
+    ? await listMonthlyExpensePausesByExpenseIds(expenses.map((expense) => expense.id))
+    : [];
+  const pausesByExpenseId = groupMonthlyExpensePausesByExpenseId(expensePauses);
 
   const nextDueLabel = summary.nextDue
     ? `Dia ${summary.nextDue.dueDay} • ${summary.nextDue.name}`
@@ -227,12 +236,16 @@ export default async function ExpensesPage({ searchParams }: ExpensesPageProps) 
                   </TableRow>
                 ) : (
                   expenses.map((expense) => (
-                    <MonthlyExpenseRow
+                  <MonthlyExpenseRow
                       key={expense.id}
                       expense={expense}
+                      pauses={pausesByExpenseId[expense.id] ?? []}
                       updateAction={updateMonthlyExpenseAction}
                       deleteAction={deleteMonthlyExpenseAction}
                       toggleActiveAction={toggleMonthlyExpenseActiveAction}
+                      createPauseAction={createMonthlyExpensePauseAction}
+                      updatePauseAction={updateMonthlyExpensePauseAction}
+                      deletePauseAction={deleteMonthlyExpensePauseAction}
                     />
                   ))
                 )}

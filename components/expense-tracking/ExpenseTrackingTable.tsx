@@ -6,7 +6,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { ExpenseTrackingItemView } from "@/lib/services/monthly-expense-entry.service";
+import type { ExpenseTrackingItemView } from "@/lib/expense-tracking";
 import { ExpenseTrackingRow } from "./ExpenseTrackingRow";
 
 type ExpenseEntryActionResult = {

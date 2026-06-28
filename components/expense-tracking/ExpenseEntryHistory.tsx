@@ -18,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/calculations";
 import { formatDateOnlyBR } from "@/lib/date-utils";
 import { getPaymentMethodLabel } from "@/lib/expenses";
-import type { ExpenseTrackingEntryView } from "@/lib/services/monthly-expense-entry.service";
+import type { ExpenseTrackingEntryView } from "@/lib/expense-tracking";
 
 type ExpenseEntryActionResult = {
   ok: boolean;

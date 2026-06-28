@@ -218,6 +218,24 @@ export const MonthlyExpenseSchema = z.object({
   }
 });
 
+export const MonthlyExpensePauseSchema = z
+  .object({
+    pauseId: z.string().uuid().nullish(),
+    monthlyExpenseId: z.string().uuid(),
+    startMonth: z.string().regex(periodMonthRegex),
+    endMonth: z.string().regex(periodMonthRegex).nullish(),
+    reason: z.string().trim().min(1).nullish(),
+  })
+  .superRefine((data, ctx) => {
+    if (!validatePeriod(data.startMonth, data.endMonth)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "endMonth não pode ser menor que startMonth",
+        path: ["endMonth"],
+      });
+    }
+  });
+
 export const MonthlyExpenseEntrySchema = z
   .object({
     monthlyExpenseId: z.string().uuid().nullish(),

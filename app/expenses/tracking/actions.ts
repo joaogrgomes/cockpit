@@ -7,6 +7,7 @@ import {
   createMonthlyExpenseEntry,
   deleteMonthlyExpenseEntry,
 } from "@/lib/services/monthly-expense-entry.service";
+import { isMonthlyExpensePausedInMonth } from "@/lib/services/monthly-expense-pause.service";
 import { isMonthWithinPeriod } from "@/lib/recurrence-period";
 import { MonthlyExpenseEntrySchema } from "@/lib/validations";
 
@@ -71,34 +72,51 @@ async function validateLinkedMonthlyExpense(
   category: string | null,
   expenseType: string | null
 ): Promise<{ ok: true } | { ok: false; error: string }> {
-  const monthlyExpense = await getMonthlyExpenseById(monthlyExpenseId);
+  try {
+    const monthlyExpense = await getMonthlyExpenseById(monthlyExpenseId);
 
-  if (!monthlyExpense || !monthlyExpense.isActive) {
-    return { ok: false, error: "Planejamento não encontrado ou inativo" };
-  }
+    if (!monthlyExpense || !monthlyExpense.isActive) {
+      return { ok: false, error: "Planejamento não encontrado ou inativo" };
+    }
 
-  if (category && category !== monthlyExpense.category) {
+    if (category && category !== monthlyExpense.category) {
+      return {
+        ok: false,
+        error: "O planejamento selecionado não corresponde à categoria informada",
+      };
+    }
+
+    if (expenseType && expenseType !== monthlyExpense.expenseType) {
+      return {
+        ok: false,
+        error: "O planejamento selecionado não corresponde ao tipo informado",
+      };
+    }
+
+    if (!isMonthWithinPeriod(periodMonth, monthlyExpense.startMonth, monthlyExpense.endMonth)) {
+      return {
+        ok: false,
+        error: "O planejamento selecionado não está vigente no mês informado",
+      };
+    }
+
+    if (await isMonthlyExpensePausedInMonth(monthlyExpenseId, periodMonth)) {
+      return {
+        ok: false,
+        error: "O planejamento selecionado está pausado no mês informado",
+      };
+    }
+
+    return { ok: true };
+  } catch (error) {
     return {
       ok: false,
-      error: "O planejamento selecionado não corresponde à categoria informada",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Não foi possível verificar pausas do planejamento.",
     };
   }
-
-  if (expenseType && expenseType !== monthlyExpense.expenseType) {
-    return {
-      ok: false,
-      error: "O planejamento selecionado não corresponde ao tipo informado",
-    };
-  }
-
-  if (!isMonthWithinPeriod(periodMonth, monthlyExpense.startMonth, monthlyExpense.endMonth)) {
-    return {
-      ok: false,
-      error: "O planejamento selecionado não está vigente no mês informado",
-    };
-  }
-
-  return { ok: true };
 }
 
 export async function createMonthlyExpenseEntryAction(

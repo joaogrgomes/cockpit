@@ -55,6 +55,55 @@ export type ExpenseTrackingCategorySummaryItem = {
   remainingAmount: number;
 };
 
+export type ExpenseTrackingEntryView = {
+  id: string;
+  name: string | null;
+  amount: number;
+  paidAt: string;
+  paymentMethod: string | null;
+  notes: string | null;
+};
+
+export type ExpenseTrackingItemView = {
+  monthlyExpenseId: string;
+  name: string;
+  category: string;
+  expenseType: string;
+  dueDay: number | null;
+  plannedAmount: number;
+  actualAmount: number;
+  remainingAmount: number;
+  status: ExpenseTrackingStatus;
+  displayStatus: ExpenseTrackingDisplayStatus;
+  isOverdue: boolean;
+  overdueReason: string | null;
+  entries: ExpenseTrackingEntryView[];
+};
+
+export type ExpenseTrackingOneTimeEntryView = {
+  id: string;
+  name: string;
+  category: string;
+  expenseType: string;
+  occurrenceType: string;
+  amount: number;
+  paidAt: string;
+  paymentMethod: string | null;
+  notes: string | null;
+};
+
+export type ExpenseTrackingByPeriod = {
+  periodMonth: string;
+  summary: ExpenseTrackingSummary;
+  fixedSummary: ExpenseTrackingSummary;
+  variableSummary: ExpenseTrackingSummary;
+  items: ExpenseTrackingItemView[];
+  fixedItems: ExpenseTrackingItemView[];
+  variableItems: ExpenseTrackingItemView[];
+  oneTimeEntries: ExpenseTrackingOneTimeEntryView[];
+  summaryByCategory: ExpenseTrackingCategorySummaryItem[];
+};
+
 export type ExpenseTrackingOneTimeCategorySummaryItem = {
   category: string;
   totalAmount: number;

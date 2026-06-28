@@ -8,7 +8,12 @@ import {
   toggleMonthlyExpenseActive,
   updateMonthlyExpense,
 } from "@/lib/services/monthly-expense.service";
-import { MonthlyExpenseSchema } from "@/lib/validations";
+import {
+  createMonthlyExpensePause,
+  deleteMonthlyExpensePause,
+  updateMonthlyExpensePause,
+} from "@/lib/services/monthly-expense-pause.service";
+import { MonthlyExpensePauseSchema, MonthlyExpenseSchema } from "@/lib/validations";
 
 type ExpenseActionResult = {
   ok: boolean;
@@ -18,6 +23,11 @@ type ExpenseActionResult = {
 function revalidateExpensePages() {
   revalidatePath("/expenses");
   revalidatePath("/expenses/tracking");
+  revalidatePath("/budget-areas");
+  revalidatePath("/statement");
+  revalidatePath("/cash-flow");
+  revalidatePath("/payment-agenda");
+  revalidatePath("/statement/import");
 }
 
 function parseOptionalText(value: FormDataEntryValue | null): string | undefined {
@@ -75,6 +85,18 @@ function parseExpenseFormData(formData: FormData) {
   };
 
   return MonthlyExpenseSchema.safeParse(payload);
+}
+
+function parseMonthlyExpensePauseFormData(formData: FormData) {
+  const payload = {
+    pauseId: parseOptionalTextOrNull(formData.get("pauseId")),
+    monthlyExpenseId: parseOptionalText(formData.get("monthlyExpenseId")) ?? "",
+    startMonth: parseOptionalText(formData.get("startMonth")) ?? "",
+    endMonth: parseOptionalTextOrNull(formData.get("endMonth")),
+    reason: parseOptionalTextOrNull(formData.get("reason")),
+  };
+
+  return MonthlyExpensePauseSchema.safeParse(payload);
 }
 
 export async function createMonthlyExpenseAction(
@@ -141,6 +163,67 @@ export async function toggleMonthlyExpenseActiveAction(
   const updated = await toggleMonthlyExpenseActive(idValue);
   if (!updated) {
     return { ok: false, error: "Gasto não encontrado" };
+  }
+
+  revalidateExpensePages();
+  return { ok: true };
+}
+
+export async function createMonthlyExpensePauseAction(
+  formData: FormData
+): Promise<ExpenseActionResult> {
+  const parsed = parseMonthlyExpensePauseFormData(formData);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  const result = await createMonthlyExpensePause(parsed.data);
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  revalidateExpensePages();
+  return { ok: true };
+}
+
+export async function updateMonthlyExpensePauseAction(
+  formData: FormData
+): Promise<ExpenseActionResult> {
+  const pauseIdValue = formData.get("pauseId");
+  if (typeof pauseIdValue !== "string" || !pauseIdValue) {
+    return { ok: false, error: "ID da pausa é obrigatório" };
+  }
+
+  const parsed = parseMonthlyExpensePauseFormData(formData);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos" };
+  }
+
+  const result = await updateMonthlyExpensePause(pauseIdValue, {
+    startMonth: parsed.data.startMonth,
+    endMonth: parsed.data.endMonth,
+    reason: parsed.data.reason,
+  });
+
+  if (!result.ok) {
+    return { ok: false, error: result.error };
+  }
+
+  revalidateExpensePages();
+  return { ok: true };
+}
+
+export async function deleteMonthlyExpensePauseAction(
+  formData: FormData
+): Promise<ExpenseActionResult> {
+  const pauseIdValue = formData.get("pauseId");
+  if (typeof pauseIdValue !== "string" || !pauseIdValue) {
+    return { ok: false, error: "ID da pausa é obrigatório" };
+  }
+
+  const result = await deleteMonthlyExpensePause(pauseIdValue);
+  if (!result.ok) {
+    return { ok: false, error: result.error };
   }
 
   revalidateExpensePages();

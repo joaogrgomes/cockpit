@@ -31,7 +31,7 @@ import {
   getExpenseTypeLabel,
   getPaymentMethodLabel,
 } from "@/lib/expenses";
-import type { ExpenseTrackingOneTimeEntryView } from "@/lib/services/monthly-expense-entry.service";
+import type { ExpenseTrackingOneTimeEntryView } from "@/lib/expense-tracking";
 
 type ExpenseEntryActionResult = {
   ok: boolean;

@@ -16,7 +16,9 @@ import {
 } from "@/lib/payment-agenda";
 import { getDb } from "@/lib/db";
 import { debtProposals, debts, futureExpensePayables } from "@/lib/db/schema";
+import { groupMonthlyExpensePausesByExpenseId, isMonthlyExpensePausedInMonth } from "@/lib/monthly-expense-pauses";
 import { listMonthlyExpenses } from "@/lib/services/monthly-expense.service";
+import { listMonthlyExpensePausesByExpenseIds } from "@/lib/services/monthly-expense-pause.service";
 import { listEntriesByPeriod } from "@/lib/services/monthly-expense-entry.service";
 
 type FutureExpenseAgendaRow = {
@@ -274,6 +276,11 @@ export async function getPaymentAgenda(): Promise<PaymentAgendaViewModel> {
     realizedMonthlyExpensePeriods.set(entry.monthlyExpenseId, periodSet);
   }
 
+  const monthlyExpensePauses = await listMonthlyExpensePausesByExpenseIds(
+    monthlyExpenseRows.map((expense) => expense.id)
+  );
+  const monthlyExpensePausesByExpenseId = groupMonthlyExpensePausesByExpenseId(monthlyExpensePauses);
+
   const items = [
     ...futureExpenseRows.map(mapFutureExpenseRowToItem),
     ...monthlyExpenseRows.map((expense) => {
@@ -312,6 +319,10 @@ export async function getPaymentAgenda(): Promise<PaymentAgendaViewModel> {
       }
 
       const duePeriodMonth = item.dueDate.slice(0, 7);
+      if (isMonthlyExpensePausedInMonth(monthlyExpensePausesByExpenseId[expense.id], duePeriodMonth)) {
+        return null;
+      }
+
       if (realizedMonths?.has(duePeriodMonth)) {
         return null;
       }

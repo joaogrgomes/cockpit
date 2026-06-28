@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("server-only", () => ({}));
+
 const mocks = vi.hoisted(() => ({
   createMonthlyExpenseEntry: vi.fn(),
   deleteMonthlyExpenseEntry: vi.fn(),
   getMonthlyExpenseById: vi.fn(),
+  isMonthlyExpensePausedInMonth: vi.fn(),
   createFutureExpensePayable: vi.fn(),
   updateFutureExpensePayable: vi.fn(),
   cancelFutureExpensePayable: vi.fn(),
@@ -23,6 +26,10 @@ vi.mock("@/lib/services/monthly-expense-entry.service", () => ({
 
 vi.mock("@/lib/services/monthly-expense.service", () => ({
   getMonthlyExpenseById: mocks.getMonthlyExpenseById,
+}));
+
+vi.mock("@/lib/services/monthly-expense-pause.service", () => ({
+  isMonthlyExpensePausedInMonth: mocks.isMonthlyExpensePausedInMonth,
 }));
 
 vi.mock("@/lib/services/future-expense.service", () => ({
@@ -72,6 +79,7 @@ function buildBaseFutureFormData(occurrenceType: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.isMonthlyExpensePausedInMonth.mockResolvedValue(false);
 });
 
 describe("expense occurrence actions", () => {

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { buttonVariants } from "@/components/ui/button";
 import { StatementImportUploader } from "@/components/statement-import/StatementImportUploader";
 import { StatementImportReviewTable } from "@/components/statement-import/StatementImportReviewTable";
-import { formatDateOnlyBR } from "@/lib/date-utils";
+import { formatDateOnlyBR, normalizeDateOnly } from "@/lib/date-utils";
 import { listMonthlyExpenses } from "@/lib/services/monthly-expense.service";
 import { listMonthlyIncomes } from "@/lib/services/monthly-income.service";
 import { listFutureExpensePayables } from "@/lib/services/future-expense.service";
@@ -51,6 +51,7 @@ export default async function StatementImportPage({ searchParams }: StatementImp
   const batchData = batchId ? await getStatementImportBatchWithRows(batchId) : null;
   const duplicateBatch =
     duplicateUpload && existingBatchId ? await getStatementImportBatchById(existingBatchId) : null;
+  const batchPeriodMonth = normalizeDateOnly(batchData?.batch.periodStart ?? null)?.slice(0, 7) ?? null;
   const [monthlyExpenses, monthlyIncomes, futureExpenses, futureIncomes]: [
     Awaited<ReturnType<typeof listMonthlyExpenses>>,
     Awaited<ReturnType<typeof listMonthlyIncomes>>,
@@ -58,7 +59,10 @@ export default async function StatementImportPage({ searchParams }: StatementImp
     Awaited<ReturnType<typeof listFutureIncomeReceivables>>,
   ] = batchData
     ? await Promise.all([
-        listMonthlyExpenses({ isActive: "true" }),
+        listMonthlyExpenses({
+          isActive: "true",
+          periodMonth: batchPeriodMonth ?? undefined,
+        }),
         listMonthlyIncomes({ isActive: "true" }),
         listFutureExpensePayables({ status: "previsto", sort: "expected_date_asc" }),
         listFutureIncomeReceivables({ status: "prevista", sort: "expected_date_asc" }),

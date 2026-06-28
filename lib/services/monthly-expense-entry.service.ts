@@ -4,7 +4,12 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
 import { normalizeDateOnly } from "@/lib/date-utils";
 import { monthlyExpenseEntries, monthlyExpenses } from "@/lib/db/schema";
+import {
+  groupMonthlyExpensePausesByExpenseId,
+  isMonthlyExpensePausedInMonth,
+} from "@/lib/monthly-expense-pauses";
 import { isMonthWithinPeriod } from "@/lib/recurrence-period";
+import { listMonthlyExpensePausesByExpenseIds } from "@/lib/services/monthly-expense-pause.service";
 import {
   buildTrackingSummary,
   buildTrackingSummaryByCategory,
@@ -15,8 +20,12 @@ import {
   isFixedExpenseOverdue,
   splitItemsByExpenseType,
   sumEntryAmounts,
+  type ExpenseTrackingByPeriod,
   type ExpenseTrackingCategorySummaryItem,
   type ExpenseTrackingDisplayStatus,
+  type ExpenseTrackingEntryView,
+  type ExpenseTrackingItemView,
+  type ExpenseTrackingOneTimeEntryView,
   type ExpenseTrackingStatus,
   type ExpenseTrackingSummary,
 } from "@/lib/expense-tracking";
@@ -35,55 +44,6 @@ export type MonthlyExpenseEntryCreateInput = Pick<
   | "paymentMethod"
   | "notes"
 >;
-
-export type ExpenseTrackingEntryView = {
-  id: string;
-  name: string | null;
-  amount: number;
-  paidAt: string;
-  paymentMethod: string | null;
-  notes: string | null;
-};
-
-export type ExpenseTrackingItemView = {
-  monthlyExpenseId: string;
-  name: string;
-  category: string;
-  expenseType: string;
-  dueDay: number | null;
-  plannedAmount: number;
-  actualAmount: number;
-  remainingAmount: number;
-  status: ExpenseTrackingStatus;
-  displayStatus: ExpenseTrackingDisplayStatus;
-  isOverdue: boolean;
-  overdueReason: string | null;
-  entries: ExpenseTrackingEntryView[];
-};
-
-export type ExpenseTrackingOneTimeEntryView = {
-  id: string;
-  name: string;
-  category: string;
-  expenseType: string;
-  occurrenceType: string;
-  amount: number;
-  paidAt: string;
-  paymentMethod: string | null;
-  notes: string | null;
-};
-
-export type ExpenseTrackingByPeriod = {
-  periodMonth: string;
-  summary: ExpenseTrackingSummary;
-  fixedSummary: ExpenseTrackingSummary;
-  variableSummary: ExpenseTrackingSummary;
-  items: ExpenseTrackingItemView[];
-  fixedItems: ExpenseTrackingItemView[];
-  variableItems: ExpenseTrackingItemView[];
-  oneTimeEntries: ExpenseTrackingOneTimeEntryView[];
-  summaryByCategory: ExpenseTrackingCategorySummaryItem[];
-};
 
 export type SmartExpenseEntrySource = "linked" | "one_time";
 
@@ -174,7 +134,16 @@ export async function createSmartMonthlyExpenseEntry(
     .where(eq(monthlyExpenses.isActive, true))
     .orderBy(asc(monthlyExpenses.dueDay), asc(monthlyExpenses.name));
 
-  const compatibleExpense = findCompatibleMonthlyExpense(compatibleExpenses, {
+  const pauses = await listMonthlyExpensePausesByExpenseIds(
+    compatibleExpenses.map((expense) => expense.id)
+  );
+  const pausesByExpenseId = groupMonthlyExpensePausesByExpenseId(pauses);
+  const eligibleExpenses = compatibleExpenses.filter(
+    (expense) =>
+      !isMonthlyExpensePausedInMonth(pausesByExpenseId[expense.id], input.periodMonth)
+  );
+
+  const compatibleExpense = findCompatibleMonthlyExpense(eligibleExpenses, {
     periodMonth: input.periodMonth,
     category: input.category,
     expenseType: input.expenseType,
@@ -227,8 +196,14 @@ export async function getExpenseTrackingByPeriod(
     listEntriesByPeriod(periodMonth),
   ]);
 
-  const activeExpensesInPeriod = activeExpenses.filter((expense) =>
-    isMonthWithinPeriod(periodMonth, expense.startMonth, expense.endMonth)
+  const pauses = await listMonthlyExpensePausesByExpenseIds(
+    activeExpenses.map((expense) => expense.id)
+  );
+  const pausesByExpenseId = groupMonthlyExpensePausesByExpenseId(pauses);
+  const activeExpensesInPeriod = activeExpenses.filter(
+    (expense) =>
+      isMonthWithinPeriod(periodMonth, expense.startMonth, expense.endMonth) &&
+      !isMonthlyExpensePausedInMonth(pausesByExpenseId[expense.id], periodMonth)
   );
 
   const entriesByExpenseId = new Map<string, ExpenseTrackingEntryView[]>();

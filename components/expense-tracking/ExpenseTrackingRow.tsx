@@ -11,7 +11,7 @@ import {
   getExpenseCategoryLabel,
   getExpenseTypeLabel,
 } from "@/lib/expenses";
-import type { ExpenseTrackingItemView } from "@/lib/services/monthly-expense-entry.service";
+import type { ExpenseTrackingItemView } from "@/lib/expense-tracking";
 import { ExpenseEntryForm } from "./ExpenseEntryForm";
 import { ExpenseEntryHistory } from "./ExpenseEntryHistory";
 import { ExpenseTrackingStatusBadge } from "./ExpenseTrackingStatusBadge";

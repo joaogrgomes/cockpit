@@ -17,12 +17,18 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TableCell, TableRow } from "@/components/ui/table";
 import { formatBRL } from "@/lib/calculations";
+import { getCurrentPeriodMonth, formatRecurrencePeriodLabel } from "@/lib/recurrence-period";
 import { getPaymentMethodLabel } from "@/lib/expenses";
-import { formatRecurrencePeriodLabel } from "@/lib/recurrence-period";
+import {
+  getMonthlyExpenseActivePause,
+  getMonthlyExpensePausePeriodLabel,
+  type MonthlyExpensePauseLike,
+} from "@/lib/monthly-expense-pauses";
 import type { MonthlyExpense } from "@/types";
 import { ExpenseCategoryBadge } from "./ExpenseCategoryBadge";
 import { ExpenseTypeBadge } from "./ExpenseTypeBadge";
 import { MonthlyExpenseForm } from "./MonthlyExpenseForm";
+import { MonthlyExpensePauseSection } from "./MonthlyExpensePauseSection";
 
 type ExpenseActionResult = {
   ok: boolean;
@@ -31,9 +37,13 @@ type ExpenseActionResult = {
 
 type MonthlyExpenseRowProps = {
   expense: MonthlyExpense;
+  pauses: MonthlyExpensePauseLike[];
   updateAction: (formData: FormData) => Promise<ExpenseActionResult>;
   deleteAction: (formData: FormData) => Promise<ExpenseActionResult>;
   toggleActiveAction: (formData: FormData) => Promise<ExpenseActionResult>;
+  createPauseAction: (formData: FormData) => Promise<ExpenseActionResult>;
+  updatePauseAction: (formData: FormData) => Promise<ExpenseActionResult>;
+  deletePauseAction: (formData: FormData) => Promise<ExpenseActionResult>;
 };
 
 function dueLabel(expense: MonthlyExpense): string {
@@ -50,14 +60,19 @@ function dueLabel(expense: MonthlyExpense): string {
 
 export function MonthlyExpenseRow({
   expense,
+  pauses,
   updateAction,
   deleteAction,
   toggleActiveAction,
+  createPauseAction,
+  updatePauseAction,
+  deletePauseAction,
 }: MonthlyExpenseRowProps) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [isPendingDelete, startDelete] = useTransition();
   const [isPendingToggle, startToggle] = useTransition();
+  const currentPause = getMonthlyExpenseActivePause(pauses, getCurrentPeriodMonth());
 
   return (
     <TableRow className="border-border/70 hover:bg-muted/35">
@@ -65,6 +80,11 @@ export function MonthlyExpenseRow({
       <TableCell className="py-3">
         <div className="flex items-center gap-2">
           <span className="font-medium text-foreground">{expense.name}</span>
+          {currentPause ? (
+            <Badge variant="secondary" className="whitespace-nowrap">
+              Pausado {getMonthlyExpensePausePeriodLabel(currentPause)}
+            </Badge>
+          ) : null}
           {expense.isActive ? null : <Badge variant="outline">Inativo</Badge>}
         </div>
       </TableCell>
@@ -84,6 +104,13 @@ export function MonthlyExpenseRow({
       <TableCell className="py-3">
         <div className="flex flex-wrap items-center gap-2">
           <MonthlyExpenseForm mode="edit" expense={expense} action={updateAction} />
+          <MonthlyExpensePauseSection
+            expense={expense}
+            pauses={pauses}
+            createAction={createPauseAction}
+            updateAction={updatePauseAction}
+            deleteAction={deletePauseAction}
+          />
 
           <Button
             type="button"

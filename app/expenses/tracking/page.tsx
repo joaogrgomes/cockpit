@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { formatBRL } from "@/lib/calculations";
 import {
   buildExpenseTrackingVariableBreakdown,
+  type ExpenseTrackingByPeriod,
   normalizePeriodMonth,
   type ExpenseTrackingSummary,
 } from "@/lib/expense-tracking";
@@ -86,12 +87,64 @@ function SummaryGrid({
 export default async function ExpenseTrackingPage({
   searchParams,
 }: ExpenseTrackingPageProps) {
-  const params = searchParams ? await searchParams : {};
-  const selectedPeriod = normalizePeriodMonth(params.month);
-  const [tracking, monthClosed] = await Promise.all([
-    getExpenseTrackingByPeriod(selectedPeriod),
-    isMonthClosed(selectedPeriod),
-  ]);
+  let selectedPeriod = normalizePeriodMonth(undefined);
+  let tracking: ExpenseTrackingByPeriod | null = null;
+  let monthClosed = false;
+  let loadError: string | null = null;
+
+  try {
+    const params = searchParams ? await searchParams : {};
+    selectedPeriod = normalizePeriodMonth(params.month);
+    [tracking, monthClosed] = await Promise.all([
+      getExpenseTrackingByPeriod(selectedPeriod),
+      isMonthClosed(selectedPeriod),
+    ]);
+  } catch (error) {
+    loadError = error instanceof Error ? error.message : "Não foi possível carregar o mês selecionado.";
+  }
+
+  if (loadError || !tracking) {
+    return (
+      <section className="space-y-6">
+        <PageHeader
+          title="Acompanhamento"
+          description="Acompanhe o que já foi pago ou gasto no mês selecionado."
+        />
+
+        <Card className="border-border/80 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Mês de referência</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form method="get" className="flex flex-wrap items-end gap-3">
+              <div className="space-y-1">
+                <label className="text-sm font-medium" htmlFor="month">
+                  Selecione o mês
+                </label>
+                <input
+                  id="month"
+                  name="month"
+                  type="month"
+                  defaultValue={selectedPeriod}
+                  className="flex h-9 rounded-lg border border-input bg-background px-3 text-sm"
+                />
+              </div>
+              <Button type="submit" size="sm">
+                Aplicar
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card className="border-destructive/30 bg-destructive/5 shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base text-destructive">Não foi possível carregar o mês</CardTitle>
+            <CardDescription>{loadError ?? "O acompanhamento deste mês não está disponível."}</CardDescription>
+          </CardHeader>
+        </Card>
+      </section>
+    );
+  }
 
   return (
     <section className="space-y-6">

@@ -7,7 +7,7 @@ import {
   buildOneTimeExpenseSummaryByOccurrenceType,
   type ExpenseTrackingOneTimeCategorySummaryItem,
 } from "@/lib/expense-tracking";
-import type { ExpenseTrackingOneTimeEntryView } from "@/lib/services/monthly-expense-entry.service";
+import type { ExpenseTrackingOneTimeEntryView } from "@/lib/expense-tracking";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 
 type OneTimeExpenseEntriesSummaryProps = {

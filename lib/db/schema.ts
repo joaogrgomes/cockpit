@@ -486,6 +486,33 @@ export const monthlyExpenses = pgTable(
   ]
 );
 
+export const monthlyExpensePauses = pgTable(
+  "monthly_expense_pauses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    monthlyExpenseId: uuid("monthly_expense_id")
+      .notNull()
+      .references(() => monthlyExpenses.id, { onDelete: "cascade" }),
+    startMonth: text("start_month").notNull(),
+    endMonth: text("end_month"),
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    check(
+      "monthly_expense_pauses_start_month_valid",
+      sql`${table.startMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$'`
+    ),
+    check(
+      "monthly_expense_pauses_end_month_valid",
+      sql`${table.endMonth} IS NULL OR (${table.endMonth} ~ '^[0-9]{4}-(0[1-9]|1[0-2])$' AND ${table.endMonth} >= ${table.startMonth})`
+    ),
+    index("idx_monthly_expense_pauses_expense_month").on(table.monthlyExpenseId, table.startMonth),
+    index("idx_monthly_expense_pauses_expense").on(table.monthlyExpenseId),
+  ]
+);
+
 export const monthlyExpenseEntries = pgTable(
   "monthly_expense_entries",
   {

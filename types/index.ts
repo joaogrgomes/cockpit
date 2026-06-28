@@ -29,6 +29,7 @@ import {
   futureIncomeReceivables,
   monthlyClosings,
   monthlyIncomes,
+  monthlyExpensePauses,
   monthlyExpenseEntries,
   monthlyExpenses,
   futureExpensePayables,
@@ -73,6 +74,8 @@ export type NewPatrimonyAsset = InferInsertModel<typeof patrimonyAssets>;
 
 export type MonthlyExpense = InferSelectModel<typeof monthlyExpenses>;
 export type NewMonthlyExpense = InferInsertModel<typeof monthlyExpenses>;
+export type MonthlyExpensePause = InferSelectModel<typeof monthlyExpensePauses>;
+export type NewMonthlyExpensePause = InferInsertModel<typeof monthlyExpensePauses>;
 export type MonthlyExpenseEntry = InferSelectModel<typeof monthlyExpenseEntries>;
 export type NewMonthlyExpenseEntry = InferInsertModel<typeof monthlyExpenseEntries>;
 export type FutureExpensePayable = InferSelectModel<typeof futureExpensePayables>;

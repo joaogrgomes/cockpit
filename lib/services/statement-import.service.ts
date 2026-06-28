@@ -29,6 +29,7 @@ import {
   upsertStatementCategorizationRuleFromReview,
 } from "@/lib/services/statement-categorization-rules.service";
 import { isMonthWithinPeriod } from "@/lib/recurrence-period";
+import { isMonthlyExpensePausedInMonth } from "@/lib/services/monthly-expense-pause.service";
 import type { StatementImportBatchStatus } from "@/types";
 import type {
   FutureExpensePayable,
@@ -327,30 +328,40 @@ async function resolveLinkedMonthlyExpense(
   row: StatementImportReviewedRow,
   transactionDate: string
 ): Promise<string | null> {
-  if (!row.monthlyExpenseId) {
-    return "Selecione o planejamento desta linha.";
+  try {
+    if (!row.monthlyExpenseId) {
+      return "Selecione o planejamento desta linha.";
+    }
+
+    const [monthlyExpense] = await db
+      .select()
+      .from(monthlyExpenses)
+      .where(eq(monthlyExpenses.id, row.monthlyExpenseId))
+      .limit(1);
+
+    if (!monthlyExpense || !monthlyExpense.isActive) {
+      return "Planejamento de gasto não encontrado ou inativo.";
+    }
+
+    const periodMonth = getPeriodMonthFromDate(transactionDate);
+    if (!isMonthWithinPeriod(periodMonth, monthlyExpense.startMonth, monthlyExpense.endMonth)) {
+      return "Planejamento de gasto não está vigente na data informada.";
+    }
+
+    if (await isMonthlyExpensePausedInMonth(row.monthlyExpenseId, periodMonth)) {
+      return "Planejamento de gasto está pausado na data informada.";
+    }
+
+    if (row.category && row.category !== monthlyExpense.category) {
+      return "Categoria não corresponde ao planejamento selecionado.";
+    }
+
+    return null;
+  } catch (error) {
+    return error instanceof Error
+      ? error.message
+      : "Não foi possível verificar pausas do planejamento.";
   }
-
-  const [monthlyExpense] = await db
-    .select()
-    .from(monthlyExpenses)
-    .where(eq(monthlyExpenses.id, row.monthlyExpenseId))
-    .limit(1);
-
-  if (!monthlyExpense || !monthlyExpense.isActive) {
-    return "Planejamento de gasto não encontrado ou inativo.";
-  }
-
-  const periodMonth = getPeriodMonthFromDate(transactionDate);
-  if (!isMonthWithinPeriod(periodMonth, monthlyExpense.startMonth, monthlyExpense.endMonth)) {
-    return "Planejamento de gasto não está vigente na data informada.";
-  }
-
-  if (row.category && row.category !== monthlyExpense.category) {
-    return "Categoria não corresponde ao planejamento selecionado.";
-  }
-
-  return null;
 }
 
 async function resolveLinkedMonthlyIncome(

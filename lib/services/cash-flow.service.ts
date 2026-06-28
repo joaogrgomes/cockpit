@@ -20,6 +20,11 @@ import {
   monthlyIncomes,
 } from "@/lib/db/schema";
 import { isMonthWithinPeriod } from "@/lib/recurrence-period";
+import {
+  groupMonthlyExpensePausesByExpenseId,
+  isMonthlyExpensePausedInMonth,
+} from "@/lib/monthly-expense-pauses";
+import { listMonthlyExpensePausesByExpenseIds } from "@/lib/services/monthly-expense-pause.service";
 import type { CashFlowSettings } from "@/types";
 
 export type CashFlowSettingsInput = {
@@ -159,6 +164,7 @@ export async function getCashFlowProjection(
       .where(eq(monthlyIncomes.isActive, true)),
     db
       .select({
+        id: monthlyExpenses.id,
         amount: monthlyExpenses.amount,
         expenseType: monthlyExpenses.expenseType,
         startMonth: monthlyExpenses.startMonth,
@@ -272,6 +278,11 @@ export async function getCashFlowProjection(
       .groupBy(sql`to_char(${futureExpensePayables.expectedDate}, 'YYYY-MM')`),
     ]);
 
+  const monthlyExpensePauses = await listMonthlyExpensePausesByExpenseIds(
+    activeExpenses.map((expense) => expense.id)
+  );
+  const monthlyExpensePausesByExpenseId = groupMonthlyExpensePausesByExpenseId(monthlyExpensePauses);
+
   const plannedIncomesTotal = activeIncomes.reduce((acc, row) => acc + row.amount, 0);
 
   let plannedFixedExpensesTotal = 0;
@@ -333,8 +344,10 @@ export async function getCashFlowProjection(
     const activeIncomesInMonth = activeIncomes.filter((income) =>
       isMonthWithinPeriod(periodMonth, income.startMonth, income.endMonth)
     );
-    const activeExpensesInMonth = activeExpenses.filter((expense) =>
-      isMonthWithinPeriod(periodMonth, expense.startMonth, expense.endMonth)
+    const activeExpensesInMonth = activeExpenses.filter(
+      (expense) =>
+        isMonthWithinPeriod(periodMonth, expense.startMonth, expense.endMonth) &&
+        !isMonthlyExpensePausedInMonth(monthlyExpensePausesByExpenseId[expense.id], periodMonth)
     );
 
     plannedRecurringIncomesByMonth[periodMonth] = activeIncomesInMonth.reduce(
