@@ -1,9 +1,9 @@
 import type { PatrimonyAsset, PatrimonyAssetStatus, PatrimonyAssetType } from "@/types";
 
 export const PATRIMONY_ASSET_TYPE_LABELS: Record<PatrimonyAssetType, string> = {
-  checking_account: "Conta corrente",
+  checking_account: "Conta/Caixa",
   savings: "Poupança",
-  piggy_bank: "Porquinho",
+  piggy_bank: "Reserva",
   cdb: "CDB",
   treasury: "Tesouro",
   fund: "Fundo",
@@ -128,6 +128,18 @@ function getPatrimonySearchableText(asset: PatrimonyAsset): string {
 }
 
 export function getPatrimonyAssetClass(asset: PatrimonyAsset): PatrimonyAssetClass {
+  if (["checking_account", "savings", "piggy_bank", "cash"].includes(asset.assetType)) {
+    if (asset.isReserved) {
+      return "reserve";
+    }
+
+    return "cash_account";
+  }
+
+  if (["cdb", "treasury", "fund"].includes(asset.assetType)) {
+    return "investment";
+  }
+
   const searchableText = getPatrimonySearchableText(asset);
 
   if (includesAny(searchableText, ["previ", "previd", "aposent", "pension"])) {
@@ -154,14 +166,6 @@ export function getPatrimonyAssetClass(asset: PatrimonyAsset): PatrimonyAssetCla
 
   if (asset.isReserved) {
     return "reserve";
-  }
-
-  if (["cdb", "treasury", "fund"].includes(asset.assetType)) {
-    return "investment";
-  }
-
-  if (["checking_account", "savings", "piggy_bank", "cash"].includes(asset.assetType)) {
-    return "cash_account";
   }
 
   return "other";

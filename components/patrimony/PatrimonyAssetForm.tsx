@@ -2,12 +2,16 @@
 
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { formatBRL } from "@/lib/calculations";
+import type { PatrimonyAssetView } from "@/lib/patrimony";
 import {
-  getPatrimonyAssetTypeLabel,
-  type PatrimonyAssetView,
-} from "@/lib/patrimony";
-import { PATRIMONY_ASSET_TYPE_VALUES } from "@/lib/db/schema";
+  PATRIMONY_GUIDED_ASSET_CATEGORY_VALUES,
+  applyPatrimonyGuidedAssetCategory,
+  getPatrimonyGuidedAssetCategoryDescription,
+  getPatrimonyGuidedAssetCategoryLabel,
+  getPatrimonyGuidedAssetFormInitialValues,
+  type PatrimonyGuidedAssetCategory,
+  type PatrimonyGuidedAssetFormValues,
+} from "@/lib/patrimony-guided-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,34 +36,6 @@ type PatrimonyAssetFormProps = {
   action: (formData: FormData) => Promise<PatrimonyActionResult>;
   asset?: PatrimonyAssetView;
 };
-
-type PatrimonyAssetFormValues = {
-  name: string;
-  institution: string;
-  productName: string;
-  assetType: (typeof PATRIMONY_ASSET_TYPE_VALUES)[number];
-  objective: string;
-  balance: string;
-  liquidity: string;
-  profitabilityLabel: string;
-  isReserved: "true" | "false";
-  notes: string;
-};
-
-function getInitialValues(asset?: PatrimonyAssetView): PatrimonyAssetFormValues {
-  return {
-    name: asset?.name ?? "",
-    institution: asset?.institution ?? "",
-    productName: asset?.productName ?? "",
-    assetType: asset?.assetType ?? "checking_account",
-    objective: asset?.objective ?? "",
-    balance: typeof asset?.balanceCents === "number" ? formatBRL(asset.balanceCents) : "",
-    liquidity: asset?.liquidity ?? "",
-    profitabilityLabel: asset?.profitabilityLabel ?? "",
-    isReserved: asset?.isReserved ? "true" : "false",
-    notes: asset?.notes ?? "",
-  };
-}
 
 function buildFormData(values: PatrimonyAssetFormValues, assetId?: string): FormData {
   const formData = new FormData();
@@ -87,15 +63,75 @@ export function PatrimonyAssetForm({ mode, action, asset }: PatrimonyAssetFormPr
   const router = useRouter();
   const isEditMode = mode === "edit";
 
-  const initialValues = useMemo(() => getInitialValues(asset), [asset]);
-  const [values, setValues] = useState<PatrimonyAssetFormValues>(initialValues);
+  const initialState = useMemo(() => getPatrimonyGuidedAssetFormInitialValues(asset), [asset]);
+  const [guidedCategory, setGuidedCategory] = useState<PatrimonyGuidedAssetCategory>(
+    initialState.category
+  );
+  const [values, setValues] = useState<PatrimonyGuidedAssetFormValues>(initialState.values);
 
   useEffect(() => {
     if (open) {
-      setValues(getInitialValues(asset));
+      const nextInitialState = getPatrimonyGuidedAssetFormInitialValues(asset);
+      setGuidedCategory(nextInitialState.category);
+      setValues(nextInitialState.values);
       setError(null);
     }
-  }, [open, asset?.id, asset?.name, asset?.balanceCents, asset?.status, mode]);
+  }, [
+    open,
+    mode,
+    asset?.id,
+    asset?.name,
+    asset?.institution,
+    asset?.productName,
+    asset?.assetType,
+    asset?.objective,
+    asset?.balanceCents,
+    asset?.liquidity,
+    asset?.profitabilityLabel,
+    asset?.isReserved,
+    asset?.notes,
+    asset?.status,
+  ]);
+
+  const hideAvailabilityField =
+    guidedCategory === "vehicle" || guidedCategory === "real_estate" || guidedCategory === "pension";
+  const institutionLabel =
+    guidedCategory === "vehicle" ? "Instituição (opcional)" : "Instituição";
+  const namePlaceholder =
+    guidedCategory === "vehicle"
+      ? "Ex.: Chevrolet Prisma LT 2019"
+      : guidedCategory === "pension"
+        ? "Ex.: Previ"
+        : guidedCategory === "reserve"
+          ? "Ex.: Reserva manutenção carro"
+          : "Ex.: Reserva manutenção carro, Previ, Chevrolet Prisma";
+  const institutionPlaceholder =
+    guidedCategory === "vehicle"
+      ? "Ex.: Concessionária, vendedor, garagem"
+      : guidedCategory === "pension"
+        ? "Ex.: Previ"
+        : "Ex.: Inter, Previ, Banco do Brasil";
+  const productLabel =
+    guidedCategory === "vehicle" ? "Produto / modelo" : "Produto / descrição";
+  const productPlaceholder =
+    guidedCategory === "vehicle"
+      ? "Ex.: Chevrolet Prisma LT 2019"
+      : guidedCategory === "pension"
+        ? "Ex.: Previdência"
+        : "Ex.: CDB, Cofrinho, Reserva";
+  const objectivePlaceholder =
+    guidedCategory === "vehicle"
+      ? "Ex.: Transporte familiar"
+      : guidedCategory === "pension"
+        ? "Ex.: Aposentadoria / Longo prazo"
+        : guidedCategory === "reserve"
+          ? "Ex.: Emergência, IPVA, Manutenção do carro"
+          : "Ex.: Livre, emergência, viagem";
+
+  const applyGuidedCategory = (category: PatrimonyGuidedAssetCategory) => {
+    setGuidedCategory(category);
+    setValues((current) => applyPatrimonyGuidedAssetCategory(current, category));
+  };
 
   const trigger = isEditMode ? (
     <Button variant="outline" size="sm">
@@ -136,6 +172,34 @@ export function PatrimonyAssetForm({ mode, action, asset }: PatrimonyAssetFormPr
           }}
         >
           <section className="space-y-4">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold">Cadastro guiado</h3>
+              <p className="text-sm text-muted-foreground">
+                Escolha o tipo mais próximo do ativo para preencher os campos automaticamente.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {PATRIMONY_GUIDED_ASSET_CATEGORY_VALUES.map((category) => {
+                const active = guidedCategory === category;
+                return (
+                  <Button
+                    key={category}
+                    type="button"
+                    variant={active ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => applyGuidedCategory(category)}
+                  >
+                    {getPatrimonyGuidedAssetCategoryLabel(category)}
+                  </Button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {getPatrimonyGuidedAssetCategoryDescription(guidedCategory)}
+            </p>
+          </section>
+
+          <section className="space-y-4">
             <h3 className="text-sm font-semibold">Dados do ativo</h3>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2 sm:col-span-2">
@@ -144,58 +208,59 @@ export function PatrimonyAssetForm({ mode, action, asset }: PatrimonyAssetFormPr
                   id="name"
                   value={values.name}
                   onChange={(event) => setValues((current) => ({ ...current, name: event.target.value }))}
+                  placeholder={namePlaceholder}
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="institution">Instituição</Label>
+                <Label htmlFor="institution">{institutionLabel}</Label>
                 <Input
                   id="institution"
                   value={values.institution}
                   onChange={(event) =>
                     setValues((current) => ({ ...current, institution: event.target.value }))
                   }
-                  placeholder="Ex.: Inter, Mercado Pago"
+                  placeholder={institutionPlaceholder}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="productName">Produto</Label>
+                <Label htmlFor="productName">{productLabel}</Label>
                 <Input
                   id="productName"
                   value={values.productName}
                   onChange={(event) =>
                     setValues((current) => ({ ...current, productName: event.target.value }))
                   }
-                  placeholder="Ex.: Porquinho, Cofrinho, CDB"
+                  placeholder={productPlaceholder}
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="assetType">Tipo</Label>
+                <Label htmlFor="guidedCategory">Categoria do ativo</Label>
                 <select
-                  id="assetType"
-                  value={values.assetType}
+                  id="guidedCategory"
+                  value={guidedCategory}
                   onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      assetType: event.target.value as PatrimonyAssetFormValues["assetType"],
-                    }))
+                    applyGuidedCategory(event.target.value as PatrimonyGuidedAssetCategory)
                   }
                   className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
                   required
                 >
-                  {PATRIMONY_ASSET_TYPE_VALUES.map((assetType) => (
-                    <option key={assetType} value={assetType}>
-                      {getPatrimonyAssetTypeLabel(assetType)}
+                  {PATRIMONY_GUIDED_ASSET_CATEGORY_VALUES.map((category) => (
+                    <option key={category} value={category}>
+                      {getPatrimonyGuidedAssetCategoryLabel(category)}
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-muted-foreground">
+                  {getPatrimonyGuidedAssetCategoryDescription(guidedCategory)}
+                </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="balance">Saldo atual (BRL)</Label>
+                <Label htmlFor="balance">Valor atual (BRL)</Label>
                 <Input
                   id="balance"
                   value={values.balance}
@@ -214,21 +279,28 @@ export function PatrimonyAssetForm({ mode, action, asset }: PatrimonyAssetFormPr
                   onChange={(event) =>
                     setValues((current) => ({ ...current, objective: event.target.value }))
                   }
-                  placeholder="Ex.: Reserva de Emergência"
+                  placeholder={objectivePlaceholder}
                   required
                 />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="liquidity">Liquidez</Label>
-                <Input
+                <select
                   id="liquidity"
                   value={values.liquidity}
                   onChange={(event) =>
                     setValues((current) => ({ ...current, liquidity: event.target.value }))
                   }
-                  placeholder="Ex.: imediata, D+1, D+30"
-                />
+                  className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                  required={!hideAvailabilityField}
+                >
+                  <option value="Imediata">Imediata</option>
+                  <option value="Alta">Alta</option>
+                  <option value="Média">Média</option>
+                  <option value="Baixa">Baixa</option>
+                  <option value="Muito baixa">Muito baixa</option>
+                </select>
               </div>
 
               <div className="space-y-2">
@@ -244,22 +316,30 @@ export function PatrimonyAssetForm({ mode, action, asset }: PatrimonyAssetFormPr
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="isReserved">Dinheiro comprometido?</Label>
-                <select
-                  id="isReserved"
-                  value={values.isReserved}
-                  onChange={(event) =>
-                    setValues((current) => ({
-                      ...current,
-                      isReserved: event.target.value as PatrimonyAssetFormValues["isReserved"],
-                    }))
-                  }
-                  className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
-                  required
-                >
-                  <option value="true">Sim, comprometido</option>
-                  <option value="false">Não, livre</option>
-                </select>
+                {hideAvailabilityField ? (
+                  <div className="rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
+                    Este tipo já entra como não disponível para uso imediato.
+                  </div>
+                ) : (
+                  <>
+                    <Label htmlFor="isReserved">Disponibilidade</Label>
+                    <select
+                      id="isReserved"
+                      value={values.isReserved}
+                      onChange={(event) =>
+                        setValues((current) => ({
+                          ...current,
+                          isReserved: event.target.value as PatrimonyGuidedAssetFormValues["isReserved"],
+                        }))
+                      }
+                      className="flex h-9 w-full rounded-lg border border-input bg-transparent px-3 text-sm"
+                      required
+                    >
+                      <option value="false">Livre para uso</option>
+                      <option value="true">Reservado/provisionado</option>
+                    </select>
+                  </>
+                )}
               </div>
 
               <div className="space-y-2 sm:col-span-2">

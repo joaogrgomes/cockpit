@@ -4,7 +4,18 @@ vi.mock("server-only", () => ({}));
 
 import { getDb } from "@/lib/db";
 import { patrimonyAssets } from "@/lib/db/schema";
-import { calculatePatrimonyDashboard, calculatePatrimonyTotals } from "@/lib/patrimony";
+import {
+  calculatePatrimonyDashboard,
+  calculatePatrimonyTotals,
+  getPatrimonyAssetClass,
+} from "@/lib/patrimony";
+import {
+  applyPatrimonyGuidedAssetCategory,
+  getPatrimonyGuidedAssetCategoryDefaults,
+  getPatrimonyGuidedAssetCategoryFromAsset,
+  getPatrimonyGuidedAssetCategoryLabel,
+  getPatrimonyGuidedAssetFormInitialValues,
+} from "@/lib/patrimony-guided-form";
 import { PatrimonyAssetSchema } from "@/lib/validations";
 import {
   archivePatrimonyAsset,
@@ -163,7 +174,7 @@ describe("patrimony helpers", () => {
       { label: "Mercado Pago", totalCents: 200_000, count: 1 },
     ]);
     expect(totals.totalByAssetType).toEqual([
-      { label: "Porquinho", totalCents: 800_000, count: 1 },
+      { label: "Reserva", totalCents: 800_000, count: 1 },
       { label: "Poupança", totalCents: 200_000, count: 1 },
       { label: "CDB", totalCents: 150_000, count: 1 },
     ]);
@@ -337,6 +348,114 @@ describe("patrimony helpers", () => {
     expect(dashboard.pensionCents).toBe(600_000);
     expect(dashboard.useAssetsCents).toBe(1_500_000);
     expect(dashboard.reservedAssetsCount).toBe(1);
+  });
+
+  it("prioriza assetType na classificação visual do patrimônio", () => {
+    expect(
+      getPatrimonyAssetClass(
+        makeAsset({
+          name: "Carro",
+          assetType: "checking_account",
+          objective: "Veículo",
+          isReserved: false,
+        })
+      )
+    ).toBe("cash_account");
+
+    expect(
+      getPatrimonyAssetClass(
+        makeAsset({
+          name: "Aposentadoria",
+          assetType: "cdb",
+          objective: "Previdência",
+          isReserved: false,
+        })
+      )
+    ).toBe("investment");
+  });
+
+  it("mantém fallback textual para dados antigos", () => {
+    expect(
+      getPatrimonyAssetClass(
+        makeAsset({
+          name: "Chevrolet Prisma LT 2019",
+          assetType: "other",
+          objective: "Transporte familiar",
+          isReserved: false,
+        })
+      )
+    ).toBe("vehicle");
+
+    expect(
+      getPatrimonyAssetClass(
+        makeAsset({
+          name: "Previ",
+          assetType: "other",
+          objective: "Aposentadoria",
+          isReserved: false,
+        })
+      )
+    ).toBe("pension");
+  });
+
+  it("gera presets guiados com defaults coerentes", () => {
+    expect(getPatrimonyGuidedAssetCategoryLabel("vehicle")).toBe("Veículo");
+    expect(getPatrimonyGuidedAssetCategoryDefaults("vehicle")).toEqual({
+      assetType: "other",
+      institution: "",
+      productName: "Veículo",
+      objective: "Transporte familiar",
+      liquidity: "Baixa",
+      isReserved: "false",
+    });
+    expect(getPatrimonyGuidedAssetCategoryDefaults("pension")).toEqual({
+      assetType: "other",
+      institution: "Previ",
+      productName: "Previdência",
+      objective: "Aposentadoria / Longo prazo",
+      liquidity: "Muito baixa",
+      isReserved: "true",
+    });
+    expect(getPatrimonyGuidedAssetCategoryDefaults("reserve")).toEqual({
+      assetType: "piggy_bank",
+      institution: "",
+      productName: "Reserva / provisionamento",
+      objective: "Emergência",
+      liquidity: "Imediata",
+      isReserved: "true",
+    });
+    expect(getPatrimonyGuidedAssetCategoryDefaults("cash_account")).toEqual({
+      assetType: "checking_account",
+      institution: "",
+      productName: "",
+      objective: "Livre",
+      liquidity: "Imediata",
+      isReserved: "false",
+    });
+  });
+
+  it("preserva categorias guiadas ao abrir um ativo antigo", () => {
+    const asset = makeAsset({
+      name: "Chevrolet Prisma LT 2019",
+      assetType: "other",
+      productName: "",
+      objective: "Transporte familiar",
+      liquidity: "Baixa",
+      isReserved: false,
+    });
+
+    expect(getPatrimonyGuidedAssetCategoryFromAsset(asset)).toBe("vehicle");
+
+    const initialState = getPatrimonyGuidedAssetFormInitialValues(asset);
+
+    expect(initialState.category).toBe("vehicle");
+    expect(initialState.values.liquidity).toBe("Baixa");
+    expect(initialState.values.isReserved).toBe("false");
+
+    const nextState = applyPatrimonyGuidedAssetCategory(initialState.values, "reserve");
+    expect(nextState.assetType).toBe("piggy_bank");
+    expect(nextState.objective).toBe("Emergência");
+    expect(nextState.isReserved).toBe("true");
   });
 });
 
