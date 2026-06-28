@@ -18,8 +18,12 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
 import {
+  getPatrimonyAssetClass,
+  getPatrimonyAssetClassLabel,
   getPatrimonyAssetStatusLabel,
   getPatrimonyAssetTypeLabel,
+  getPatrimonyLiquidityBucket,
+  getPatrimonyLiquidityBucketLabel,
 } from "@/lib/patrimony";
 import type { PatrimonyAssetView } from "@/lib/patrimony";
 import { PatrimonyAssetForm } from "./PatrimonyAssetForm";
@@ -78,11 +82,11 @@ function PatrimonyAssetCard({
           </div>
           <div className="rounded-xl border border-border/70 bg-background p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Tipo
+              Classificação
             </p>
-            <p className="mt-2 text-sm font-medium">{getPatrimonyAssetTypeLabel(asset.assetType)}</p>
+            <p className="mt-2 text-sm font-medium">{getPatrimonyAssetClassLabel(getPatrimonyAssetClass(asset))}</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              {asset.liquidity?.trim() ? `Liquidez: ${asset.liquidity}` : "Liquidez não informada"}
+              {asset.assetType ? `Tipo cadastrado: ${getPatrimonyAssetTypeLabel(asset.assetType)}` : "Tipo não informado"}
             </p>
           </div>
         </div>
@@ -94,6 +98,18 @@ function PatrimonyAssetCard({
             </p>
             <p className="mt-2 text-sm font-medium">{asset.objective}</p>
           </div>
+          <div className="rounded-xl border border-border/70 bg-background p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Liquidez
+            </p>
+            <p className="mt-2 text-sm font-medium">{getPatrimonyLiquidityBucketLabel(getPatrimonyLiquidityBucket(asset))}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {asset.liquidity?.trim() ? `Liquidez informada: ${asset.liquidity}` : "Liquidez não informada"}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl border border-border/70 bg-background p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Rentabilidade

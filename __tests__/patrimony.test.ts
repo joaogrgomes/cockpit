@@ -4,11 +4,12 @@ vi.mock("server-only", () => ({}));
 
 import { getDb } from "@/lib/db";
 import { patrimonyAssets } from "@/lib/db/schema";
-import { calculatePatrimonyTotals } from "@/lib/patrimony";
+import { calculatePatrimonyDashboard, calculatePatrimonyTotals } from "@/lib/patrimony";
 import { PatrimonyAssetSchema } from "@/lib/validations";
 import {
   archivePatrimonyAsset,
   createPatrimonyAsset,
+  getPatrimonyLiabilitiesSummary,
   listPatrimonyAssets,
   updatePatrimonyAsset,
 } from "@/lib/services/patrimony.service";
@@ -166,6 +167,176 @@ describe("patrimony helpers", () => {
       { label: "Poupança", totalCents: 200_000, count: 1 },
       { label: "CDB", totalCents: 150_000, count: 1 },
     ]);
+  });
+
+  it("monta a visão patrimonial consolidada", () => {
+    const dashboard = calculatePatrimonyDashboard(
+      [
+        makeAsset({
+          id: "cash-1",
+          name: "Conta livre",
+          objective: "Livre",
+          assetType: "checking_account",
+          balanceCents: 250_000,
+          isReserved: false,
+          liquidity: "imediata",
+          institution: "Inter",
+        }),
+        makeAsset({
+          id: "reserve-1",
+          name: "Reserva emergência",
+          objective: "Emergência",
+          assetType: "piggy_bank",
+          balanceCents: 400_000,
+          isReserved: true,
+          liquidity: "alta",
+          institution: "Nubank",
+        }),
+        makeAsset({
+          id: "pension-1",
+          name: "Previ",
+          objective: "Previdência",
+          assetType: "other",
+          balanceCents: 600_000,
+          isReserved: false,
+          liquidity: "muito baixa",
+        }),
+        makeAsset({
+          id: "vehicle-1",
+          name: "Prisma",
+          objective: "Carro",
+          assetType: "other",
+          balanceCents: 500_000,
+          isReserved: false,
+          liquidity: "baixa",
+        }),
+        makeAsset({
+          id: "archived-1",
+          name: "Arquivado",
+          objective: "Outro",
+          assetType: "cdb",
+          balanceCents: 900_000,
+          isReserved: false,
+          status: "archived",
+        }),
+      ],
+      {
+        totalOpenDebtsCents: 700_000,
+        debtsCount: 2,
+      }
+    );
+
+    expect(dashboard.grossAssetsCents).toBe(1_750_000);
+    expect(dashboard.totalLiabilitiesCents).toBe(700_000);
+    expect(dashboard.netWorthCents).toBe(1_050_000);
+    expect(dashboard.availableNowCents).toBe(250_000);
+    expect(dashboard.reservedCents).toBe(400_000);
+    expect(dashboard.lowLiquidityCents).toBe(1_100_000);
+    expect(dashboard.pensionCents).toBe(600_000);
+    expect(dashboard.useAssetsCents).toBe(500_000);
+    expect(dashboard.assetsCount).toBe(4);
+    expect(dashboard.reservedAssetsCount).toBe(1);
+    expect(dashboard.institutionsCount).toBe(2);
+    expect(dashboard.byAssetType.map((item) => item.label)).toEqual([
+      "Previdência",
+      "Veículo",
+      "Reserva",
+      "Conta/Caixa",
+    ]);
+    expect(dashboard.byLiquidity.map((item) => item.label)).toEqual([
+      "Imediata",
+      "Alta",
+      "Baixa",
+      "Muito baixa",
+    ]);
+  });
+
+  it("considera disponível agora apenas ativos financeiros não reservados com liquidez imediata ou alta", () => {
+    const dashboard = calculatePatrimonyDashboard(
+      [
+        makeAsset({
+          id: "cash-1",
+          name: "Conta corrente",
+          assetType: "checking_account",
+          balanceCents: 100_000,
+          isReserved: false,
+          liquidity: "imediata",
+          institution: "Inter",
+        }),
+        makeAsset({
+          id: "cdb-1",
+          name: "CDB liquidez alta",
+          assetType: "cdb",
+          balanceCents: 200_000,
+          isReserved: false,
+          liquidity: "alta",
+          institution: "Nubank",
+        }),
+        makeAsset({
+          id: "medium-1",
+          name: "Fundo médio",
+          assetType: "fund",
+          balanceCents: 300_000,
+          isReserved: false,
+          liquidity: "média",
+          institution: "BTG",
+        }),
+        makeAsset({
+          id: "other-1",
+          name: "Outro não financeiro",
+          assetType: "other",
+          balanceCents: 400_000,
+          isReserved: false,
+          liquidity: "imediata",
+          institution: "Banco X",
+        }),
+        makeAsset({
+          id: "reserve-1",
+          name: "Reserva alta",
+          assetType: "cdb",
+          balanceCents: 500_000,
+          isReserved: true,
+          liquidity: "alta",
+          institution: "Inter",
+        }),
+        makeAsset({
+          id: "pension-1",
+          name: "Previdência",
+          assetType: "other",
+          balanceCents: 600_000,
+          isReserved: false,
+          liquidity: "muito baixa",
+        }),
+        makeAsset({
+          id: "vehicle-1",
+          name: "Carro",
+          assetType: "other",
+          balanceCents: 700_000,
+          isReserved: false,
+          liquidity: "baixa",
+        }),
+        makeAsset({
+          id: "real-estate-1",
+          name: "Apartamento",
+          assetType: "other",
+          balanceCents: 800_000,
+          isReserved: false,
+          liquidity: "baixa",
+        }),
+      ],
+      {
+        totalOpenDebtsCents: 0,
+        debtsCount: 0,
+      }
+    );
+
+    expect(dashboard.availableNowCents).toBe(300_000);
+    expect(dashboard.grossAssetsCents).toBe(3_600_000);
+    expect(dashboard.reservedCents).toBe(500_000);
+    expect(dashboard.lowLiquidityCents).toBe(2_100_000);
+    expect(dashboard.pensionCents).toBe(600_000);
+    expect(dashboard.useAssetsCents).toBe(1_500_000);
+    expect(dashboard.reservedAssetsCount).toBe(1);
   });
 });
 
@@ -348,5 +519,21 @@ describe("patrimony service", () => {
 
     expect(assets.map((asset) => asset.id)).toEqual(["active-1", "archived-1"]);
   });
-});
 
+  it("soma passivos abertos para o dashboard", async () => {
+    const mockDb = createDbMock({
+      selectResults: [[
+        { currentValue: 120_000 },
+        { currentValue: 380_000 },
+      ]],
+    });
+    mockedGetDb.mockReturnValue(mockDb);
+
+    const summary = await getPatrimonyLiabilitiesSummary();
+
+    expect(summary).toEqual({
+      totalOpenDebtsCents: 500_000,
+      debtsCount: 2,
+    });
+  });
+});

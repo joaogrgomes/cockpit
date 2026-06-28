@@ -1,11 +1,17 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatBRL } from "@/lib/calculations";
-import { calculatePatrimonyTotals, type PatrimonyAssetView } from "@/lib/patrimony";
-import { listPatrimonyAssets } from "@/lib/services/patrimony.service";
+import {
+  calculatePatrimonyDashboard,
+  type PatrimonyAssetView,
+} from "@/lib/patrimony";
+import {
+  getPatrimonyLiabilitiesSummary,
+  listPatrimonyAssets,
+} from "@/lib/services/patrimony.service";
 import { createPatrimonyAssetAction, archivePatrimonyAssetAction, updatePatrimonyAssetAction } from "./actions";
 import { PatrimonyAssetForm } from "@/components/patrimony/PatrimonyAssetForm";
-import { PatrimonySummaryCards } from "@/components/patrimony/PatrimonySummaryCards";
+import { PatrimonyDashboardCards } from "@/components/patrimony/PatrimonyDashboardCards";
 import { PatrimonyAssetsList } from "@/components/patrimony/PatrimonyAssetsList";
 
 export const dynamic = "force-dynamic";
@@ -31,8 +37,11 @@ function renderGroupedItems(items: Array<{ label: string; totalCents: number; co
 }
 
 export default async function PatrimonyPage() {
-  const assets = await listPatrimonyAssets();
-  const totals = calculatePatrimonyTotals(assets);
+  const [assets, liabilities] = await Promise.all([
+    listPatrimonyAssets(),
+    getPatrimonyLiabilitiesSummary(),
+  ]);
+  const dashboard = calculatePatrimonyDashboard(assets, liabilities);
   const clientAssets: PatrimonyAssetView[] = assets.map(({ createdAt: _createdAt, updatedAt: _updatedAt, ...asset }) => asset);
 
   return (
@@ -42,6 +51,8 @@ export default async function PatrimonyPage() {
         description="Use este módulo para registrar onde está seu dinheiro e qual é a finalidade de cada parte dele. Não é um controle de investimentos, é uma visão patrimonial."
         actions={<PatrimonyAssetForm mode="create" action={createPatrimonyAssetAction} />}
       />
+
+      <PatrimonyDashboardCards dashboard={dashboard} />
 
       <Card className="border-border/80 shadow-sm">
         <CardHeader className="pb-3">
@@ -54,13 +65,11 @@ export default async function PatrimonyPage() {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Atualize manualmente conforme seu cenário mudar. Os totais abaixo consideram apenas
+            Atualize manualmente conforme seu cenário mudar. Os totais acima consideram apenas
             ativos com status ativo.
           </p>
         </CardContent>
       </Card>
-
-      <PatrimonySummaryCards totals={totals} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card className="border-border/80 shadow-sm">
@@ -68,7 +77,7 @@ export default async function PatrimonyPage() {
             <CardTitle className="text-base">Por objetivo</CardTitle>
             <CardDescription>Quanto de patrimônio está alocado em cada finalidade.</CardDescription>
           </CardHeader>
-          <CardContent>{renderGroupedItems(totals.totalByObjective)}</CardContent>
+          <CardContent>{renderGroupedItems(dashboard.byObjective)}</CardContent>
         </Card>
 
         <Card className="border-border/80 shadow-sm">
@@ -76,17 +85,27 @@ export default async function PatrimonyPage() {
             <CardTitle className="text-base">Por instituição</CardTitle>
             <CardDescription>Onde o patrimônio está guardado hoje.</CardDescription>
           </CardHeader>
-          <CardContent>{renderGroupedItems(totals.totalByInstitution)}</CardContent>
+          <CardContent>{renderGroupedItems(dashboard.byInstitution)}</CardContent>
         </Card>
       </div>
 
-      <Card className="border-border/80 shadow-sm">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Por tipo de ativo</CardTitle>
-          <CardDescription>Distribuição do patrimônio por tipo de conta ou aplicação.</CardDescription>
-        </CardHeader>
-        <CardContent>{renderGroupedItems(totals.totalByAssetType)}</CardContent>
-      </Card>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="border-border/80 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Por tipo de ativo</CardTitle>
+            <CardDescription>Distribuição do patrimônio por conta, reserva, investimento e bens.</CardDescription>
+          </CardHeader>
+          <CardContent>{renderGroupedItems(dashboard.byAssetType)}</CardContent>
+        </Card>
+
+        <Card className="border-border/80 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Por liquidez</CardTitle>
+            <CardDescription>Quanto é imediato, alto, médio, baixo ou muito baixo.</CardDescription>
+          </CardHeader>
+          <CardContent>{renderGroupedItems(dashboard.byLiquidity)}</CardContent>
+        </Card>
+      </div>
 
       <Card className="border-border/80 shadow-sm">
         <CardHeader className="pb-3">

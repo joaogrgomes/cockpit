@@ -2,8 +2,10 @@ import "server-only";
 
 import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { patrimonyAssets } from "@/lib/db/schema";
+import { debts, patrimonyAssets } from "@/lib/db/schema";
+import { buildExcludeClosedDebtStatusesCondition } from "@/lib/debt-status";
 import {
+  type PatrimonyLiabilitiesSummary,
   parsePatrimonyAssetStatus,
   parsePatrimonyAssetType,
 } from "@/lib/patrimony";
@@ -220,3 +222,23 @@ export async function archivePatrimonyAsset(id: string): Promise<PatrimonyAssetM
   }
 }
 
+export async function getPatrimonyLiabilitiesSummary(): Promise<PatrimonyLiabilitiesSummary> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      currentValue: debts.currentValue,
+    })
+    .from(debts)
+    .where(buildExcludeClosedDebtStatusesCondition());
+
+  return rows.reduce<PatrimonyLiabilitiesSummary>(
+    (acc, row) => ({
+      totalOpenDebtsCents: acc.totalOpenDebtsCents + Math.max(0, Math.round(row.currentValue)),
+      debtsCount: acc.debtsCount + 1,
+    }),
+    {
+      totalOpenDebtsCents: 0,
+      debtsCount: 0,
+    }
+  );
+}
